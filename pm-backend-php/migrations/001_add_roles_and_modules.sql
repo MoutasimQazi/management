@@ -11,10 +11,12 @@
 --
 -- This version is SAFE TO RE-RUN: every ADD/DROP COLUMN, KEY, or
 -- CONSTRAINT first checks current state and skips if there's nothing
--- to do, using small helper procedures dropped again at the end. If
--- a previous attempt got partway through (or a column already
--- existed for some other reason), just run this whole file again —
--- nothing will error and nothing will be duplicated.
+-- to do, using small helper procedures dropped again at the end. Any
+-- column that will hold a foreign key to managers.manager_id or
+-- employees.employee_id is created/resized to match that column's
+-- *exact* type (signedness, width, etc.) read live from
+-- information_schema — MySQL/MariaDB reject a FOREIGN KEY whose two
+-- sides don't match exactly, and guessing "INT" wasn't good enough.
 -- ════════════════════════════════════════════════════════════
 
 DELIMITER $$
@@ -86,6 +88,39 @@ BEGIN
   END IF;
 END $$
 
+-- Adds (or resizes, if it already exists) p_table.p_column so its type
+-- exactly matches p_ref_table.p_ref_column — required before a FOREIGN
+-- KEY between them will be accepted. p_after only matters when the
+-- column doesn't exist yet (positions it after that column); pass NULL
+-- when modifying an existing column.
+DROP PROCEDURE IF EXISTS _mig_sync_fk_column $$
+CREATE PROCEDURE _mig_sync_fk_column(
+  IN p_table VARCHAR(64), IN p_column VARCHAR(64),
+  IN p_ref_table VARCHAR(64), IN p_ref_column VARCHAR(64),
+  IN p_nullability VARCHAR(10), IN p_after VARCHAR(64)
+)
+BEGIN
+  DECLARE ref_type VARCHAR(100);
+  DECLARE col_exists INT;
+  SET ref_type = (
+    SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = p_ref_table AND COLUMN_NAME = p_ref_column
+  );
+  SET col_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = p_table AND COLUMN_NAME = p_column
+  );
+  IF col_exists = 0 THEN
+    SET @mig_ddl = CONCAT('ALTER TABLE ', p_table, ' ADD COLUMN ', p_column, ' ', ref_type, ' ', p_nullability,
+      IF(p_after IS NOT NULL AND p_after <> '', CONCAT(' AFTER ', p_after), ''));
+  ELSE
+    SET @mig_ddl = CONCAT('ALTER TABLE ', p_table, ' MODIFY COLUMN ', p_column, ' ', ref_type, ' ', p_nullability);
+  END IF;
+  PREPARE mig_stmt FROM @mig_ddl;
+  EXECUTE mig_stmt;
+  DEALLOCATE PREPARE mig_stmt;
+END $$
+
 DELIMITER ;
 
 -- ── 1. managers: add password + token columns, widen role ──
@@ -134,15 +169,16 @@ CALL _mig_add_column_if_missing('tasks', 'eta_hours',
   'ALTER TABLE tasks ADD COLUMN eta_hours DECIMAL(6,1) NULL AFTER eta');
 
 -- ── 4. questions: allow an employee (not just a manager) to ask ──
--- manager_id already has an FK to managers (fk_question_manager) — drop
--- it, widen the column to nullable, then put the exact same FK back.
+-- manager_id already has an FK (fk_question_manager) — drop it, sync
+-- the column to managers.manager_id's exact type (now nullable), then
+-- put the same FK back. employee_id is new, added matching
+-- employees.employee_id's exact type so its own FK attaches cleanly.
 CALL _mig_drop_constraint_if_exists('questions', 'fk_question_manager');
-ALTER TABLE questions MODIFY COLUMN manager_id INT NULL;
+CALL _mig_sync_fk_column('questions', 'manager_id', 'managers', 'manager_id', 'NULL', NULL);
 CALL _mig_add_constraint_if_missing('questions', 'fk_question_manager',
   'ALTER TABLE questions ADD CONSTRAINT fk_question_manager FOREIGN KEY (manager_id) REFERENCES managers(manager_id)');
 
-CALL _mig_add_column_if_missing('questions', 'employee_id',
-  'ALTER TABLE questions ADD COLUMN employee_id INT NULL AFTER manager_id');
+CALL _mig_sync_fk_column('questions', 'employee_id', 'employees', 'employee_id', 'NULL', 'manager_id');
 CALL _mig_add_constraint_if_missing('questions', 'fk_questions_employee',
   'ALTER TABLE questions ADD CONSTRAINT fk_questions_employee FOREIGN KEY (employee_id) REFERENCES employees(employee_id)');
 
@@ -155,10 +191,15 @@ CREATE TABLE IF NOT EXISTS job_openings (
   notes       TEXT NULL,
   created_by  INT NOT NULL,
   created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (created_by) REFERENCES managers(manager_id)
+  updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CALL _mig_sync_fk_column('job_openings', 'created_by', 'managers', 'manager_id', 'NOT NULL', NULL);
+CALL _mig_add_constraint_if_missing('job_openings', 'fk_openings_manager',
+  'ALTER TABLE job_openings ADD CONSTRAINT fk_openings_manager FOREIGN KEY (created_by) REFERENCES managers(manager_id)');
 
+-- opening_id here references job_openings.opening_id, which this same
+-- script just defined above — both sides are guaranteed to match, no
+-- type-sync needed.
 CREATE TABLE IF NOT EXISTS candidates (
   candidate_id INT AUTO_INCREMENT PRIMARY KEY,
   opening_id   INT NOT NULL,
@@ -184,10 +225,14 @@ CREATE TABLE IF NOT EXISTS leave_requests (
   status       VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING, APPROVED, REJECTED, CANCELLED
   reviewed_by  INT NULL,
   reviewed_at  TIMESTAMP NULL,
-  created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (employee_id) REFERENCES employees(employee_id),
-  FOREIGN KEY (reviewed_by) REFERENCES managers(manager_id)
+  created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CALL _mig_sync_fk_column('leave_requests', 'employee_id', 'employees', 'employee_id', 'NOT NULL', NULL);
+CALL _mig_sync_fk_column('leave_requests', 'reviewed_by', 'managers', 'manager_id', 'NULL', NULL);
+CALL _mig_add_constraint_if_missing('leave_requests', 'fk_leave_employee',
+  'ALTER TABLE leave_requests ADD CONSTRAINT fk_leave_employee FOREIGN KEY (employee_id) REFERENCES employees(employee_id)');
+CALL _mig_add_constraint_if_missing('leave_requests', 'fk_leave_reviewer',
+  'ALTER TABLE leave_requests ADD CONSTRAINT fk_leave_reviewer FOREIGN KEY (reviewed_by) REFERENCES managers(manager_id)');
 
 -- ── 7. Marketing: campaign / content calendar ──
 CREATE TABLE IF NOT EXISTS campaigns (
@@ -199,12 +244,15 @@ CREATE TABLE IF NOT EXISTS campaigns (
   scheduled_date  DATE NULL,
   notes           TEXT NULL,
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (manager_id) REFERENCES managers(manager_id)
+  updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CALL _mig_sync_fk_column('campaigns', 'manager_id', 'managers', 'manager_id', 'NOT NULL', NULL);
+CALL _mig_add_constraint_if_missing('campaigns', 'fk_campaigns_manager',
+  'ALTER TABLE campaigns ADD CONSTRAINT fk_campaigns_manager FOREIGN KEY (manager_id) REFERENCES managers(manager_id)');
 
 -- ── cleanup: drop the helper procedures, they're only needed here ──
 DROP PROCEDURE IF EXISTS _mig_add_column_if_missing;
 DROP PROCEDURE IF EXISTS _mig_add_index_if_missing;
 DROP PROCEDURE IF EXISTS _mig_add_constraint_if_missing;
 DROP PROCEDURE IF EXISTS _mig_drop_constraint_if_exists;
+DROP PROCEDURE IF EXISTS _mig_sync_fk_column;
