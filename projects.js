@@ -22,7 +22,7 @@
 const SESSION_KEY = "fireflies.session";
 // Same-origin PHP backend (pm-backend-php/), deployed as a subfolder of
 // this same site — no CORS to worry about.
-const PM_API_BASE = "https://firefiles.moveneticsdigital.com/pm-backend-php/";
+const PM_API_BASE = "https://management.moveneticsdigital.com/pm-backend-php/";
 
 const PM_EMPLOYEES_LIST_URL   = PM_API_BASE + "pm-employees-list.php";
 const PM_EMPLOYEES_CREATE_URL = PM_API_BASE + "pm-employees-create.php";
