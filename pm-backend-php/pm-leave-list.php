@@ -2,14 +2,18 @@
 require 'config.php';
 require 'auth.php';
 // Any logged-in account (manager, HR, marketing, or employee) can see the
-// leave roster — leave status is company-wide visible by design. Only
-// HR/ADMIN can approve or reject (see pm-leave-review.php).
+// leave roster — leave status is company-wide visible by design. Approval
+// is done by the managers the request was addressed to, or an ADMIN
+// (see pm-leave-review.php); HR just tracks.
 $user = requireUser($pdo, $USERS);
 
 $sql = "SELECT l.leave_id, l.employee_id, l.manager_id,
                COALESCE(e.name, req.full_name) AS employee_name,
                l.start_date, l.end_date, l.reason,
-               l.status, l.reviewed_by, rvm.full_name AS reviewed_by_name, l.reviewed_at, l.created_at
+               l.status, l.reviewed_by, rvm.full_name AS reviewed_by_name, l.reviewed_at, l.created_at,
+               (SELECT GROUP_CONCAT(m2.full_name SEPARATOR ', ')
+                  FROM leave_approvers la JOIN managers m2 ON m2.manager_id = la.manager_id
+                 WHERE la.leave_id = l.leave_id) AS approver_names
         FROM leave_requests l
         LEFT JOIN employees e ON e.employee_id = l.employee_id
         LEFT JOIN managers req ON req.manager_id = l.manager_id
@@ -23,6 +27,20 @@ if (!empty($_GET['mine'])) {
         $params[] = $user['id'];
     } else {
         $sql .= " AND l.manager_id = ?";
+        $params[] = $user['id'];
+    }
+}
+if (!empty($_GET['approvals'])) {
+    // Pending requests waiting on the calling manager: ones that name
+    // them as an approver — ADMIN sees every pending request.
+    if ($user['user_type'] !== 'STAFF') {
+        http_response_code(403);
+        echo json_encode(['error' => 'Only managers review leave requests.']);
+        exit;
+    }
+    $sql .= " AND l.status = 'PENDING'";
+    if ($user['role'] !== 'ADMIN') {
+        $sql .= " AND EXISTS (SELECT 1 FROM leave_approvers la WHERE la.leave_id = l.leave_id AND la.manager_id = ?)";
         $params[] = $user['id'];
     }
 }

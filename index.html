@@ -87,13 +87,12 @@
         <img src="logo.png"
              alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
       </a>
+      <!-- Kept deliberately small: Tasks/Questions live inside the Projects
+           module's own tabs, and Dispatch is the "+ New dispatch" button. -->
       <nav class="tabs">
-        <a href="projects.html" data-nav="pm">Projects</a>
-        <a href="projects.html#/tasks" data-nav="pm">Tasks</a>
-        <a href="projects.html#/questions" data-nav="pm">Questions</a>
         <a href="#/dashboard" data-nav="dashboard">Dashboard</a>
-        <a href="#/dispatch"  data-nav="dispatch">Dispatch</a>
-        <a href="#/meetings"  data-nav="meetings">My meetings</a>
+        <a href="projects.html" data-nav="pm">Projects</a>
+        <a href="#/meetings"  data-nav="meetings">Meetings</a>
         <a href="#/actions"   data-nav="actions">Action items</a>
       </nav>
 
@@ -112,37 +111,6 @@
         <a class="btn-sm" href="#/dispatch">+ New dispatch</a>
       </div>
 
-      <!-- Company-wide "who's on leave" — visible to every signed-in
-           role, not just HR, since leave status is meant to be transparent. -->
-      <div id="leavePanel" style="display:none; margin-bottom:24px">
-        <div class="panel-head">
-          <h2>On leave</h2>
-          <span class="count" id="leaveCount">0</span>
-        </div>
-        <div class="sect actionitems today">
-          <ul id="leaveList"></ul>
-        </div>
-      </div>
-
-      <!-- Managers/Admins can file their own leave here too, not just employees. -->
-      <div class="panel-head">
-        <h2>My leave</h2>
-        <span class="spacer"></span>
-        <button type="button" class="btn-sm" id="myLeaveToggle" style="border:none">+ Request leave</button>
-      </div>
-      <form id="myLeaveForm" class="inline-form">
-        <div class="row">
-          <div class="field"><label>From</label><input id="myLeaveStart" type="date" required /></div>
-          <div class="field"><label>To</label><input id="myLeaveEnd" type="date" required /></div>
-        </div>
-        <div class="field"><label>Reason <span class="opt">— optional</span></label><input id="myLeaveReason" placeholder="e.g. Family trip" /></div>
-        <div class="actions">
-          <button type="submit">Request leave</button>
-          <button type="button" class="secondary" id="myLeaveCancelBtn">Cancel</button>
-        </div>
-      </form>
-      <div id="myLeaveList" style="margin-bottom:24px"></div>
-
       <!-- Live summary from the Project Management module, same session token —
            Projects is the primary tool, so its status leads the dashboard. -->
       <div class="panel-head">
@@ -160,6 +128,43 @@
         <div class="sect actionitems today">
           <ul id="pmAttentionList"></ul>
         </div>
+      </div>
+
+      <!-- Pending leave requests addressed to me (admin sees all pending).
+           Approval happens here, on the manager's side — HR only tracks. -->
+      <div id="approvalsPanel" style="display:none; margin-bottom:24px">
+        <div class="panel-head">
+          <h2>Leave approvals</h2>
+          <span class="count" id="approvalsCount">0</span>
+        </div>
+        <div id="approvalsList"></div>
+      </div>
+
+      <!-- Company-wide "who's on leave" — always visible so anyone (admin
+           included) can see at a glance who's out right now. -->
+      <div style="margin-bottom:24px">
+        <div class="panel-head">
+          <h2>On leave</h2>
+          <span class="count" id="leaveCount">0</span>
+          <span class="spacer"></span>
+          <button type="button" class="btn-sm" id="myLeaveToggle" style="border:none">+ Request leave</button>
+        </div>
+        <form id="myLeaveForm" class="inline-form">
+          <div class="row">
+            <div class="field"><label>From</label><input id="myLeaveStart" type="date" required /></div>
+            <div class="field"><label>To</label><input id="myLeaveEnd" type="date" required /></div>
+          </div>
+          <div class="field"><label>Send to</label><div id="myLeaveApprovers" class="check-group"></div></div>
+          <div class="field"><label>Reason <span class="opt">— optional</span></label><input id="myLeaveReason" placeholder="e.g. Family trip" /></div>
+          <div class="actions">
+            <button type="submit">Request leave</button>
+            <button type="button" class="secondary" id="myLeaveCancelBtn">Cancel</button>
+          </div>
+        </form>
+        <div class="sect actionitems today">
+          <ul id="leaveList"></ul>
+        </div>
+        <div id="myLeaveList" style="margin-top:14px"></div>
       </div>
 
       <!-- Admin-only: HR + Marketing at a glance, with a way into each. -->
@@ -319,6 +324,8 @@
     const PM_QUESTIONS_LIST_URL  = PM_API_BASE + "pm-questions-list.php";
     const PM_LEAVE_LIST_URL      = PM_API_BASE + "pm-leave-list.php";
     const PM_LEAVE_CREATE_URL    = PM_API_BASE + "pm-leave-create.php";
+    const PM_LEAVE_REVIEW_URL    = PM_API_BASE + "pm-leave-review.php";
+    const PM_APPROVERS_LIST_URL  = PM_API_BASE + "pm-approvers-list.php";
     const PM_OPENINGS_LIST_URL   = PM_API_BASE + "pm-openings-list.php";
     const PM_CANDIDATES_LIST_URL = PM_API_BASE + "pm-candidates-list.php";
     const PM_CAMPAIGNS_LIST_URL  = PM_API_BASE + "pm-campaigns-list.php";
@@ -361,10 +368,11 @@
     const pmAttentionTitle = document.getElementById('pmAttentionTitle');
     const pmAttentionCount = document.getElementById('pmAttentionCount');
     const pmAttentionList  = document.getElementById('pmAttentionList');
-    const leavePanel   = document.getElementById('leavePanel');
     const leaveCount   = document.getElementById('leaveCount');
     const leaveList    = document.getElementById('leaveList');
     const myLeaveList  = document.getElementById('myLeaveList');
+    const approvalsPanel = document.getElementById('approvalsPanel');
+    const approvalsList  = document.getElementById('approvalsList');
     const navLinks    = document.querySelectorAll('nav.tabs a');
     const pages       = document.querySelectorAll('.page');
 
@@ -575,6 +583,8 @@
       loadMeetings();
       loadProjectsSummary();
       loadLeavePanel();
+      loadApprovals();
+      loadApprovers();
       loadMyLeave();
       if (session.role === 'ADMIN') loadHrMktSummary();
       route();
@@ -684,9 +694,10 @@
       pmStatsEl.innerHTML = '';
       pmAttentionPanel.style.display = 'none';
       pmAttentionList.innerHTML = '';
-      leavePanel.style.display = 'none';
       leaveList.innerHTML = '';
       myLeaveList.innerHTML = '';
+      approvalsPanel.style.display = 'none';
+      approvalsList.innerHTML = '';
       document.getElementById('hrMktPanel').style.display = 'none';
       showLogin('Signed out.');
       setStatus(loginStatus, '', '');
@@ -1024,6 +1035,8 @@
       loadMeetings();
       loadProjectsSummary();
       loadLeavePanel();
+      loadApprovals();
+      loadMyLeave();
     });
 
     /* ════════════════════════════════════════════════════
@@ -1081,56 +1094,122 @@
       }
     }
 
-    // "Who's on leave" — shows approved leave covering today through the
-    // next 14 days, so anyone signed in (any role) can see who's out.
-    async function loadLeavePanel(){
+    // Small authed-fetch helper for the leave endpoints below.
+    async function leaveApi(url, body){
       const session = readSession();
-      if (!session) return;
-      try {
-        const res = await fetch(PM_LEAVE_LIST_URL + '?status=APPROVED', {
-          headers: { 'Authorization': 'Bearer ' + session.token }
-        });
-        if (!res.ok) throw new Error('status ' + res.status);
-        const rows = await res.json();
+      if (!session) throw new Error('signed out');
+      const res = await fetch(url, {
+        method: body ? 'POST' : 'GET',
+        headers: Object.assign(
+          { 'Authorization': 'Bearer ' + session.token },
+          body ? { 'Content-Type': 'application/json' } : {}
+        ),
+        body: body ? JSON.stringify(body) : undefined
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || ('status ' + res.status));
+      }
+      return res.json();
+    }
 
+    // "Who's on leave" — approved leave covering today through the next
+    // 14 days. Always rendered (with an empty state) so admins and
+    // managers can see at a glance that no one is out, too.
+    async function loadLeavePanel(){
+      if (!readSession()) return;
+      try {
+        const rows = await leaveApi(PM_LEAVE_LIST_URL + '?status=APPROVED');
         const today = new Date(); today.setHours(0, 0, 0, 0);
         const soon = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
         const upcoming = rows
           .filter(r => new Date(r.end_date) >= today && new Date(r.start_date) <= soon)
           .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
 
-        leavePanel.style.display = upcoming.length ? '' : 'none';
         leaveCount.textContent = String(upcoming.length);
-        leaveList.innerHTML = upcoming.map(r =>
-          '<li><span class="task">' + esc(r.employee_name) + '</span>' +
-          '<span class="src">' + esc(fmtDay(r.start_date)) + ' – ' + esc(fmtDay(r.end_date)) + '</span></li>').join('');
+        leaveList.innerHTML = upcoming.length
+          ? upcoming.map(r =>
+              '<li><span class="task">' + esc(r.employee_name) + '</span>' +
+              '<span class="src">' + esc(fmtDay(r.start_date)) + ' – ' + esc(fmtDay(r.end_date)) + '</span></li>').join('')
+          : '<li><span class="task">No one is on leave right now.</span></li>';
+      } catch (err) {
+        leaveList.innerHTML = '<li><span class="task">Could not load leave (' + esc(err.message) + ').</span></li>';
+      }
+    }
+
+    // Pending requests addressed to me — approve/reject inline. The
+    // backend scopes this: managers see requests naming them as an
+    // approver, ADMIN sees every pending request.
+    async function loadApprovals(){
+      if (!readSession()) return;
+      try {
+        const rows = await leaveApi(PM_LEAVE_LIST_URL + '?approvals=1');
+        approvalsPanel.style.display = rows.length ? '' : 'none';
+        document.getElementById('approvalsCount').textContent = String(rows.length);
+        approvalsList.innerHTML = rows.map(r =>
+          '<div class="leave-row"><div class="linfo"><div class="ltitle">' + esc(r.employee_name) + '</div>' +
+            '<div class="lmeta">' +
+              '<span>' + esc(fmtDay(r.start_date)) + ' – ' + esc(fmtDay(r.end_date)) + '</span>' +
+              (r.reason ? '<span>' + esc(r.reason) + '</span>' : '') +
+            '</div></div>' +
+          '<div class="tactions">' +
+            '<button type="button" class="icon-btn" data-leave-approve="' + r.leave_id + '">Approve</button>' +
+            '<button type="button" class="icon-btn danger" data-leave-reject="' + r.leave_id + '">Reject</button>' +
+          '</div></div>').join('');
+        approvalsList.querySelectorAll('[data-leave-approve],[data-leave-reject]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const approve = btn.hasAttribute('data-leave-approve');
+            const leaveId = Number(approve ? btn.dataset.leaveApprove : btn.dataset.leaveReject);
+            btn.disabled = true;
+            try {
+              await leaveApi(PM_LEAVE_REVIEW_URL, { leave_id: leaveId, status: approve ? 'APPROVED' : 'REJECTED' });
+              loadApprovals();
+              loadLeavePanel();
+            } catch (err) {
+              alert('Could not update the request: ' + err.message);
+              btn.disabled = false;
+            }
+          });
+        });
       } catch (_) {
-        leavePanel.style.display = 'none';
+        approvalsPanel.style.display = 'none';
+      }
+    }
+
+    // The "Send to" approver checkboxes on the request form.
+    async function loadApprovers(){
+      const box = document.getElementById('myLeaveApprovers');
+      try {
+        const rows = await leaveApi(PM_APPROVERS_LIST_URL);
+        box.innerHTML = rows.map(m =>
+          '<label class="check"><input type="checkbox" value="' + m.manager_id + '" data-approver />' +
+          '<span>' + esc(m.full_name) + '</span></label>').join('') ||
+          '<span class="hint">No managers found.</span>';
+      } catch (_) {
+        box.innerHTML = '<span class="hint">Could not load the manager list.</span>';
       }
     }
 
     // My own leave requests (managers/admins file for themselves here,
     // same backend employees use — just without an employee_id).
     async function loadMyLeave(){
-      const session = readSession();
-      if (!session) return;
-      myLeaveList.innerHTML = '<div class="empty">Loading…</div>';
+      if (!readSession()) return;
       try {
-        const res = await fetch(PM_LEAVE_LIST_URL + '?mine=1', {
-          headers: { 'Authorization': 'Bearer ' + session.token }
-        });
-        if (!res.ok) throw new Error('status ' + res.status);
-        const rows = await res.json();
+        const rows = await leaveApi(PM_LEAVE_LIST_URL + '?mine=1');
         myLeaveList.innerHTML = rows.length
-          ? rows.map(r =>
+          ? '<div class="panel-head"><h2>My leave</h2></div>' + rows.map(r =>
               '<div class="leave-row"><div class="linfo"><div class="ltitle">' +
               esc(fmtDay(r.start_date)) + ' – ' + esc(fmtDay(r.end_date)) + '</div>' +
-              '<div class="lmeta">' + (r.reason ? '<span>' + esc(r.reason) + '</span>' : '') + '</div></div>' +
+              '<div class="lmeta">' +
+                (r.reason ? '<span>' + esc(r.reason) + '</span>' : '') +
+                (r.approver_names ? '<span>To ' + esc(r.approver_names) + '</span>' : '') +
+                (r.reviewed_by_name ? '<span>Reviewed by ' + esc(r.reviewed_by_name) + '</span>' : '') +
+              '</div></div>' +
               '<div class="tactions"><span class="status-badge ' + esc(String(r.status).toLowerCase()) + '">' +
               esc(r.status) + '</span></div></div>').join('')
-          : '<div class="empty">No leave requests yet.</div>';
-      } catch (err) {
-        myLeaveList.innerHTML = '<div class="empty">Could not load your leave requests (' + esc(err.message) + ').</div>';
+          : '';
+      } catch (_) {
+        myLeaveList.innerHTML = '';
       }
     }
     document.getElementById('myLeaveToggle').addEventListener('click', () => {
@@ -1141,22 +1220,15 @@
     });
     document.getElementById('myLeaveForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const session = readSession();
-      if (!session) return;
       const start_date = document.getElementById('myLeaveStart').value;
       const end_date = document.getElementById('myLeaveEnd').value;
       const reason = document.getElementById('myLeaveReason').value.trim();
+      const approver_ids = [...document.querySelectorAll('#myLeaveApprovers [data-approver]:checked')]
+        .map(cb => Number(cb.value));
       if (!start_date || !end_date) return;
+      if (!approver_ids.length) { alert('Pick at least one manager to send this to.'); return; }
       try {
-        const res = await fetch(PM_LEAVE_CREATE_URL, {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + session.token, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ start_date, end_date, reason })
-        });
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j.error || ('status ' + res.status));
-        }
+        await leaveApi(PM_LEAVE_CREATE_URL, { start_date, end_date, reason, approver_ids });
         e.target.reset();
         e.target.classList.remove('open');
         loadMyLeave();

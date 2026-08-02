@@ -421,6 +421,17 @@ select.status-select:focus{
 }
 .leave-row .tactions{ display:flex; align-items:center; gap:8px; margin-left:auto; }
 
+/* "Send to" approver picker on leave forms — a row of labelled
+   checkboxes (reuses .check from style.css for each item). */
+.check-group{
+  display:flex; flex-wrap:wrap; gap:6px 18px;
+  padding:9px 12px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  min-height:41px;
+}
+
 /* HR monthly leave summary tiles */
 .summary-row{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
 .summary-chip{

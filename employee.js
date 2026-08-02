@@ -15,6 +15,7 @@ const PM_QUESTIONS_LIST_URL   = PM_API_BASE + "pm-questions-list.php";
 const PM_QUESTIONS_CREATE_URL = PM_API_BASE + "pm-questions-create.php";
 const PM_LEAVE_LIST_URL       = PM_API_BASE + "pm-leave-list.php";
 const PM_LEAVE_CREATE_URL     = PM_API_BASE + "pm-leave-create.php";
+const PM_APPROVERS_LIST_URL   = PM_API_BASE + "pm-approvers-list.php";
 
 /* ── DOM references ─────────────────────────────────── */
 const pmSignedOut = document.getElementById('pmSignedOut');
@@ -265,11 +266,27 @@ function questionCard(q){
 /* ════════════════════════════════════════════════════
    Leave
    ════════════════════════════════════════════════════ */
+async function loadApprovers(){
+  const box = document.getElementById('leaveApprovers');
+  if (box.dataset.loaded) return;
+  try {
+    const rows = await api(PM_APPROVERS_LIST_URL);
+    box.innerHTML = rows.map(m =>
+      '<label class="check"><input type="checkbox" value="' + m.manager_id + '" data-approver />' +
+      '<span>' + esc(m.full_name) + '</span></label>').join('') ||
+      '<span class="hint">No managers found.</span>';
+    box.dataset.loaded = '1';
+  } catch (_) {
+    box.innerHTML = '<span class="hint">Could not load the manager list.</span>';
+  }
+}
+
 async function renderLeave(){
   const mineEl = document.getElementById('myLeaveList');
   const teamEl = document.getElementById('teamLeaveList');
   mineEl.innerHTML = '<div class="empty">Loading…</div>';
   teamEl.innerHTML = '<div class="empty">Loading…</div>';
+  loadApprovers();
   try {
     const [mine, everyone] = await Promise.all([
       api(PM_LEAVE_LIST_URL + '?mine=1'),
@@ -296,6 +313,8 @@ function leaveRow(r){
       '<div class="lmeta">' +
         '<span>' + esc(fmtDay(r.start_date)) + ' – ' + esc(fmtDay(r.end_date)) + '</span>' +
         (r.reason ? '<span>' + esc(r.reason) + '</span>' : '') +
+        (r.approver_names ? '<span>To ' + esc(r.approver_names) + '</span>' : '') +
+        (r.reviewed_by_name ? '<span>Reviewed by ' + esc(r.reviewed_by_name) + '</span>' : '') +
       '</div></div>' +
     '<div class="tactions">' + badge(r.status) + '</div>' +
   '</div>';
@@ -305,9 +324,12 @@ document.getElementById('newLeaveForm').addEventListener('submit', async (e) => 
   const start_date = document.getElementById('leaveStart').value;
   const end_date = document.getElementById('leaveEnd').value;
   const reason = document.getElementById('leaveReason').value.trim();
+  const approver_ids = [...document.querySelectorAll('#leaveApprovers [data-approver]:checked')]
+    .map(cb => Number(cb.value));
   if (!start_date || !end_date) return;
+  if (!approver_ids.length) { alert('Pick at least one manager to send this to.'); return; }
   try {
-    await api(PM_LEAVE_CREATE_URL, { method: 'POST', body: { start_date, end_date, reason } });
+    await api(PM_LEAVE_CREATE_URL, { method: 'POST', body: { start_date, end_date, reason, approver_ids } });
     e.target.reset();
     renderLeave();
   } catch (err) {
