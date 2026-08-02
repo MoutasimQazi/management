@@ -795,6 +795,10 @@ nav.tabs a.on{
   gap:18px;
   align-items:start;
 }
+/* Without min-width:0 this grid item sizes to its content, so a wide
+   table inside would push the whole page sideways instead of scrolling
+   within its own wrapper. */
+.actionmain{ min-width:0; }
 
 /* left: people picker */
 .peoplepane{

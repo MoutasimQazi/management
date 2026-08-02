@@ -202,7 +202,7 @@
         <span class="spacer"></span>
         <a class="more" href="#/meetings">View all →</a>
       </div>
-      <div id="recentMeetings" class="meetings"></div>
+      <div id="recentMeetings"></div>
     </section>
 
     <!-- ── Page: Dispatch ──────────────────────────────── -->
@@ -248,7 +248,7 @@
         <input type="search" id="search" class="searchbox" placeholder="Search meetings…" />
         <button type="button" class="refresh" id="refresh">Refresh</button>
       </div>
-      <div id="meetings" class="meetings"></div>
+      <div id="meetings"></div>
     </section>
 
     <!-- ── Page: Action items (all, grouped by person) ── -->
@@ -276,7 +276,7 @@
             <span class="spacer"></span>
             <span class="hint">Newest first</span>
           </div>
-          <div id="actionList" class="actionlist"></div>
+          <div id="actionList"></div>
           <button type="button" class="showmore" id="actionsMore" style="display:none">Load more</button>
         </div>
 
@@ -773,16 +773,19 @@
       }
     }
 
-function meetingsTable(rows){
+/* The Fireflies "Meet Id" is a long opaque string that ate a whole
+       column without telling anyone anything — it stays on the detail page
+       only. The gist is capped by .tsub's clamp so one long summary can't
+       stretch a row to full-screen height. */
+    function meetingsTable(rows){
       return '<div class="table-wrap"><table class="data-table"><thead><tr>' +
-        '<th>Meeting</th><th>Date</th><th>ID</th><th>Gist</th><th></th>' +
+        '<th>Meeting</th><th>Date</th><th>Summary</th><th></th>' +
         '</tr></thead><tbody>' + rows.map(meetingRow).join('') + '</tbody></table></div>';
     }
     function meetingRow(m){
       const idx  = allMeetings.indexOf(m);
       const name = esc(m['Meet Name'] || 'Untitled meeting');
       const date = esc(fmtDate(m.MeetDate));
-      const id   = esc(m['Meet Id'] || '');
       const gist = esc(m.ShortSummary || m.Gist || '');
       const rec  = m['Meet link']
         ? '<a class="rec" href="' + esc(m['Meet link']) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">▶ Recording</a>'
@@ -790,7 +793,6 @@ function meetingsTable(rows){
       return '<tr class="clickable" data-meeting-row="' + idx + '">' +
         '<td><div class="ttitle" data-tr>' + name + '</div></td>' +
         '<td class="nowrap">' + (date || '—') + '</td>' +
-        '<td class="nowrap">' + (id || '—') + '</td>' +
         '<td>' + (gist ? '<span class="tsub" data-tr>' + gist + '</span>' : '—') + '</td>' +
         '<td class="actions-cell">' + rec + '</td>' +
       '</tr>';
