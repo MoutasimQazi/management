@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Movenetics Digital · Project Management</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="projects.css">
+</head>
+
+<body>
+
+  <!-- ══ Signed-out state (no login form here — session is shared with the Fireflies app) ══ -->
+  <div id="pmSignedOut" class="view active">
+    <div class="pm-signedout">
+      <span class="logochip" style="margin-bottom:18px; display:inline-flex">
+        <img src="logo.png" alt="Movenetics Digital" style="height:30px" onerror="this.parentElement.style.display='none'" />
+      </span>
+      <h1>Sign <em>in</em></h1>
+      <p>Project Management uses the same sign-in as Fireflies Dispatch. Sign in there first, then come back to this tab.</p>
+      <a class="btn-sm" href="index.html">Go to sign in →</a>
+    </div>
+  </div>
+
+  <!-- ══ Signed-in app ══════════════════════════════════ -->
+  <div id="appView" class="view dashwrap">
+
+    <header class="topbar">
+      <a class="logochip" id="homeLogo" href="#/dashboard" title="Dashboard">
+        <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
+      </a>
+      <nav class="tabs">
+        <a href="#/projects"  data-nav="projects">Projects</a>
+        <a href="#/tasks"     data-nav="tasks">Tasks</a>
+        <a href="#/questions" data-nav="questions">Questions</a>
+        <a href="index.html#/dashboard" data-nav="dashboard">Dashboard</a>
+        <a href="index.html#/dispatch"  data-nav="dispatch">Dispatch</a>
+        <a href="index.html#/meetings"  data-nav="meetings">My meetings</a>
+        <a href="index.html#/actions"   data-nav="actions">Action items</a>
+      </nav>
+
+      <span class="spacer"></span>
+      <span class="role-badge" id="roleBadge">Manager</span>
+      <span class="email" id="whoEmail"></span>
+      <button type="button" class="linkbtn" id="signOut">Sign out</button>
+    </header>
+
+    <nav class="breadcrumb" id="breadcrumb"></nav>
+
+    <!-- ── Page: Dashboard ─────────────────────────────── -->
+    <section id="page-dashboard" class="page">
+      <div class="dash-hero">
+        <div>
+          <div class="dash-greeting" id="dashGreeting">Welcome back</div>
+          <h1>Project <em>dashboard</em></h1>
+          <p class="sub">Where things stand across your projects, tasks, and questions.</p>
+        </div>
+        <div class="dash-hero-actions">
+          <a class="btn-sm" href="#/projects">+ New project</a>
+        </div>
+      </div>
+
+      <div class="stats" id="dashStats"></div>
+
+      <div class="panel-head"><h2>Open questions</h2><span class="spacer"></span><a class="more" href="#/questions">View all →</a></div>
+      <div id="dashQuestionsList"></div>
+
+      <div class="panel-head"><h2>Recent projects</h2><span class="spacer"></span><a class="more" href="#/projects">View all →</a></div>
+      <div id="dashRecentProjects" class="projects-grid"></div>
+    </section>
+
+    <!-- ── Page: Projects ──────────────────────────────── -->
+    <section id="page-projects" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>My <em>projects</em></h1>
+          <p class="sub">Projects you own. Yusuf sees every manager's projects too.</p>
+        </div>
+        <button type="button" class="btn-sm" id="newProjectToggle" style="border:none">+ New project</button>
+      </div>
+
+      <form id="newProjectForm" class="inline-form">
+        <div class="row">
+          <div class="field"><label>Project name</label><input id="projName" required placeholder="Project name" /></div>
+          <div class="field"><label>Client <span class="opt">— optional</span></label><input id="projClient" placeholder="Client name" /></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Priority</label>
+            <select id="projPriority">
+              <option value="LOW">Low</option>
+              <option value="MEDIUM" selected>Medium</option>
+              <option value="HIGH">High</option>
+              <option value="CRITICAL">Critical</option>
+            </select>
+          </div>
+          <div class="field"><label>Due date <span class="opt">— optional</span></label><input id="projDue" type="date" /></div>
+        </div>
+        <div class="field"><label>Description <span class="opt">— optional</span></label><input id="projDescription" placeholder="What is this project about?" /></div>
+        <div class="actions">
+          <button type="submit">Create project</button>
+          <button type="button" class="secondary" id="projectCancelBtn">Cancel</button>
+        </div>
+      </form>
+
+      <div class="panel-head">
+        <h2>Employees</h2>
+        <button type="button" class="refresh" id="employeesPanelToggle">Manage employees</button>
+      </div>
+      <div id="employeesPanel" class="inline-form" style="margin-bottom:20px">
+        <div id="employeesList"></div>
+        <form id="empAddForm" class="row" style="align-items:end">
+          <div class="field"><label>Name</label><input id="empName" required placeholder="Employee name" /></div>
+          <div class="field"><label>Designation <span class="opt">— optional</span></label><input id="empDesignation" placeholder="e.g. Designer" /></div>
+          <div class="field" style="grid-column:1/-1"><label>Department <span class="opt">— optional</span></label><input id="empDepartment" placeholder="e.g. Marketing" /></div>
+          <div class="actions" style="grid-column:1/-1"><button type="submit">Add employee</button></div>
+        </form>
+      </div>
+
+      <div class="panel-head"><h2>All projects</h2></div>
+      <div id="projectsGrid" class="projects-grid"></div>
+    </section>
+
+    <!-- ── Page: Project detail ────────────────────────── -->
+    <section id="page-project" class="page">
+      <a class="backlink" href="#/projects">← Back to projects</a>
+      <div id="projectDetailContent"></div>
+    </section>
+
+    <!-- ── Page: Tasks (cross-project) ─────────────────── -->
+    <section id="page-tasks" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>My <em>tasks</em></h1>
+          <p class="sub">Every task across your projects, newest first.</p>
+        </div>
+      </div>
+      <div class="panel-head">
+        <h2>Tasks</h2>
+        <span class="spacer"></span>
+        <select id="tasksFilter" class="searchbox" style="width:200px">
+          <option value="">All statuses</option>
+          <option value="TODO">To do</option>
+          <option value="IN_PROGRESS">In progress</option>
+          <option value="BLOCKED">Blocked</option>
+          <option value="COMPLETED">Completed</option>
+          <option value="CANCELLED">Cancelled</option>
+        </select>
+      </div>
+      <div id="tasksList"></div>
+    </section>
+
+    <!-- ── Page: Questions ──────────────────────────────── -->
+    <section id="page-questions" class="page">
+      <div class="pagehead">
+        <div>
+          <h1><em>Questions</em></h1>
+          <p class="sub">Questions raised by managers, answered by Yusuf.</p>
+        </div>
+      </div>
+
+      <div id="newQuestionWrap">
+        <form id="newQuestionForm" class="inline-form open">
+          <div class="field"><label>About which task?</label><select id="qTaskSelect" required></select></div>
+          <div class="field"><label>Question</label><textarea id="qText" required placeholder="What do you need to ask Yusuf?"></textarea></div>
+          <div class="actions"><button type="submit">Send question</button></div>
+        </form>
+      </div>
+
+      <div class="panel-head"><h2>All questions</h2></div>
+      <div id="questionsList"></div>
+    </section>
+
+  </div>
+
+  <script src="projects.js"></script>
+</body>
+</html>

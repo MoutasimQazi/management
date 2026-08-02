@@ -1,0 +1,13 @@
+# config.php and auth.php hold live database credentials and the shared
+# auth token list — they must only ever be loaded via `require` from another
+# PHP file in this folder, never requested directly by URL.
+<FilesMatch "^(config|auth)\.php$">
+    Require all denied
+</FilesMatch>
+
+# Many cPanel/Apache setups strip the Authorization header from requests
+# before PHP ever sees it (a CGI/FastCGI default). This forwards it through
+# explicitly so $_SERVER['HTTP_AUTHORIZATION'] is actually populated.
+RewriteEngine On
+RewriteCond %{HTTP:Authorization} ^(.*)
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%1]
