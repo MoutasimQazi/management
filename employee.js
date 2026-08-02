@@ -1,0 +1,319 @@
+/* ════════════════════════════════════════════════════
+   Employee self-service module
+   ────────────────────────────────────────────────────
+   Same session as the rest of the workspace ("fireflies.session"),
+   same PHP backend (pm-backend-php/). An employee's token only ever
+   returns their own tasks/questions — the backend enforces that, this
+   file just renders what comes back.
+   ════════════════════════════════════════════════════ */
+const SESSION_KEY = "fireflies.session";
+const PM_API_BASE = "https://firefiles.moveneticsdigital.com/pm-backend-php/";
+
+const PM_TASKS_LIST_URL       = PM_API_BASE + "pm-tasks-list.php";
+const PM_TASKS_STATUS_URL     = PM_API_BASE + "pm-tasks-status.php";
+const PM_QUESTIONS_LIST_URL   = PM_API_BASE + "pm-questions-list.php";
+const PM_QUESTIONS_CREATE_URL = PM_API_BASE + "pm-questions-create.php";
+const PM_LEAVE_LIST_URL       = PM_API_BASE + "pm-leave-list.php";
+const PM_LEAVE_CREATE_URL     = PM_API_BASE + "pm-leave-create.php";
+
+/* ── DOM references ─────────────────────────────────── */
+const pmSignedOut = document.getElementById('pmSignedOut');
+const appView     = document.getElementById('appView');
+const whoEmail    = document.getElementById('whoEmail');
+const signOutBtn  = document.getElementById('signOut');
+const navLinks    = document.querySelectorAll('nav.tabs a');
+const pages       = document.querySelectorAll('.page');
+
+let session = null;
+let myTasks = [];
+
+/* ── Helpers (same shapes as projects.js) ────────────── */
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+}
+function fmtDate(v){
+  if (!v) return '';
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? String(v) : d.toLocaleString('en-IN', {
+    day:'numeric', month:'short', year:'numeric', hour:'numeric', minute:'2-digit'
+  });
+}
+function fmtDay(v){
+  if (!v) return '';
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('en-IN', {
+    day:'numeric', month:'short', year:'numeric'
+  });
+}
+function statusLabel(s){
+  return String(s || '').toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+function badge(status){
+  if (!status) return '';
+  return '<span class="status-badge ' + esc(String(status).toLowerCase()) + '">' +
+    esc(statusLabel(status)) + '</span>';
+}
+function prioBadge(p){
+  if (!p) return '';
+  return '<span class="status-badge prio-' + esc(String(p).toLowerCase()) + '">' +
+    esc(statusLabel(p)) + '</span>';
+}
+
+function readSession(){
+  for (const store of [localStorage, sessionStorage]) {
+    try {
+      const raw = store.getItem(SESSION_KEY);
+      if (!raw) continue;
+      const s = JSON.parse(raw);
+      if (s && s.token) return s;
+    } catch (_) {}
+    store.removeItem(SESSION_KEY);
+  }
+  return null;
+}
+function clearSession(){
+  localStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(SESSION_KEY);
+}
+
+/* ── API helper ──────────────────────────────────────── */
+async function api(url, opts){
+  opts = opts || {};
+  const headers = { 'Authorization': 'Bearer ' + session.token };
+  if (opts.body) headers['Content-Type'] = 'application/json';
+  const res = await fetch(url, {
+    method: opts.method || 'GET',
+    headers,
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  if (res.status === 401) {
+    clearSession();
+    showSignedOut();
+    throw new Error('Session expired');
+  }
+  if (!res.ok) {
+    let msg = 'Request failed (' + res.status + ')';
+    try { const j = await res.json(); if (j && j.error) msg = j.error; } catch(_) {}
+    throw new Error(msg);
+  }
+  return res.json().catch(() => ([]));
+}
+
+/* ── Boot / session gate ─────────────────────────────── */
+function showSignedOut(){
+  document.body.classList.remove('dash');
+  appView.classList.remove('active');
+  pmSignedOut.classList.add('active');
+}
+function showApp(){
+  document.body.classList.add('dash');
+  pmSignedOut.classList.remove('active');
+  appView.classList.add('active');
+  whoEmail.textContent = session.email || 'signed in';
+  route();
+}
+signOutBtn.addEventListener('click', () => {
+  clearSession();
+  location.href = 'index.html';
+});
+
+/* ── Router ──────────────────────────────────────────── */
+function route(){
+  if (!readSession()) { showSignedOut(); return; }
+  const hash  = location.hash || '#/tasks';
+  let page    = hash.replace(/^#\//, '') || 'tasks';
+  if (!['tasks','questions','leave'].includes(page)) page = 'tasks';
+
+  pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
+  navLinks.forEach(a => a.classList.toggle('on', a.dataset.nav === page));
+
+  if (page === 'tasks')     renderTasks();
+  if (page === 'questions') renderQuestions();
+  if (page === 'leave')     renderLeave();
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', route);
+
+/* ════════════════════════════════════════════════════
+   My tasks
+   ════════════════════════════════════════════════════ */
+async function renderTasks(){
+  const listEl = document.getElementById('tasksList');
+  listEl.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    myTasks = await api(PM_TASKS_LIST_URL);
+    listEl.innerHTML = myTasks.length
+      ? myTasks.map(taskRow).join('')
+      : '<div class="empty">No tasks assigned to you yet.</div>';
+    wireTaskRows(listEl);
+  } catch (err) {
+    listEl.innerHTML = '<div class="empty">Could not load your tasks (' + esc(err.message) + ').</div>';
+  }
+}
+
+function taskRow(t){
+  const options = ['TODO','IN_PROGRESS','BLOCKED','COMPLETED','CANCELLED']
+    .filter(s => s !== t.status)
+    .map(s => '<option value="' + s + '">' + statusLabel(s) + '</option>');
+  const selectHtml =
+    '<select class="status-select" data-task-id="' + t.task_id + '">' +
+      '<option value="">Move to…</option>' + options.join('') + '</select>';
+  return '<div class="task-row" data-task-row="' + t.task_id + '">' +
+    '<div class="tinfo"><div class="ttitle">' + esc(t.task_name) + '</div>' +
+      '<div class="tmeta">' +
+        '<span>' + esc(t.project_name || '') + '</span>' +
+        (t.eta_hours != null ? '<span>Est. ' + esc(t.eta_hours) + 'h</span>' : '') +
+        (t.progress_percentage != null ? '<span>' + t.progress_percentage + '% done</span>' : '') +
+      '</div>' +
+      (t.description ? '<div class="tmeta">' + esc(t.description) + '</div>' : '') +
+    '</div>' +
+    '<div class="tactions">' + prioBadge(t.priority) + badge(t.status) + selectHtml +
+      '<input type="number" min="0" max="100" step="5" placeholder="%" style="width:60px" data-progress-input="' + t.task_id + '" />' +
+      '<button type="button" class="icon-btn" data-progress-save="' + t.task_id + '">Save %</button>' +
+    '</div></div>';
+}
+
+function wireTaskRows(root){
+  root.querySelectorAll('select[data-task-id]').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      const status = sel.value;
+      if (!status) return;
+      const taskId = Number(sel.dataset.taskId);
+      sel.disabled = true;
+      try {
+        await api(PM_TASKS_STATUS_URL, { method: 'POST', body: { task_id: taskId, status } });
+        renderTasks();
+      } catch (err) {
+        alert('Could not update task: ' + err.message);
+        sel.disabled = false;
+        sel.value = '';
+      }
+    });
+  });
+  root.querySelectorAll('[data-progress-save]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = Number(btn.dataset.progressSave);
+      const input = root.querySelector('[data-progress-input="' + id + '"]');
+      const progress = input.value;
+      if (progress === '') return;
+      const t = myTasks.find(x => x.task_id === id);
+      btn.disabled = true;
+      try {
+        await api(PM_TASKS_STATUS_URL, { method: 'POST',
+          body: { task_id: id, status: t ? t.status : 'IN_PROGRESS', progress: Number(progress) } });
+        renderTasks();
+      } catch (err) {
+        alert('Could not update progress: ' + err.message);
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   Questions
+   ════════════════════════════════════════════════════ */
+async function renderQuestions(){
+  const listEl = document.getElementById('questionsList');
+  listEl.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const [questions, tasks] = await Promise.all([
+      api(PM_QUESTIONS_LIST_URL),
+      myTasks.length ? Promise.resolve(myTasks) : api(PM_TASKS_LIST_URL)
+    ]);
+    myTasks = tasks;
+    const sel = document.getElementById('qTaskSelect');
+    sel.innerHTML = '<option value="">Select a task…</option>' +
+      myTasks.map(t => '<option value="' + t.task_id + '">' + esc(t.task_name) + ' — ' + esc(t.project_name) + '</option>').join('');
+
+    listEl.innerHTML = questions.length
+      ? questions.map(questionCard).join('')
+      : '<div class="empty">You haven\'t asked anything yet.</div>';
+  } catch (err) {
+    listEl.innerHTML = '<div class="empty">Could not load questions (' + esc(err.message) + ').</div>';
+  }
+}
+document.getElementById('newQuestionForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const task_id = document.getElementById('qTaskSelect').value;
+  const question = document.getElementById('qText').value.trim();
+  if (!task_id || !question) return;
+  try {
+    await api(PM_QUESTIONS_CREATE_URL, { method: 'POST', body: { task_id: Number(task_id), question } });
+    e.target.reset();
+    renderQuestions();
+  } catch (err) {
+    alert('Could not send question: ' + err.message);
+  }
+});
+function questionCard(q){
+  return '<div class="question-card">' +
+    '<div class="qmeta">' + badge(q.status) + '<span>' + esc(q.task_name || '') +
+      (q.project_name ? ' — ' + esc(q.project_name) : '') + '</span>' +
+      '<span>' + esc(fmtDate(q.created_at)) + '</span></div>' +
+    '<p class="qtext">' + esc(q.question) + '</p>' +
+    (q.status === 'ANSWERED' || q.answer
+      ? '<div class="answer-block"><div class="aby">Answer</div><span>' + esc(q.answer) + '</span></div>'
+      : '<div class="answer-block"><span>Waiting on an answer.</span></div>') +
+  '</div>';
+}
+
+/* ════════════════════════════════════════════════════
+   Leave
+   ════════════════════════════════════════════════════ */
+async function renderLeave(){
+  const mineEl = document.getElementById('myLeaveList');
+  const teamEl = document.getElementById('teamLeaveList');
+  mineEl.innerHTML = '<div class="empty">Loading…</div>';
+  teamEl.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const [mine, everyone] = await Promise.all([
+      api(PM_LEAVE_LIST_URL + '?mine=1'),
+      api(PM_LEAVE_LIST_URL)
+    ]);
+    document.getElementById('myLeaveCount').textContent = String(mine.length);
+    mineEl.innerHTML = mine.length
+      ? mine.map(leaveRow).join('')
+      : '<div class="empty">No leave requests yet — use the form above.</div>';
+
+    const others = everyone.filter(r => r.status === 'APPROVED');
+    document.getElementById('teamLeaveCount').textContent = String(others.length);
+    teamEl.innerHTML = others.length
+      ? others.map(leaveRow).join('')
+      : '<div class="empty">No one is currently on approved leave.</div>';
+  } catch (err) {
+    mineEl.innerHTML = '<div class="empty">Could not load leave (' + esc(err.message) + ').</div>';
+    teamEl.innerHTML = '';
+  }
+}
+function leaveRow(r){
+  return '<div class="leave-row">' +
+    '<div class="linfo"><div class="ltitle">' + esc(r.employee_name) + '</div>' +
+      '<div class="lmeta">' +
+        '<span>' + esc(fmtDay(r.start_date)) + ' – ' + esc(fmtDay(r.end_date)) + '</span>' +
+        (r.reason ? '<span>' + esc(r.reason) + '</span>' : '') +
+      '</div></div>' +
+    '<div class="tactions">' + badge(r.status) + '</div>' +
+  '</div>';
+}
+document.getElementById('newLeaveForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const start_date = document.getElementById('leaveStart').value;
+  const end_date = document.getElementById('leaveEnd').value;
+  const reason = document.getElementById('leaveReason').value.trim();
+  if (!start_date || !end_date) return;
+  try {
+    await api(PM_LEAVE_CREATE_URL, { method: 'POST', body: { start_date, end_date, reason } });
+    e.target.reset();
+    renderLeave();
+  } catch (err) {
+    alert('Could not submit leave request: ' + err.message);
+  }
+});
+
+/* ════════════════════════════════════════════════════
+   Boot
+   ════════════════════════════════════════════════════ */
+session = readSession();
+if (session) showApp(); else showSignedOut();

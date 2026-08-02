@@ -1,33 +1,15 @@
 /* ════════════════════════════════════════════════════
-   Project Management module
+   Marketing module
    ────────────────────────────────────────────────────
-   Independent from the Fireflies app — the ONLY thing
-   shared is the login session read from the same
-   localStorage/sessionStorage key ("fireflies.session").
-
-   Backend: n8n workflow "Project Management.json",
-   backed by the movenetics_n8n MySQL database:
-     managers   manager_id, full_name, email, role(ADMIN|MANAGER), is_active
-     employees  employee_id, manager_id, name, department, designation, status
-     projects   project_id, manager_id, project_name, client_name, description,
-                start_date, due_date, status(PLANNING|ACTIVE|ON_HOLD|COMPLETED|CANCELLED), priority
-     tasks      task_id, project_id, employee_id, task_name, description, eta,
-                priority, status(TODO|IN_PROGRESS|BLOCKED|COMPLETED|CANCELLED), progress_percentage
-     questions  question_id, task_id, manager_id, question, answer, status(OPEN|ANSWERED|CLOSED)
-
-   Task lifecycle: whoever owns the task (its manager, or Yusuf) moves it
-   directly between TODO / IN_PROGRESS / BLOCKED / COMPLETED / CANCELLED —
-   no separate approval/sign-off step.
+   Campaigns page is new; Projects/Tasks reuse the same
+   backend + ownership model as the main Projects module
+   (projects.js) — a MARKETING account only ever sees its
+   own projects/tasks, same as a MANAGER would.
    ════════════════════════════════════════════════════ */
 const SESSION_KEY = "fireflies.session";
-// Same-origin PHP backend (pm-backend-php/), deployed as a subfolder of
-// this same site — no CORS to worry about.
 const PM_API_BASE = "https://firefiles.moveneticsdigital.com/pm-backend-php/";
 
 const PM_EMPLOYEES_LIST_URL   = PM_API_BASE + "pm-employees-list.php";
-const PM_EMPLOYEES_CREATE_URL = PM_API_BASE + "pm-employees-create.php";
-const PM_EMPLOYEES_UPDATE_URL = PM_API_BASE + "pm-employees-update.php";
-const PM_EMPLOYEES_DELETE_URL = PM_API_BASE + "pm-employees-delete.php";
 const PM_PROJECTS_LIST_URL    = PM_API_BASE + "pm-projects-list.php";
 const PM_PROJECTS_CREATE_URL  = PM_API_BASE + "pm-projects-create.php";
 const PM_PROJECTS_UPDATE_URL  = PM_API_BASE + "pm-projects-update.php";
@@ -37,21 +19,20 @@ const PM_TASKS_CREATE_URL     = PM_API_BASE + "pm-tasks-create.php";
 const PM_TASKS_UPDATE_URL     = PM_API_BASE + "pm-tasks-update.php";
 const PM_TASKS_DELETE_URL     = PM_API_BASE + "pm-tasks-delete.php";
 const PM_TASKS_STATUS_URL     = PM_API_BASE + "pm-tasks-status.php";
-const PM_QUESTIONS_LIST_URL   = PM_API_BASE + "pm-questions-list.php";
-const PM_QUESTIONS_CREATE_URL = PM_API_BASE + "pm-questions-create.php";
-const PM_QUESTIONS_ANSWER_URL = PM_API_BASE + "pm-questions-answer.php";
+const PM_CAMPAIGNS_LIST_URL   = PM_API_BASE + "pm-campaigns-list.php";
+const PM_CAMPAIGNS_CREATE_URL = PM_API_BASE + "pm-campaigns-create.php";
+const PM_CAMPAIGNS_UPDATE_URL = PM_API_BASE + "pm-campaigns-update.php";
+const PM_CAMPAIGNS_DELETE_URL = PM_API_BASE + "pm-campaigns-delete.php";
 
 /* ── DOM references ─────────────────────────────────── */
 const pmSignedOut = document.getElementById('pmSignedOut');
 const appView     = document.getElementById('appView');
 const whoEmail    = document.getElementById('whoEmail');
-const roleBadge   = document.getElementById('roleBadge');
 const signOutBtn  = document.getElementById('signOut');
 const navLinks    = document.querySelectorAll('nav.tabs a');
 const pages       = document.querySelectorAll('.page');
 
-let session  = null;
-let isAdmin  = false;
+let session = null;
 let allEmployees = [];
 let allProjects  = [];
 
@@ -143,8 +124,6 @@ function showApp(){
   pmSignedOut.classList.remove('active');
   appView.classList.add('active');
   whoEmail.textContent = session.email || 'signed in';
-  roleBadge.textContent = isAdmin ? 'Admin' : 'Manager';
-  roleBadge.className = 'role-badge' + (isAdmin ? '' : ' manager');
   route();
 }
 signOutBtn.addEventListener('click', () => {
@@ -153,23 +132,18 @@ signOutBtn.addEventListener('click', () => {
 });
 
 /* ── Router ──────────────────────────────────────────── */
-const PAGE_LABELS = {
-  projects: 'Projects', tasks: 'Tasks', questions: 'Questions'
-};
+const PAGE_LABELS = { projects: 'Projects', tasks: 'Tasks', campaigns: 'Campaigns' };
 
 function renderBreadcrumb(page, projectId){
   const el = document.getElementById('breadcrumb');
-  // The nav's "Projects" tab is this app's root — "Dashboard" in the nav
-  // is a different, cross-page destination (the Fireflies overview).
-  const crumbs = [{ label: 'Projects', hash: '#/projects' }];
+  const crumbs = [{ label: 'Campaigns', hash: '#/campaigns' }];
   if (page === 'project') {
     const p = allProjects.find(pr => pr.project_id === projectId);
+    crumbs.push({ label: 'Projects', hash: '#/projects' });
     crumbs.push({ label: p ? p.project_name : 'Project', hash: null });
-  } else if (page !== 'dashboard' && page !== 'projects') {
+  } else if (page !== 'campaigns') {
     crumbs.push({ label: PAGE_LABELS[page] || page, hash: null });
   }
-  // A single crumb just repeats the already-highlighted "Projects" nav tab —
-  // no wayfinding value, so skip rendering it at all.
   if (crumbs.length < 2) { el.innerHTML = ''; return; }
   el.innerHTML = crumbs.map((c, i) => {
     const isLast = i === crumbs.length - 1;
@@ -181,29 +155,114 @@ function renderBreadcrumb(page, projectId){
 
 function route(){
   if (!readSession()) { showSignedOut(); return; }
-  const hash  = location.hash || '#/dashboard';
+  const hash  = location.hash || '#/campaigns';
   const parts = hash.replace(/^#\//, '').split('/');
-  let page    = parts[0] || 'dashboard';
-  if (!['dashboard','projects','project','tasks','questions'].includes(page)) page = 'dashboard';
+  let page    = parts[0] || 'campaigns';
+  if (!['campaigns','projects','project','tasks'].includes(page)) page = 'campaigns';
 
   pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
-  // "Dashboard" in the nav now always means the Fireflies+Projects combined
-  // view on index.html; this app's own #/dashboard landing route highlights
-  // the "Projects" tab instead, since there's no longer a separate nav item for it.
-  const navTarget = (page === 'project' || page === 'dashboard') ? 'projects' : page;
+  const navTarget = page === 'project' ? 'projects' : page;
   navLinks.forEach(a => a.classList.toggle('on', a.dataset.nav === navTarget));
   renderBreadcrumb(page, Number(parts[1]));
 
-  if (page === 'dashboard') renderDashboard();
+  if (page === 'campaigns') renderCampaigns();
   if (page === 'projects')  renderProjects();
   if (page === 'project')   renderProjectDetail(Number(parts[1]));
   if (page === 'tasks')     renderTasks();
-  if (page === 'questions') renderQuestions();
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);
 
-/* ── Shared data loaders ─────────────────────────────── */
+/* ════════════════════════════════════════════════════
+   Campaigns
+   ════════════════════════════════════════════════════ */
+async function renderCampaigns(){
+  const listEl = document.getElementById('campaignsList');
+  listEl.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const campaigns = await api(PM_CAMPAIGNS_LIST_URL);
+    listEl.innerHTML = campaigns.length
+      ? campaigns.map(campaignRow).join('')
+      : '<div class="empty">No campaigns yet. Create your first one above.</div>';
+    wireCampaignRows(listEl);
+  } catch (err) {
+    listEl.innerHTML = '<div class="empty">Could not load campaigns (' + esc(err.message) + ').</div>';
+  }
+}
+const CAMPAIGN_STATUSES = ['IDEA','PLANNED','IN_PROGRESS','PUBLISHED','CANCELLED'];
+function campaignRow(c){
+  const options = CAMPAIGN_STATUSES.filter(s => s !== c.status).map(s => '<option value="' + s + '">' + statusLabel(s) + '</option>');
+  return '<div class="task-row" data-camp-row="' + c.campaign_id + '">' +
+    '<div class="tinfo"><div class="ttitle">' + esc(c.title) + '</div>' +
+      '<div class="tmeta">' +
+        (c.channel ? '<span>' + esc(c.channel) + '</span>' : '') +
+        (c.scheduled_date ? '<span>' + esc(fmtDay(c.scheduled_date)) + '</span>' : '') +
+        (c.notes ? '<span>' + esc(c.notes) + '</span>' : '') +
+      '</div></div>' +
+    '<div class="tactions">' + badge(c.status) +
+      '<select class="status-select" data-camp-id="' + c.campaign_id + '"><option value="">Move to…</option>' + options.join('') + '</select>' +
+      '<button type="button" class="icon-btn danger" data-camp-delete="' + c.campaign_id + '">Delete</button>' +
+    '</div></div>';
+}
+function wireCampaignRows(root){
+  root.querySelectorAll('select[data-camp-id]').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      const status = sel.value;
+      if (!status) return;
+      const id = Number(sel.dataset.campId);
+      sel.disabled = true;
+      try {
+        const row = root.querySelector('[data-camp-row="' + id + '"]');
+        const title = row.querySelector('.ttitle').textContent;
+        await api(PM_CAMPAIGNS_UPDATE_URL, { method: 'POST', body: { campaign_id: id, title, status } });
+        renderCampaigns();
+      } catch (err) {
+        alert('Could not move campaign: ' + err.message);
+        sel.disabled = false; sel.value = '';
+      }
+    });
+  });
+  root.querySelectorAll('[data-camp-delete]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = Number(btn.dataset.campDelete);
+      if (!confirm('Delete this campaign? This cannot be undone.')) return;
+      btn.disabled = true;
+      try {
+        await api(PM_CAMPAIGNS_DELETE_URL, { method: 'POST', body: { campaign_id: id } });
+        renderCampaigns();
+      } catch (err) {
+        alert('Could not delete campaign: ' + err.message);
+        btn.disabled = false;
+      }
+    });
+  });
+}
+document.getElementById('newCampaignToggle').addEventListener('click', () => {
+  document.getElementById('newCampaignForm').classList.toggle('open');
+});
+document.getElementById('campaignCancelBtn').addEventListener('click', () => {
+  document.getElementById('newCampaignForm').classList.remove('open');
+});
+document.getElementById('newCampaignForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const title = document.getElementById('campTitle').value.trim();
+  const channel = document.getElementById('campChannel').value.trim();
+  const scheduled_date = document.getElementById('campDate').value || null;
+  const notes = document.getElementById('campNotes').value.trim();
+  if (!title) return;
+  try {
+    await api(PM_CAMPAIGNS_CREATE_URL, { method: 'POST', body: { title, channel, scheduled_date, notes } });
+    e.target.reset();
+    e.target.classList.remove('open');
+    renderCampaigns();
+  } catch (err) {
+    alert('Could not create campaign: ' + err.message);
+  }
+});
+
+/* ════════════════════════════════════════════════════
+   Shared data loaders
+   ════════════════════════════════════════════════════ */
 async function loadEmployees(){
   allEmployees = await api(PM_EMPLOYEES_LIST_URL);
   return allEmployees;
@@ -212,181 +271,6 @@ async function loadProjects(){
   allProjects = await api(PM_PROJECTS_LIST_URL);
   return allProjects;
 }
-
-/* ════════════════════════════════════════════════════
-   Dashboard
-   ════════════════════════════════════════════════════ */
-function displayName(){
-  const local = String(session.email || '').split('@')[0];
-  const first = local.split(/[._-]/)[0];
-  return first ? first.charAt(0).toUpperCase() + first.slice(1) : 'there';
-}
-
-async function renderDashboard(){
-  const statsEl = document.getElementById('dashStats');
-  const qPanel  = document.getElementById('dashQuestionsList');
-  const recentEl = document.getElementById('dashRecentProjects');
-  document.getElementById('dashGreeting').textContent = 'Welcome back, ' + displayName();
-  statsEl.innerHTML = '<div class="empty">Loading…</div>';
-  qPanel.innerHTML = '';
-
-  try {
-    // Each call fails independently so one bad call doesn't blank the whole page.
-    const [projectsR, tasksR, questionsR] = await Promise.allSettled([
-      api(PM_PROJECTS_LIST_URL),
-      api(PM_TASKS_LIST_URL),
-      api(PM_QUESTIONS_LIST_URL)
-    ]);
-
-    const errors = [];
-    const val = (r, label) => {
-      if (r.status === 'fulfilled') return r.value;
-      errors.push(label + ': ' + r.reason.message);
-      return [];
-    };
-    const projects  = val(projectsR, 'Projects');
-    const tasks     = val(tasksR, 'Tasks');
-    const questions = val(questionsR, 'Questions');
-    allProjects = projects;
-
-    const openTasks = tasks.filter(t => !['COMPLETED','CANCELLED'].includes(t.status));
-    const openQuestions = questions.filter(q => q.status === 'OPEN');
-
-    const tiles = [
-      { num: projects.length, lbl: isAdmin ? 'All projects' : 'My projects', icon: '📁' },
-      { num: openTasks.length, lbl: isAdmin ? 'Open tasks (all)' : 'My open tasks', icon: '✓' },
-      { num: openQuestions.length, lbl: isAdmin ? 'Open questions' : 'My open questions', icon: '?' }
-    ];
-
-    statsEl.innerHTML =
-      (errors.length ? '<div class="empty" style="grid-column:1/-1">Some data failed to load — ' + esc(errors.join(' · ')) + '</div>' : '') +
-      tiles.map(t =>
-        '<div class="stat"><div class="stat-icon">' + t.icon + '</div><div class="num">' + t.num + '</div><div class="lbl">' + esc(t.lbl) + '</div></div>').join('');
-
-    qPanel.innerHTML = openQuestions.length
-      ? openQuestions.slice(0, 5).map(questionCard).join('')
-      : '<div class="empty">No open questions.</div>';
-    wireQuestionForms(qPanel);
-
-    recentEl.innerHTML = projects.length
-      ? projects.slice(0, 3).map(projectCard).join('')
-      : '<div class="empty">No projects yet. <a class="xref" href="#/projects">Create your first one →</a></div>';
-  } catch (err) {
-    statsEl.innerHTML = '<div class="empty">Could not load dashboard (' + esc(err.message) + ').</div>';
-  }
-}
-
-/* ════════════════════════════════════════════════════
-   Employees (supporting panel on the Projects page)
-   ════════════════════════════════════════════════════ */
-function renderEmployeesPanel(){
-  const listEl = document.getElementById('employeesList');
-  listEl.innerHTML = allEmployees.length
-    ? allEmployees.map(employeeRow).join('')
-    : '<div class="empty">No employees yet — add one below.</div>';
-  wireEmployeeRows(listEl);
-}
-
-function employeeRow(e){
-  return '<div class="task-row" data-emp-row="' + e.employee_id + '">' +
-    '<div class="tinfo"><div class="ttitle">' + esc(e.name) + '</div>' +
-    '<div class="tmeta">' +
-      (e.designation ? '<span>' + esc(e.designation) + '</span>' : '') +
-      (e.department ? '<span>' + esc(e.department) + '</span>' : '') +
-      (!e.designation && !e.department ? '<span>No details</span>' : '') +
-    '</div></div>' +
-    '<div class="tactions">' +
-      '<button type="button" class="icon-btn" data-emp-edit="' + e.employee_id + '">Edit</button>' +
-      '<button type="button" class="icon-btn danger" data-emp-delete="' + e.employee_id + '">Delete</button>' +
-    '</div></div>';
-}
-
-function employeeEditForm(e){
-  return '<div class="task-row edit-row" data-emp-row="' + e.employee_id + '">' +
-    '<div class="row" style="flex:1">' +
-      '<div class="field"><input value="' + esc(e.name) + '" data-emp-field="name" placeholder="Name" /></div>' +
-      '<div class="field"><input value="' + esc(e.designation || '') + '" data-emp-field="designation" placeholder="Designation" /></div>' +
-      '<div class="field" style="grid-column:1/-1"><input value="' + esc(e.department || '') + '" data-emp-field="department" placeholder="Department" /></div>' +
-    '</div>' +
-    '<div class="tactions">' +
-      '<button type="button" class="icon-btn" data-emp-save="' + e.employee_id + '">Save</button>' +
-      '<button type="button" class="icon-btn" data-emp-cancel="' + e.employee_id + '">Cancel</button>' +
-    '</div></div>';
-}
-
-function wireEmployeeRows(root){
-  root.querySelectorAll('[data-emp-edit]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = Number(btn.dataset.empEdit);
-      const emp = allEmployees.find(e => e.employee_id === id);
-      const rowEl = root.querySelector('[data-emp-row="' + id + '"]');
-      rowEl.outerHTML = employeeEditForm(emp);
-      wireEmployeeRows(root);
-    });
-  });
-  root.querySelectorAll('[data-emp-cancel]').forEach(btn => {
-    btn.addEventListener('click', () => renderEmployeesPanel());
-  });
-  root.querySelectorAll('[data-emp-save]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = Number(btn.dataset.empSave);
-      const rowEl = root.querySelector('[data-emp-row="' + id + '"]');
-      const name = rowEl.querySelector('[data-emp-field="name"]').value.trim();
-      const designation = rowEl.querySelector('[data-emp-field="designation"]').value.trim();
-      const department = rowEl.querySelector('[data-emp-field="department"]').value.trim();
-      if (!name) return;
-      btn.disabled = true;
-      try {
-        await api(PM_EMPLOYEES_UPDATE_URL, { method: 'POST', body: { employee_id: id, name, designation, department } });
-        await loadEmployees();
-        renderEmployeesPanel();
-        populateEmployeeSelects();
-      } catch (err) {
-        alert('Could not save employee: ' + err.message);
-        btn.disabled = false;
-      }
-    });
-  });
-  root.querySelectorAll('[data-emp-delete]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = Number(btn.dataset.empDelete);
-      const emp = allEmployees.find(e => e.employee_id === id);
-      if (!confirm('Delete ' + (emp ? emp.name : 'this employee') + '? This cannot be undone.')) return;
-      btn.disabled = true;
-      try {
-        await api(PM_EMPLOYEES_DELETE_URL, { method: 'POST', body: { employee_id: id } });
-        await loadEmployees();
-        renderEmployeesPanel();
-        populateEmployeeSelects();
-      } catch (err) {
-        alert('Could not delete employee: ' + err.message);
-        btn.disabled = false;
-      }
-    });
-  });
-}
-
-document.getElementById('employeesPanelToggle').addEventListener('click', () => {
-  document.getElementById('employeesPanel').classList.toggle('open');
-});
-
-document.getElementById('empAddForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = document.getElementById('empName').value.trim();
-  const department = document.getElementById('empDepartment').value.trim();
-  const designation = document.getElementById('empDesignation').value.trim();
-  if (!name) return;
-  try {
-    await api(PM_EMPLOYEES_CREATE_URL, { method: 'POST', body: { name, department, designation } });
-    document.getElementById('empAddForm').reset();
-    await loadEmployees();
-    renderEmployeesPanel();
-    populateEmployeeSelects();
-  } catch (err) {
-    alert('Could not add employee: ' + err.message);
-  }
-});
-
 function populateEmployeeSelects(){
   document.querySelectorAll('select[data-role="employee-select"]').forEach(sel => {
     sel.innerHTML = '<option value="">Select employee…</option>' +
@@ -403,7 +287,6 @@ async function renderProjects(){
   grid.innerHTML = '<div class="empty">Loading…</div>';
   try {
     await Promise.all([loadEmployees(), loadProjects()]);
-    renderEmployeesPanel();
     grid.innerHTML = allProjects.length
       ? allProjects.map(projectCard).join('')
       : '<div class="empty">No projects yet. Create your first one above.</div>';
@@ -411,7 +294,6 @@ async function renderProjects(){
     grid.innerHTML = '<div class="empty">Could not load projects (' + esc(err.message) + ').</div>';
   }
 }
-
 function projectCard(p){
   return '<a class="project-card" href="#/project/' + p.project_id + '">' +
     '<h3>' + esc(p.project_name) + '</h3>' +
@@ -422,7 +304,6 @@ function projectCard(p){
     '</div>' +
   '</a>';
 }
-
 document.getElementById('newProjectToggle').addEventListener('click', () => {
   document.getElementById('newProjectForm').classList.toggle('open');
 });
@@ -464,7 +345,6 @@ async function renderProjectDetail(projectId){
       el.innerHTML = '<div class="empty">Project not found.</div>';
       return;
     }
-
     renderBreadcrumb('project', projectId);
 
     el.innerHTML =
@@ -585,7 +465,7 @@ async function renderProjectDetail(projectId){
       }
     });
 
-    window.__pmProjectTasks = tasksForProject;
+    window.__mktProjectTasks = tasksForProject;
     const listEl = document.getElementById('projectTasksList');
     listEl.innerHTML = tasksForProject.length
       ? tasksForProject.map(t => taskRow(t, { showProject: false })).join('')
@@ -607,7 +487,7 @@ async function renderTasks(){
       api(PM_TASKS_LIST_URL),
       allEmployees.length ? Promise.resolve(allEmployees) : loadEmployees()
     ]);
-    window.__pmAllTasks = tasks;
+    window.__mktAllTasks = tasks;
     applyTasksFilter();
   } catch (err) {
     listEl.innerHTML = '<div class="empty">Could not load tasks (' + esc(err.message) + ').</div>';
@@ -616,7 +496,7 @@ async function renderTasks(){
 function applyTasksFilter(){
   const listEl = document.getElementById('tasksList');
   const filter = document.getElementById('tasksFilter').value;
-  const tasks = window.__pmAllTasks || [];
+  const tasks = window.__mktAllTasks || [];
   const rows = filter ? tasks.filter(t => t.status === filter) : tasks;
   listEl.innerHTML = rows.length
     ? rows.map(t => taskRow(t, { showProject: true })).join('')
@@ -627,8 +507,6 @@ document.getElementById('tasksFilter').addEventListener('change', applyTasksFilt
 
 function taskRow(t, opts){
   opts = opts || {};
-  // "Move to…" moves the task directly between all working statuses — no
-  // sign-off step, whoever owns the task (their manager, or Yusuf) decides.
   const options = ['TODO','IN_PROGRESS','BLOCKED','COMPLETED','CANCELLED']
     .filter(s => s !== t.status)
     .map(s => '<option value="' + s + '">' + statusLabel(s) + '</option>');
@@ -688,8 +566,8 @@ function wireTaskRows(root, onChanged){
   root.querySelectorAll('[data-task-edit]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = Number(btn.dataset.taskEdit);
-      const t = (window.__pmAllTasks || []).find(x => x.task_id === id) ||
-                (window.__pmProjectTasks || []).find(x => x.task_id === id);
+      const t = (window.__mktAllTasks || []).find(x => x.task_id === id) ||
+                (window.__mktProjectTasks || []).find(x => x.task_id === id);
       if (!t) return;
       const rowEl = root.querySelector('[data-task-row="' + id + '"]');
       rowEl.outerHTML = taskEditForm(t);
@@ -736,91 +614,8 @@ function wireTaskRows(root, onChanged){
   });
 }
 
-
-/* ════════════════════════════════════════════════════
-   Questions
-   ════════════════════════════════════════════════════ */
-async function renderQuestions(){
-  const listEl = document.getElementById('questionsList');
-  const formWrap = document.getElementById('newQuestionWrap');
-  formWrap.style.display = isAdmin ? 'none' : '';
-  listEl.innerHTML = '<div class="empty">Loading…</div>';
-  try {
-    const [questions, tasks] = await Promise.all([
-      api(PM_QUESTIONS_LIST_URL),
-      isAdmin ? Promise.resolve([]) : api(PM_TASKS_LIST_URL)
-    ]);
-    if (!isAdmin) {
-      const sel = document.getElementById('qTaskSelect');
-      sel.innerHTML = '<option value="">Select a task…</option>' +
-        tasks.map(t => '<option value="' + t.task_id + '">' + esc(t.task_name) + ' — ' + esc(t.project_name) + '</option>').join('');
-    }
-    listEl.innerHTML = questions.length
-      ? questions.map(questionCard).join('')
-      : '<div class="empty">No questions yet.</div>';
-    wireQuestionForms(listEl);
-  } catch (err) {
-    listEl.innerHTML = '<div class="empty">Could not load questions (' + esc(err.message) + ').</div>';
-  }
-}
-document.getElementById('newQuestionForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const task_id = document.getElementById('qTaskSelect').value;
-  const question = document.getElementById('qText').value.trim();
-  if (!task_id || !question) return;
-  try {
-    await api(PM_QUESTIONS_CREATE_URL, { method: 'POST', body: { task_id: Number(task_id), question } });
-    e.target.reset();
-    renderQuestions();
-  } catch (err) {
-    alert('Could not send question: ' + err.message);
-  }
-});
-function questionCard(q){
-  const taskRef = q.project_id
-    ? '<a class="xref" href="#/project/' + q.project_id + '">' + esc(q.task_name || '') +
-      (q.project_name ? ' — ' + esc(q.project_name) : '') + '</a>'
-    : '<span>' + esc(q.task_name || '') + '</span>';
-  const askedBy = q.asked_by_employee || q.asked_by_manager;
-  return '<div class="question-card">' +
-    '<div class="qmeta">' + badge(q.status) + taskRef +
-      (askedBy ? '<span class="who">' + esc(askedBy) + '</span>' : '') +
-      '<span>' + esc(fmtDate(q.created_at)) + '</span></div>' +
-    '<p class="qtext">' + esc(q.question) + '</p>' +
-    (q.status === 'ANSWERED' || q.answer
-      ? '<div class="answer-block"><div class="aby">Yusuf’s answer</div><span>' + esc(q.answer) + '</span></div>'
-      : (isAdmin
-          ? '<div class="answer-form"><textarea placeholder="Write an answer…" data-answer-for="' + q.question_id + '"></textarea>' +
-            '<button type="button" data-answer-submit="' + q.question_id + '">Send answer</button></div>'
-          : '<div class="answer-block"><span>Waiting on Yusuf.</span></div>')) +
-  '</div>';
-}
-function wireQuestionForms(root){
-  root.querySelectorAll('[data-answer-submit]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const questionId = Number(btn.dataset.answerSubmit);
-      const answer = root.querySelector('[data-answer-for="' + questionId + '"]').value.trim();
-      if (!answer) return;
-      btn.disabled = true;
-      try {
-        await api(PM_QUESTIONS_ANSWER_URL, { method: 'POST', body: { question_id: questionId, answer } });
-        renderQuestions();
-        if (document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
-      } catch (err) {
-        alert('Could not send answer: ' + err.message);
-        btn.disabled = false;
-      }
-    });
-  });
-}
-
 /* ════════════════════════════════════════════════════
    Boot
    ════════════════════════════════════════════════════ */
 session = readSession();
-if (session) {
-  isAdmin = String(session.role || 'MANAGER').toUpperCase() === 'ADMIN';
-  showApp();
-} else {
-  showSignedOut();
-}
+if (session) showApp(); else showSignedOut();

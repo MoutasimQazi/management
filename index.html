@@ -111,6 +111,18 @@
         <a class="btn-sm" href="#/dispatch">+ New dispatch</a>
       </div>
 
+      <!-- Company-wide "who's on leave" — visible to every signed-in
+           role, not just HR, since leave status is meant to be transparent. -->
+      <div id="leavePanel" style="display:none; margin-bottom:24px">
+        <div class="panel-head">
+          <h2>On leave</h2>
+          <span class="count" id="leaveCount">0</span>
+        </div>
+        <div class="sect actionitems today">
+          <ul id="leaveList"></ul>
+        </div>
+      </div>
+
       <!-- Live summary from the Project Management module, same session token —
            Projects is the primary tool, so its status leads the dashboard. -->
       <div class="panel-head">
@@ -268,6 +280,13 @@
     const PM_PROJECTS_LIST_URL   = PM_API_BASE + "pm-projects-list.php";
     const PM_TASKS_LIST_URL      = PM_API_BASE + "pm-tasks-list.php";
     const PM_QUESTIONS_LIST_URL  = PM_API_BASE + "pm-questions-list.php";
+    const PM_LEAVE_LIST_URL      = PM_API_BASE + "pm-leave-list.php";
+
+    // DB-backed login for HR / Marketing / Employee accounts — n8n's
+    // LOGIN_URL above is tried first (unchanged, for the 6 existing
+    // managers); this is only reached when that login rejects the
+    // email/password, i.e. for accounts n8n has never heard of.
+    const PM_LOGIN_URL           = PM_API_BASE + "pm-login.php";
 
     const SUPPORT_LINK = 'Need access or a password reset? Email <a href="mailto:' +
       SUPPORT_EMAIL + '?subject=Fireflies%20dispatch%20access">' + SUPPORT_EMAIL + '</a>.';
@@ -301,6 +320,9 @@
     const pmAttentionTitle = document.getElementById('pmAttentionTitle');
     const pmAttentionCount = document.getElementById('pmAttentionCount');
     const pmAttentionList  = document.getElementById('pmAttentionList');
+    const leavePanel   = document.getElementById('leavePanel');
+    const leaveCount   = document.getElementById('leaveCount');
+    const leaveList    = document.getElementById('leaveList');
     const navLinks    = document.querySelectorAll('nav.tabs a');
     const pages       = document.querySelectorAll('.page');
 
@@ -328,6 +350,24 @@
       return isNaN(d.getTime()) ? String(v) : d.toLocaleString('en-IN', {
         day:'numeric', month:'short', year:'numeric', hour:'numeric', minute:'2-digit'
       });
+    }
+
+    function fmtDay(v){
+      if (!v) return '';
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('en-IN', {
+        day:'numeric', month:'short', year:'numeric'
+      });
+    }
+
+    // Where a signed-in account lands: ADMIN/MANAGER stay on this page,
+    // every other role gets its own dedicated page.
+    function roleHome(role){
+      const r = String(role || '').toUpperCase();
+      if (r === 'HR') return 'hr.html';
+      if (r === 'MARKETING') return 'marketing.html';
+      if (r === 'EMPLOYEE') return 'employee.html';
+      return null;
     }
 
     // Split a text blob into clean bullet lines ("-", "•", "*", "1." prefixes, newlines)
@@ -492,6 +532,7 @@
       setStatus(statusEl, '', '');
       loadMeetings();
       loadProjectsSummary();
+      loadLeavePanel();
       route();
     }
 
@@ -525,6 +566,23 @@
       document.getElementById('pwToggle').classList.toggle('showing', !showing);
     });
 
+    // Tries one login endpoint; returns {ok:false} on a plain auth
+    // rejection (401/403) so the caller can fall through to the next
+    // endpoint, but throws on anything else (real outage, bad response).
+    async function attemptLogin(url, email, password){
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      if (res.status === 401 || res.status === 403) return { ok: false };
+      if (!res.ok) throw new Error('Login endpoint responded with ' + res.status + '.');
+      const data  = await res.json().catch(() => ({}));
+      const token = data.token || data.jwt || data.access_token;
+      if (!token) throw new Error('Login succeeded but no token came back.');
+      return { ok: true, data, token };
+    }
+
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email    = document.getElementById('email').value.trim();
@@ -537,24 +595,22 @@
       setStatus(loginStatus, 'busy', 'Checking your credentials…');
 
       try {
-        const res = await fetch(LOGIN_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
+        // The 6 original managers authenticate through n8n exactly as
+        // before. HR/Marketing/Employee accounts don't exist in n8n's
+        // credential list, so a 401/403 there falls through to the
+        // DB-backed PHP login instead.
+        let result = await attemptLogin(LOGIN_URL, email, password);
+        if (!result.ok) result = await attemptLogin(PM_LOGIN_URL, email, password);
+        if (!result.ok) throw new Error('That email and password combination was rejected. ' + SUPPORT_LINK);
 
-        if (res.status === 401 || res.status === 403) {
-          throw new Error('That email and password combination was rejected. ' + SUPPORT_LINK);
-        }
-        if (!res.ok) throw new Error('Login endpoint responded with ' + res.status + '.');
-
-        const data  = await res.json().catch(() => ({}));
-        const token = data.token || data.jwt || data.access_token;
-        if (!token) throw new Error('Login succeeded but no token came back. The n8n workflow should respond with { "token": "..." }.');
-
+        const { data, token } = result;
         const session = { email: data.email || email, token, role: data.role || 'MANAGER' };
         writeSession(session, remember);
         loginForm.reset();
+
+        const home = roleHome(session.role);
+        if (home) { location.href = home; return; }
+
         location.hash = '#/dashboard';
         showApp(session);
       } catch (err) {
@@ -584,6 +640,8 @@
       pmStatsEl.innerHTML = '';
       pmAttentionPanel.style.display = 'none';
       pmAttentionList.innerHTML = '';
+      leavePanel.style.display = 'none';
+      leaveList.innerHTML = '';
       showLogin('Signed out.');
       setStatus(loginStatus, '', '');
     });
@@ -912,6 +970,7 @@
       location.hash = '#/dashboard';
       loadMeetings();
       loadProjectsSummary();
+      loadLeavePanel();
     });
 
     /* ════════════════════════════════════════════════════
@@ -966,6 +1025,34 @@
       } catch (err) {
         pmStatsEl.innerHTML = '<div class="empty">Could not load project data (' + esc(err.message) + ').</div>';
         pmAttentionPanel.style.display = 'none';
+      }
+    }
+
+    // "Who's on leave" — shows approved leave covering today through the
+    // next 14 days, so anyone signed in (any role) can see who's out.
+    async function loadLeavePanel(){
+      const session = readSession();
+      if (!session) return;
+      try {
+        const res = await fetch(PM_LEAVE_LIST_URL + '?status=APPROVED', {
+          headers: { 'Authorization': 'Bearer ' + session.token }
+        });
+        if (!res.ok) throw new Error('status ' + res.status);
+        const rows = await res.json();
+
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const soon = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
+        const upcoming = rows
+          .filter(r => new Date(r.end_date) >= today && new Date(r.start_date) <= soon)
+          .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+
+        leavePanel.style.display = upcoming.length ? '' : 'none';
+        leaveCount.textContent = String(upcoming.length);
+        leaveList.innerHTML = upcoming.map(r =>
+          '<li><span class="task">' + esc(r.employee_name) + '</span>' +
+          '<span class="src">' + esc(fmtDay(r.start_date)) + ' – ' + esc(fmtDay(r.end_date)) + '</span></li>').join('');
+      } catch (_) {
+        leavePanel.style.display = 'none';
       }
     }
 
@@ -1101,7 +1188,12 @@
        10. Boot
        ════════════════════════════════════════════════════ */
     const existing = readSession();
-    if (existing) showApp(existing); else showLogin();
+    if (existing) {
+      const home = roleHome(existing.role);
+      if (home) location.href = home; else showApp(existing);
+    } else {
+      showLogin();
+    }
   </script>
 </body>
 </html>

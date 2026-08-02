@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Movenetics Digital · Marketing</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="projects.css">
+</head>
+
+<body>
+
+  <!-- ══ Signed-out state (no login form here — session is shared with the Fireflies app) ══ -->
+  <div id="pmSignedOut" class="view active">
+    <div class="pm-signedout">
+      <span class="logochip" style="margin-bottom:18px; display:inline-flex">
+        <img src="logo.png" alt="Movenetics Digital" style="height:30px" onerror="this.parentElement.style.display='none'" />
+      </span>
+      <h1>Sign <em>in</em></h1>
+      <p>This page uses the same sign-in as the rest of the workspace. Sign in there first, then come back to this tab.</p>
+      <a class="btn-sm" href="index.html">Go to sign in →</a>
+    </div>
+  </div>
+
+  <!-- ══ Signed-in app ══════════════════════════════════ -->
+  <div id="appView" class="view dashwrap">
+
+    <header class="topbar">
+      <a class="logochip" id="homeLogo" href="#/campaigns" title="Campaigns">
+        <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
+      </a>
+      <nav class="tabs">
+        <a href="#/campaigns" data-nav="campaigns">Campaigns</a>
+        <a href="#/projects"  data-nav="projects">Projects</a>
+        <a href="#/tasks"     data-nav="tasks">Tasks</a>
+      </nav>
+
+      <span class="spacer"></span>
+      <span class="role-badge manager" id="roleBadge">Marketing</span>
+      <span class="email" id="whoEmail"></span>
+      <button type="button" class="linkbtn" id="signOut">Sign out</button>
+    </header>
+
+    <nav class="breadcrumb" id="breadcrumb"></nav>
+
+    <!-- ── Page: Campaigns ──────────────────────────────── -->
+    <section id="page-campaigns" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>Campaign <em>calendar</em></h1>
+          <p class="sub">Everything you're planning, in progress, or published.</p>
+        </div>
+        <button type="button" class="btn-sm" id="newCampaignToggle" style="border:none">+ New campaign</button>
+      </div>
+
+      <form id="newCampaignForm" class="inline-form">
+        <div class="row">
+          <div class="field"><label>Title</label><input id="campTitle" required placeholder="Campaign or content title" /></div>
+          <div class="field"><label>Channel <span class="opt">— optional</span></label><input id="campChannel" placeholder="e.g. Instagram, Email, Blog" /></div>
+        </div>
+        <div class="field"><label>Scheduled date <span class="opt">— optional</span></label><input id="campDate" type="date" /></div>
+        <div class="field"><label>Notes <span class="opt">— optional</span></label><input id="campNotes" placeholder="Brief, links, anything useful" /></div>
+        <div class="actions">
+          <button type="submit">Create campaign</button>
+          <button type="button" class="secondary" id="campaignCancelBtn">Cancel</button>
+        </div>
+      </form>
+
+      <div id="campaignsList"></div>
+    </section>
+
+    <!-- ── Page: Projects ──────────────────────────────── -->
+    <section id="page-projects" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>My <em>projects</em></h1>
+          <p class="sub">Projects you own.</p>
+        </div>
+        <button type="button" class="btn-sm" id="newProjectToggle" style="border:none">+ New project</button>
+      </div>
+
+      <form id="newProjectForm" class="inline-form">
+        <div class="row">
+          <div class="field"><label>Project name</label><input id="projName" required placeholder="Project name" /></div>
+          <div class="field"><label>Client <span class="opt">— optional</span></label><input id="projClient" placeholder="Client name" /></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Priority</label>
+            <select id="projPriority">
+              <option value="LOW">Low</option>
+              <option value="MEDIUM" selected>Medium</option>
+              <option value="HIGH">High</option>
+              <option value="CRITICAL">Critical</option>
+            </select>
+          </div>
+          <div class="field"><label>Due date <span class="opt">— optional</span></label><input id="projDue" type="date" /></div>
+        </div>
+        <div class="field"><label>Description <span class="opt">— optional</span></label><input id="projDescription" placeholder="What is this project about?" /></div>
+        <div class="actions">
+          <button type="submit">Create project</button>
+          <button type="button" class="secondary" id="projectCancelBtn">Cancel</button>
+        </div>
+      </form>
+
+      <div id="projectsGrid" class="projects-grid"></div>
+    </section>
+
+    <!-- ── Page: Project detail (tasks within one project) ── -->
+    <section id="page-project" class="page">
+      <a class="backlink" href="#/projects">← Back to projects</a>
+      <div id="projectDetailContent"></div>
+    </section>
+
+    <!-- ── Page: Tasks (cross-project) ─────────────────── -->
+    <section id="page-tasks" class="page">
+      <div class="pagehead">
+        <div>
+          <h1><em>Tasks</em></h1>
+          <p class="sub">Every task across your projects.</p>
+        </div>
+      </div>
+      <div class="panel-head">
+        <span class="spacer"></span>
+        <select id="tasksFilter" class="searchbox" style="width:180px">
+          <option value="">All statuses</option>
+          <option value="TODO">To do</option>
+          <option value="IN_PROGRESS">In progress</option>
+          <option value="BLOCKED">Blocked</option>
+          <option value="COMPLETED">Completed</option>
+          <option value="CANCELLED">Cancelled</option>
+        </select>
+      </div>
+      <div id="tasksList"></div>
+    </section>
+
+  </div>
+
+  <script src="marketing.js"></script>
+</body>
+</html>

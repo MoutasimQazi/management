@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Movenetics Digital · My Workspace</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="projects.css">
+</head>
+
+<body>
+
+  <!-- ══ Signed-out state (no login form here — session is shared with the Fireflies app) ══ -->
+  <div id="pmSignedOut" class="view active">
+    <div class="pm-signedout">
+      <span class="logochip" style="margin-bottom:18px; display:inline-flex">
+        <img src="logo.png" alt="Movenetics Digital" style="height:30px" onerror="this.parentElement.style.display='none'" />
+      </span>
+      <h1>Sign <em>in</em></h1>
+      <p>This page uses the same sign-in as the rest of the workspace. Sign in there first, then come back to this tab.</p>
+      <a class="btn-sm" href="index.html">Go to sign in →</a>
+    </div>
+  </div>
+
+  <!-- ══ Signed-in app ══════════════════════════════════ -->
+  <div id="appView" class="view dashwrap">
+
+    <header class="topbar">
+      <a class="logochip" id="homeLogo" href="#/tasks" title="My tasks">
+        <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
+      </a>
+      <nav class="tabs">
+        <a href="#/tasks"     data-nav="tasks">My tasks</a>
+        <a href="#/questions" data-nav="questions">Questions</a>
+        <a href="#/leave"     data-nav="leave">Leave</a>
+      </nav>
+
+      <span class="spacer"></span>
+      <span class="role-badge manager" id="roleBadge">Employee</span>
+      <span class="email" id="whoEmail"></span>
+      <button type="button" class="linkbtn" id="signOut">Sign out</button>
+    </header>
+
+    <!-- ── Page: My tasks ──────────────────────────────── -->
+    <section id="page-tasks" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>My <em>tasks</em></h1>
+          <p class="sub">Everything assigned to you, across every project. Move a task's status as you work on it.</p>
+        </div>
+      </div>
+      <div id="tasksList"></div>
+    </section>
+
+    <!-- ── Page: Questions ─────────────────────────────── -->
+    <section id="page-questions" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>My <em>questions</em></h1>
+          <p class="sub">Stuck on something? Raise it against one of your tasks and your manager will answer here.</p>
+        </div>
+      </div>
+
+      <form id="newQuestionForm" class="inline-form open">
+        <div class="row">
+          <div class="field"><label>Which task?</label><select id="qTaskSelect" required></select></div>
+          <div class="field"><label>Your question</label><input id="qText" required placeholder="What's blocking you?" /></div>
+        </div>
+        <div class="actions"><button type="submit">Send question</button></div>
+      </form>
+
+      <div id="questionsList"></div>
+    </section>
+
+    <!-- ── Page: Leave ─────────────────────────────────── -->
+    <section id="page-leave" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>My <em>leave</em></h1>
+          <p class="sub">Request time off and see where it stands. Everyone on the team can see who's currently out.</p>
+        </div>
+      </div>
+
+      <form id="newLeaveForm" class="inline-form open">
+        <div class="row">
+          <div class="field"><label>From</label><input id="leaveStart" type="date" required /></div>
+          <div class="field"><label>To</label><input id="leaveEnd" type="date" required /></div>
+        </div>
+        <div class="field"><label>Reason <span class="opt">— optional</span></label><input id="leaveReason" placeholder="e.g. Family trip" /></div>
+        <div class="actions"><button type="submit">Request leave</button></div>
+      </form>
+
+      <div class="panel-head"><h2>My requests</h2><span class="count" id="myLeaveCount">0</span></div>
+      <div id="myLeaveList" style="margin-bottom:24px"></div>
+
+      <div class="panel-head"><h2>Team on leave</h2><span class="count" id="teamLeaveCount">0</span></div>
+      <div id="teamLeaveList"></div>
+    </section>
+
+  </div>
+
+  <script src="employee.js"></script>
+</body>
+</html>

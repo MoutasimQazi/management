@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Movenetics Digital · HR</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="projects.css">
+</head>
+
+<body>
+
+  <!-- ══ Signed-out state (no login form here — session is shared with the Fireflies app) ══ -->
+  <div id="pmSignedOut" class="view active">
+    <div class="pm-signedout">
+      <span class="logochip" style="margin-bottom:18px; display:inline-flex">
+        <img src="logo.png" alt="Movenetics Digital" style="height:30px" onerror="this.parentElement.style.display='none'" />
+      </span>
+      <h1>Sign <em>in</em></h1>
+      <p>This page uses the same sign-in as the rest of the workspace. Sign in there first, then come back to this tab.</p>
+      <a class="btn-sm" href="index.html">Go to sign in →</a>
+    </div>
+  </div>
+
+  <!-- ══ Signed-in app ══════════════════════════════════ -->
+  <div id="appView" class="view dashwrap">
+
+    <header class="topbar">
+      <a class="logochip" id="homeLogo" href="#/openings" title="Openings">
+        <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
+      </a>
+      <nav class="tabs">
+        <a href="#/openings"  data-nav="openings">Openings</a>
+        <a href="#/leave"     data-nav="leave">Leave</a>
+        <a href="#/employees" data-nav="employees">Employees</a>
+        <a href="#/staff" data-nav="staff" id="staffNavLink" style="display:none">Staff</a>
+      </nav>
+
+      <span class="spacer"></span>
+      <span class="role-badge" id="roleBadge">HR</span>
+      <span class="email" id="whoEmail"></span>
+      <button type="button" class="linkbtn" id="signOut">Sign out</button>
+    </header>
+
+    <nav class="breadcrumb" id="breadcrumb"></nav>
+
+    <!-- ── Page: Openings (list) ───────────────────────── -->
+    <section id="page-openings" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>Job <em>openings</em></h1>
+          <p class="sub">Track open roles and the candidates moving through each one.</p>
+        </div>
+        <button type="button" class="btn-sm" id="newOpeningToggle" style="border:none">+ New opening</button>
+      </div>
+
+      <form id="newOpeningForm" class="inline-form">
+        <div class="row">
+          <div class="field"><label>Title</label><input id="openTitle" required placeholder="e.g. Backend Engineer" /></div>
+          <div class="field"><label>Department <span class="opt">— optional</span></label><input id="openDept" placeholder="e.g. Engineering" /></div>
+        </div>
+        <div class="field"><label>Notes <span class="opt">— optional</span></label><input id="openNotes" placeholder="Anything worth flagging" /></div>
+        <div class="actions">
+          <button type="submit">Create opening</button>
+          <button type="button" class="secondary" id="openingCancelBtn">Cancel</button>
+        </div>
+      </form>
+
+      <div id="openingsList"></div>
+    </section>
+
+    <!-- ── Page: Opening detail (candidates) ───────────── -->
+    <section id="page-opening" class="page">
+      <div id="openingDetailContent"></div>
+    </section>
+
+    <!-- ── Page: Leave ──────────────────────────────────── -->
+    <section id="page-leave" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>Leave <em>requests</em></h1>
+          <p class="sub">Approve or reject requests. The monthly summary refreshes itself on the 1st of every month.</p>
+        </div>
+      </div>
+
+      <div class="panel-head"><h2 id="monthLabel">This month</h2></div>
+      <div class="summary-row" id="monthSummary"></div>
+
+      <div class="panel-head"><h2>Pending</h2><span class="count" id="pendingCount">0</span></div>
+      <div id="pendingLeaveList" style="margin-bottom:24px"></div>
+
+      <div class="panel-head"><h2>All requests</h2><span class="count" id="allLeaveCount">0</span></div>
+      <div id="allLeaveList"></div>
+    </section>
+
+    <!-- ── Page: Employees ─────────────────────────────── -->
+    <section id="page-employees" class="page">
+      <div class="pagehead">
+        <div>
+          <h1><em>Employees</em></h1>
+          <p class="sub">The full roster. Add an email to give an employee their own login.</p>
+        </div>
+      </div>
+
+      <form id="empAddForm" class="inline-form open row" style="align-items:end">
+        <div class="field"><label>Name</label><input id="empName" required placeholder="Employee name" /></div>
+        <div class="field"><label>Designation <span class="opt">— optional</span></label><input id="empDesignation" placeholder="e.g. Designer" /></div>
+        <div class="field"><label>Department <span class="opt">— optional</span></label><input id="empDepartment" placeholder="e.g. Marketing" /></div>
+        <div class="field"><label>Email <span class="opt">— optional, grants login</span></label><input id="empEmail" type="email" placeholder="name@moveneticsdigital.com" /></div>
+        <div class="actions" style="grid-column:1/-1"><button type="submit">Add employee</button></div>
+      </form>
+      <div id="employeesList"></div>
+    </section>
+
+    <!-- ── Page: Staff accounts (ADMIN only) ───────────── -->
+    <section id="page-staff" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>Staff <em>accounts</em></h1>
+          <p class="sub">Create HR / Marketing / Manager logins. A temporary password is shown once — share it directly with them.</p>
+        </div>
+      </div>
+
+      <form id="newStaffForm" class="inline-form open">
+        <div class="row">
+          <div class="field"><label>Full name</label><input id="staffName" required placeholder="Full name" /></div>
+          <div class="field"><label>Email</label><input id="staffEmail" type="email" required placeholder="name@moveneticsdigital.com" /></div>
+        </div>
+        <div class="field"><label>Role</label>
+          <select id="staffRole">
+            <option value="HR">HR</option>
+            <option value="MARKETING">Marketing</option>
+            <option value="MANAGER">Manager</option>
+            <option value="ADMIN">Admin</option>
+          </select>
+        </div>
+        <div class="actions"><button type="submit">Create account</button></div>
+      </form>
+
+      <div id="staffCreatedNotice"></div>
+      <div id="staffList"></div>
+    </section>
+
+  </div>
+
+  <script src="hr.js"></script>
+</body>
+</html>

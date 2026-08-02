@@ -44,3 +44,12 @@ function body() {
     $data = json_decode($raw, true);
     return is_array($data) ? $data : [];
 }
+
+// Random login token (stored in managers.token / employees.token) or a
+// human-typeable temporary password — same generator, different lengths.
+function randomToken(int $bytes = 24): string {
+    return bin2hex(random_bytes($bytes));
+}
+function randomTempPassword(): string {
+    return substr(str_replace(['+', '/', '='], '', base64_encode(random_bytes(9))), 0, 10);
+}

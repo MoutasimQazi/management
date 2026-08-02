@@ -5,6 +5,12 @@
     Require all denied
 </FilesMatch>
 
+# Migration SQL files describe the live schema — no reason for them to be
+# web-reachable at all.
+<FilesMatch "\.sql$">
+    Require all denied
+</FilesMatch>
+
 # Many cPanel/Apache setups strip the Authorization header from requests
 # before PHP ever sees it (a CGI/FastCGI default). This forwards it through
 # explicitly so $_SERVER['HTTP_AUTHORIZATION'] is actually populated.

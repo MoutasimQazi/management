@@ -15,13 +15,13 @@ $priorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 $priority = in_array($b['priority'] ?? '', $priorities, true) ? $b['priority'] : 'MEDIUM';
 
 $stmt = $pdo->prepare(
-    "UPDATE tasks SET task_name = ?, description = ?, eta = ?, priority = ?, employee_id = ?
+    "UPDATE tasks SET task_name = ?, description = ?, eta_hours = ?, priority = ?, employee_id = ?
      WHERE task_id = ?"
 );
 $stmt->execute([
     $b['task_name'] ?? '',
     $b['description'] ?? null,
-    $b['eta'] ?? null,
+    (isset($b['eta_hours']) && $b['eta_hours'] !== '') ? (float)$b['eta_hours'] : null,
     $priority,
     $b['employee_id'] ?? null,
     $b['task_id'],

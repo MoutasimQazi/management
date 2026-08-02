@@ -14,7 +14,7 @@ $priorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 $priority = in_array($b['priority'] ?? '', $priorities, true) ? $b['priority'] : 'MEDIUM';
 
 $stmt = $pdo->prepare(
-    "INSERT INTO tasks (project_id, employee_id, task_name, description, eta, priority)
+    "INSERT INTO tasks (project_id, employee_id, task_name, description, eta_hours, priority)
      VALUES (?, ?, ?, ?, ?, ?)"
 );
 $stmt->execute([
@@ -22,7 +22,7 @@ $stmt->execute([
     $b['employee_id'] ?? null,
     $b['task_name'] ?? '',
     $b['description'] ?? null,
-    $b['eta'] ?? null,
+    (isset($b['eta_hours']) && $b['eta_hours'] !== '') ? (float)$b['eta_hours'] : null,
     $priority,
 ]);
 echo json_encode(['success' => true, 'task_id' => (int)$pdo->lastInsertId()]);

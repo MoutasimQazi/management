@@ -30,6 +30,17 @@
   border:1px solid var(--line); border-radius:var(--radius-sm);
   font-family:inherit;
 }
+/* the field wrapper (.row) inside an edit-in-place row was missing a grid
+   definition, so its fields fell back to stacking full-width one per line
+   instead of laying out side by side — this is what actually lays them out
+   (and makes the `grid-column:1/-1` used on the description/department
+   fields take effect). */
+.task-row.edit-row .row{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+  gap:10px;
+  width:100%;
+}
 
 /* project detail hero: title + edit/delete actions */
 .hero-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:12px; }
@@ -283,3 +294,47 @@
   .inline-form .row{ grid-template-columns:1fr; }
   .task-row .tactions{ margin-left:0; width:100%; }
 }
+
+/* ══════════════════════════════════════════════════════
+   HR / Marketing / Employee modules — additional status
+   badges (recruitment stages, leave, campaigns) plus a
+   couple of small helpers, reusing every primitive above.
+   ══════════════════════════════════════════════════════ */
+.question-card .qmeta .who{ color:var(--brand-dark); font-weight:800; }
+
+/* leave request statuses */
+.status-badge.pending    { background:#fff7d6; color:#8a6d00; }
+.status-badge.approved   { background:#e6f6ee; color:var(--ok); }
+.status-badge.rejected   { background:#fdeceb; color:var(--err); }
+/* candidate pipeline stages */
+.status-badge.applied    { background:var(--line-2); color:var(--ink-2); }
+.status-badge.screening  { background:#eef2ff; color:#4353b8; }
+.status-badge.interview  { background:#fff1ea; color:var(--brand-dark); }
+.status-badge.offer      { background:#fff7d6; color:#8a6d00; }
+.status-badge.hired      { background:#e6f6ee; color:var(--ok); }
+/* campaign / content calendar statuses */
+.status-badge.idea       { background:var(--line-2); color:var(--ink-2); }
+.status-badge.planned    { background:#eef2ff; color:#4353b8; }
+.status-badge.published  { background:#e6f6ee; color:var(--ok); }
+
+/* compact person chip used on the HR/Employee leave lists */
+.leave-row{
+  display:flex; align-items:center; flex-wrap:wrap; gap:12px;
+  background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:13px 16px; margin-bottom:9px;
+}
+.leave-row .linfo{ flex:1 1 260px; min-width:0; }
+.leave-row .ltitle{ font-size:13.5px; font-weight:700; color:var(--ink); margin-bottom:3px; }
+.leave-row .lmeta{
+  font-size:11px; color:var(--muted); font-weight:600;
+  display:flex; flex-wrap:wrap; gap:4px 10px;
+}
+.leave-row .tactions{ display:flex; align-items:center; gap:8px; margin-left:auto; }
+
+/* HR monthly leave summary tiles */
+.summary-row{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+.summary-chip{
+  background:var(--surface); border:1px solid var(--line); border-radius:100px;
+  padding:6px 14px; font-size:12px; font-weight:700; color:var(--ink-2);
+}
+.summary-chip b{ color:var(--brand-dark); }
