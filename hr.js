@@ -11,6 +11,8 @@ const PM_EMPLOYEES_LIST_URL   = PM_API_BASE + "pm-employees-list.php";
 const PM_EMPLOYEES_CREATE_URL = PM_API_BASE + "pm-employees-create.php";
 const PM_EMPLOYEES_UPDATE_URL = PM_API_BASE + "pm-employees-update.php";
 const PM_EMPLOYEES_DELETE_URL = PM_API_BASE + "pm-employees-delete.php";
+const PM_EMPLOYEES_RESET_PW_URL = PM_API_BASE + "pm-employees-reset-password.php";
+const PM_MANAGERS_RESET_PW_URL  = PM_API_BASE + "pm-managers-reset-password.php";
 const PM_OPENINGS_LIST_URL    = PM_API_BASE + "pm-openings-list.php";
 const PM_OPENINGS_CREATE_URL  = PM_API_BASE + "pm-openings-create.php";
 const PM_OPENINGS_UPDATE_URL  = PM_API_BASE + "pm-openings-update.php";
@@ -121,6 +123,7 @@ function showApp(){
   whoEmail.textContent = session.email || 'signed in';
   roleBadge.textContent = isAdmin ? 'Admin' : 'HR';
   document.getElementById('staffNavLink').style.display = isAdmin ? '' : 'none';
+  document.getElementById('adminBackLink').style.display = isAdmin ? '' : 'none';
   route();
 }
 signOutBtn.addEventListener('click', () => {
@@ -431,12 +434,65 @@ function employeeRow(e){
       (e.department ? '<span>' + esc(e.department) + '</span>' : '') +
       (e.email ? '<span>' + esc(e.email) + '</span>' : '') +
       '<span>' + (e.has_login == 1 ? 'Has login' : 'No login yet') + '</span>' +
+      (e.temp_password ? '<span>Password: <strong>' + esc(e.temp_password) + '</strong></span>' : '') +
     '</div></div>' +
     '<div class="tactions">' +
+      '<button type="button" class="icon-btn" data-emp-edit="' + e.employee_id + '">Edit</button>' +
+      (e.has_login == 1
+        ? '<button type="button" class="icon-btn" data-emp-reset-pw="' + e.employee_id + '">Reset password</button>'
+        : '') +
       '<button type="button" class="icon-btn danger" data-emp-delete="' + e.employee_id + '">Delete</button>' +
     '</div></div>';
 }
+function employeeEditForm(e){
+  return '<div class="task-row edit-row" data-emp-row="' + e.employee_id + '">' +
+    '<div class="row" style="flex:1">' +
+      '<div class="field"><input value="' + esc(e.name) + '" data-emp-field="name" placeholder="Name" /></div>' +
+      '<div class="field"><input value="' + esc(e.designation || '') + '" data-emp-field="designation" placeholder="Designation" /></div>' +
+      '<div class="field"><input value="' + esc(e.department || '') + '" data-emp-field="department" placeholder="Department" /></div>' +
+      '<div class="field"><input value="' + esc(e.email || '') + '" data-emp-field="email" type="email" placeholder="Email — grants login" /></div>' +
+    '</div>' +
+    '<div class="tactions">' +
+      '<button type="button" class="icon-btn" data-emp-save="' + e.employee_id + '">Save</button>' +
+      '<button type="button" class="icon-btn" data-emp-cancel="' + e.employee_id + '">Cancel</button>' +
+    '</div></div>';
+}
 function wireEmployeeRows(root){
+  root.querySelectorAll('[data-emp-edit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.dataset.empEdit);
+      const emp = allEmployees.find(e => e.employee_id === id);
+      const rowEl = root.querySelector('[data-emp-row="' + id + '"]');
+      rowEl.outerHTML = employeeEditForm(emp);
+      wireEmployeeRows(root);
+    });
+  });
+  root.querySelectorAll('[data-emp-cancel]').forEach(btn => {
+    btn.addEventListener('click', () => renderEmployees());
+  });
+  root.querySelectorAll('[data-emp-save]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = Number(btn.dataset.empSave);
+      const rowEl = root.querySelector('[data-emp-row="' + id + '"]');
+      const name = rowEl.querySelector('[data-emp-field="name"]').value.trim();
+      const designation = rowEl.querySelector('[data-emp-field="designation"]').value.trim();
+      const department = rowEl.querySelector('[data-emp-field="department"]').value.trim();
+      const email = rowEl.querySelector('[data-emp-field="email"]').value.trim();
+      if (!name) return;
+      btn.disabled = true;
+      try {
+        const result = await api(PM_EMPLOYEES_UPDATE_URL, { method: 'POST',
+          body: { employee_id: id, name, designation, department, email } });
+        if (result.temp_password) {
+          alert('Login created for ' + result.login_email + '.\nTemporary password: ' + result.temp_password + '\n\nAlso visible any time in the list below.');
+        }
+        renderEmployees();
+      } catch (err) {
+        alert('Could not save employee: ' + err.message);
+        btn.disabled = false;
+      }
+    });
+  });
   root.querySelectorAll('[data-emp-delete]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = Number(btn.dataset.empDelete);
@@ -448,6 +504,19 @@ function wireEmployeeRows(root){
         renderEmployees();
       } catch (err) {
         alert('Could not delete employee: ' + err.message);
+        btn.disabled = false;
+      }
+    });
+  });
+  root.querySelectorAll('[data-emp-reset-pw]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = Number(btn.dataset.empResetPw);
+      btn.disabled = true;
+      try {
+        await api(PM_EMPLOYEES_RESET_PW_URL, { method: 'POST', body: { employee_id: id } });
+        renderEmployees();
+      } catch (err) {
+        alert('Could not reset password: ' + err.message);
         btn.disabled = false;
       }
     });
@@ -464,7 +533,7 @@ document.getElementById('empAddForm').addEventListener('submit', async (e) => {
     const result = await api(PM_EMPLOYEES_CREATE_URL, { method: 'POST', body: { name, department, designation, email } });
     document.getElementById('empAddForm').reset();
     if (result.temp_password) {
-      alert('Login created for ' + result.login_email + '.\nTemporary password: ' + result.temp_password + '\n\nShare this with them directly — it will not be shown again.');
+      alert('Login created for ' + result.login_email + '.\nTemporary password: ' + result.temp_password + '\n\nAlso visible any time in the list below.');
     }
     renderEmployees();
   } catch (err) {
@@ -483,11 +552,28 @@ async function renderStaff(){
     const rows = await api(PM_MANAGERS_LIST_URL);
     listEl.innerHTML = rows.length
       ? rows.map(m =>
-          '<div class="task-row"><div class="tinfo"><div class="ttitle">' + esc(m.full_name) + '</div>' +
+          '<div class="task-row" data-mgr-row="' + m.manager_id + '"><div class="tinfo"><div class="ttitle">' + esc(m.full_name) + '</div>' +
           '<div class="tmeta"><span>' + esc(m.email) + '</span><span>' + (m.has_login == 1 ? 'Has login' : 'No login yet') + '</span>' +
-          (!m.is_active ? '<span>Deactivated</span>' : '') + '</div></div>' +
-          '<div class="tactions">' + badge(m.role) + '</div></div>').join('')
+          (!m.is_active ? '<span>Deactivated</span>' : '') +
+          (m.temp_password ? '<span>Password: <strong>' + esc(m.temp_password) + '</strong></span>' : '') +
+          '</div></div>' +
+          '<div class="tactions">' + badge(m.role) +
+          (m.has_login == 1 ? '<button type="button" class="icon-btn" data-mgr-reset-pw="' + m.manager_id + '">Reset password</button>' : '') +
+          '</div></div>').join('')
       : '<div class="empty">No staff accounts yet.</div>';
+    listEl.querySelectorAll('[data-mgr-reset-pw]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = Number(btn.dataset.mgrResetPw);
+        btn.disabled = true;
+        try {
+          await api(PM_MANAGERS_RESET_PW_URL, { method: 'POST', body: { manager_id: id } });
+          renderStaff();
+        } catch (err) {
+          alert('Could not reset password: ' + err.message);
+          btn.disabled = false;
+        }
+      });
+    });
   } catch (err) {
     listEl.innerHTML = '<div class="empty">Could not load staff accounts (' + esc(err.message) + ').</div>';
   }
@@ -503,7 +589,7 @@ document.getElementById('newStaffForm').addEventListener('submit', async (e) => 
     e.target.reset();
     document.getElementById('staffCreatedNotice').innerHTML =
       '<div class="empty">Account created for ' + esc(result.login_email) + '. Temporary password: <strong>' +
-      esc(result.temp_password) + '</strong> — share this with them directly, it will not be shown again.</div>';
+      esc(result.temp_password) + '</strong> — also visible any time in the list below.</div>';
     renderStaff();
   } catch (err) {
     alert('Could not create account: ' + err.message);

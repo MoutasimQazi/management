@@ -28,11 +28,13 @@ const PM_CAMPAIGNS_DELETE_URL = PM_API_BASE + "pm-campaigns-delete.php";
 const pmSignedOut = document.getElementById('pmSignedOut');
 const appView     = document.getElementById('appView');
 const whoEmail    = document.getElementById('whoEmail');
+const roleBadge   = document.getElementById('roleBadge');
 const signOutBtn  = document.getElementById('signOut');
 const navLinks    = document.querySelectorAll('nav.tabs a');
 const pages       = document.querySelectorAll('.page');
 
 let session = null;
+let isAdmin = false;
 let allEmployees = [];
 let allProjects  = [];
 
@@ -124,6 +126,8 @@ function showApp(){
   pmSignedOut.classList.remove('active');
   appView.classList.add('active');
   whoEmail.textContent = session.email || 'signed in';
+  roleBadge.textContent = isAdmin ? 'Admin' : 'Marketing';
+  document.getElementById('adminBackLink').style.display = isAdmin ? '' : 'none';
   route();
 }
 signOutBtn.addEventListener('click', () => {
@@ -618,4 +622,9 @@ function wireTaskRows(root, onChanged){
    Boot
    ════════════════════════════════════════════════════ */
 session = readSession();
-if (session) showApp(); else showSignedOut();
+if (session) {
+  isAdmin = String(session.role || '').toUpperCase() === 'ADMIN';
+  showApp();
+} else {
+  showSignedOut();
+}

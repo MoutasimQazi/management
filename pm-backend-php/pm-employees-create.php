@@ -17,8 +17,8 @@ if ($email !== '') {
 }
 
 $stmt = $pdo->prepare(
-    "INSERT INTO employees (manager_id, name, department, designation, email, password_hash, token)
-     VALUES (?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO employees (manager_id, name, department, designation, email, password_hash, token, temp_password)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
 );
 $stmt->execute([
     $manager['manager_id'],
@@ -28,6 +28,7 @@ $stmt->execute([
     $email !== '' ? $email : null,
     $passwordHash,
     $token,
+    $tempPassword,
 ]);
 $result = ['success' => true, 'employee_id' => (int)$pdo->lastInsertId()];
 if ($tempPassword) { $result['login_email'] = $email; $result['temp_password'] = $tempPassword; }

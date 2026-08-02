@@ -18,7 +18,7 @@ if ($email !== '' && !$existing['token']) {
     // First time this employee gets an email — provision their login now.
     $tempPassword = randomTempPassword();
     $stmt = $pdo->prepare(
-        "UPDATE employees SET name = ?, department = ?, designation = ?, email = ?, password_hash = ?, token = ?
+        "UPDATE employees SET name = ?, department = ?, designation = ?, email = ?, password_hash = ?, token = ?, temp_password = ?
          WHERE employee_id = ?"
     );
     $stmt->execute([
@@ -28,6 +28,7 @@ if ($email !== '' && !$existing['token']) {
         $email,
         password_hash($tempPassword, PASSWORD_DEFAULT),
         randomToken(),
+        $tempPassword,
         $b['employee_id'],
     ]);
     $result['login_email'] = $email;

@@ -6,17 +6,25 @@ require 'auth.php';
 // HR/ADMIN can approve or reject (see pm-leave-review.php).
 $user = requireUser($pdo, $USERS);
 
-$sql = "SELECT l.leave_id, l.employee_id, e.name AS employee_name, l.start_date, l.end_date, l.reason,
-               l.status, l.reviewed_by, m.full_name AS reviewed_by_name, l.reviewed_at, l.created_at
+$sql = "SELECT l.leave_id, l.employee_id, l.manager_id,
+               COALESCE(e.name, req.full_name) AS employee_name,
+               l.start_date, l.end_date, l.reason,
+               l.status, l.reviewed_by, rvm.full_name AS reviewed_by_name, l.reviewed_at, l.created_at
         FROM leave_requests l
-        JOIN employees e ON e.employee_id = l.employee_id
-        LEFT JOIN managers m ON m.manager_id = l.reviewed_by
+        LEFT JOIN employees e ON e.employee_id = l.employee_id
+        LEFT JOIN managers req ON req.manager_id = l.manager_id
+        LEFT JOIN managers rvm ON rvm.manager_id = l.reviewed_by
         WHERE 1=1";
 $params = [];
 
-if (!empty($_GET['mine']) && $user['user_type'] === 'EMPLOYEE') {
-    $sql .= " AND l.employee_id = ?";
-    $params[] = $user['id'];
+if (!empty($_GET['mine'])) {
+    if ($user['user_type'] === 'EMPLOYEE') {
+        $sql .= " AND l.employee_id = ?";
+        $params[] = $user['id'];
+    } else {
+        $sql .= " AND l.manager_id = ?";
+        $params[] = $user['id'];
+    }
 }
 if (!empty($_GET['status'])) {
     $sql .= " AND l.status = ?";

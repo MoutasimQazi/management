@@ -16,8 +16,8 @@ if ($fullName === '' || $email === '') {
 
 $tempPassword = randomTempPassword();
 $stmt = $pdo->prepare(
-    "INSERT INTO managers (full_name, email, role, is_active, password_hash, token)
-     VALUES (?, ?, ?, 1, ?, ?)"
+    "INSERT INTO managers (full_name, email, role, is_active, password_hash, token, temp_password)
+     VALUES (?, ?, ?, 1, ?, ?, ?)"
 );
 $stmt->execute([
     $fullName,
@@ -25,6 +25,7 @@ $stmt->execute([
     $role,
     password_hash($tempPassword, PASSWORD_DEFAULT),
     randomToken(),
+    $tempPassword,
 ]);
 echo json_encode([
     'success' => true,

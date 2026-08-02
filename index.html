@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="projects.css">
 
 </head>
 
@@ -123,6 +124,25 @@
         </div>
       </div>
 
+      <!-- Managers/Admins can file their own leave here too, not just employees. -->
+      <div class="panel-head">
+        <h2>My leave</h2>
+        <span class="spacer"></span>
+        <button type="button" class="btn-sm" id="myLeaveToggle" style="border:none">+ Request leave</button>
+      </div>
+      <form id="myLeaveForm" class="inline-form">
+        <div class="row">
+          <div class="field"><label>From</label><input id="myLeaveStart" type="date" required /></div>
+          <div class="field"><label>To</label><input id="myLeaveEnd" type="date" required /></div>
+        </div>
+        <div class="field"><label>Reason <span class="opt">— optional</span></label><input id="myLeaveReason" placeholder="e.g. Family trip" /></div>
+        <div class="actions">
+          <button type="submit">Request leave</button>
+          <button type="button" class="secondary" id="myLeaveCancelBtn">Cancel</button>
+        </div>
+      </form>
+      <div id="myLeaveList" style="margin-bottom:24px"></div>
+
       <!-- Live summary from the Project Management module, same session token —
            Projects is the primary tool, so its status leads the dashboard. -->
       <div class="panel-head">
@@ -140,6 +160,23 @@
         <div class="sect actionitems today">
           <ul id="pmAttentionList"></ul>
         </div>
+      </div>
+
+      <!-- Admin-only: HR + Marketing at a glance, with a way into each. -->
+      <div id="hrMktPanel" style="display:none; margin-bottom:24px">
+        <div class="panel-head">
+          <h2>HR</h2>
+          <span class="spacer"></span>
+          <a class="more" href="hr.html">Open HR →</a>
+        </div>
+        <div class="stats" id="hrStats"></div>
+
+        <div class="panel-head">
+          <h2>Marketing</h2>
+          <span class="spacer"></span>
+          <a class="more" href="marketing.html">Open Marketing →</a>
+        </div>
+        <div class="stats" id="mktStats"></div>
       </div>
 
       <div class="panel-head"><h2>Fireflies</h2></div>
@@ -281,6 +318,10 @@
     const PM_TASKS_LIST_URL      = PM_API_BASE + "pm-tasks-list.php";
     const PM_QUESTIONS_LIST_URL  = PM_API_BASE + "pm-questions-list.php";
     const PM_LEAVE_LIST_URL      = PM_API_BASE + "pm-leave-list.php";
+    const PM_LEAVE_CREATE_URL    = PM_API_BASE + "pm-leave-create.php";
+    const PM_OPENINGS_LIST_URL   = PM_API_BASE + "pm-openings-list.php";
+    const PM_CANDIDATES_LIST_URL = PM_API_BASE + "pm-candidates-list.php";
+    const PM_CAMPAIGNS_LIST_URL  = PM_API_BASE + "pm-campaigns-list.php";
 
     // DB-backed login for HR / Marketing / Employee accounts — n8n's
     // LOGIN_URL above is tried first (unchanged, for the 6 existing
@@ -323,6 +364,7 @@
     const leavePanel   = document.getElementById('leavePanel');
     const leaveCount   = document.getElementById('leaveCount');
     const leaveList    = document.getElementById('leaveList');
+    const myLeaveList  = document.getElementById('myLeaveList');
     const navLinks    = document.querySelectorAll('nav.tabs a');
     const pages       = document.querySelectorAll('.page');
 
@@ -533,6 +575,8 @@
       loadMeetings();
       loadProjectsSummary();
       loadLeavePanel();
+      loadMyLeave();
+      if (session.role === 'ADMIN') loadHrMktSummary();
       route();
     }
 
@@ -642,6 +686,8 @@
       pmAttentionList.innerHTML = '';
       leavePanel.style.display = 'none';
       leaveList.innerHTML = '';
+      myLeaveList.innerHTML = '';
+      document.getElementById('hrMktPanel').style.display = 'none';
       showLogin('Signed out.');
       setStatus(loginStatus, '', '');
     });
@@ -1053,6 +1099,106 @@
           '<span class="src">' + esc(fmtDay(r.start_date)) + ' – ' + esc(fmtDay(r.end_date)) + '</span></li>').join('');
       } catch (_) {
         leavePanel.style.display = 'none';
+      }
+    }
+
+    // My own leave requests (managers/admins file for themselves here,
+    // same backend employees use — just without an employee_id).
+    async function loadMyLeave(){
+      const session = readSession();
+      if (!session) return;
+      myLeaveList.innerHTML = '<div class="empty">Loading…</div>';
+      try {
+        const res = await fetch(PM_LEAVE_LIST_URL + '?mine=1', {
+          headers: { 'Authorization': 'Bearer ' + session.token }
+        });
+        if (!res.ok) throw new Error('status ' + res.status);
+        const rows = await res.json();
+        myLeaveList.innerHTML = rows.length
+          ? rows.map(r =>
+              '<div class="leave-row"><div class="linfo"><div class="ltitle">' +
+              esc(fmtDay(r.start_date)) + ' – ' + esc(fmtDay(r.end_date)) + '</div>' +
+              '<div class="lmeta">' + (r.reason ? '<span>' + esc(r.reason) + '</span>' : '') + '</div></div>' +
+              '<div class="tactions"><span class="status-badge ' + esc(String(r.status).toLowerCase()) + '">' +
+              esc(r.status) + '</span></div></div>').join('')
+          : '<div class="empty">No leave requests yet.</div>';
+      } catch (err) {
+        myLeaveList.innerHTML = '<div class="empty">Could not load your leave requests (' + esc(err.message) + ').</div>';
+      }
+    }
+    document.getElementById('myLeaveToggle').addEventListener('click', () => {
+      document.getElementById('myLeaveForm').classList.toggle('open');
+    });
+    document.getElementById('myLeaveCancelBtn').addEventListener('click', () => {
+      document.getElementById('myLeaveForm').classList.remove('open');
+    });
+    document.getElementById('myLeaveForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const session = readSession();
+      if (!session) return;
+      const start_date = document.getElementById('myLeaveStart').value;
+      const end_date = document.getElementById('myLeaveEnd').value;
+      const reason = document.getElementById('myLeaveReason').value.trim();
+      if (!start_date || !end_date) return;
+      try {
+        const res = await fetch(PM_LEAVE_CREATE_URL, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + session.token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ start_date, end_date, reason })
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.error || ('status ' + res.status));
+        }
+        e.target.reset();
+        e.target.classList.remove('open');
+        loadMyLeave();
+      } catch (err) {
+        alert('Could not submit leave request: ' + err.message);
+      }
+    });
+
+    // Admin-only HR + Marketing glance — only an ADMIN token can call the
+    // HR endpoints at all, so this is never attempted for a plain manager.
+    async function loadHrMktSummary(){
+      const session = readSession();
+      if (!session) return;
+      const panel = document.getElementById('hrMktPanel');
+      const hrStats = document.getElementById('hrStats');
+      const mktStats = document.getElementById('mktStats');
+      const headers = { 'Authorization': 'Bearer ' + session.token };
+      const getJson = (url) => fetch(url, { headers }).then(res => {
+        if (!res.ok) throw new Error('status ' + res.status);
+        return res.json();
+      });
+
+      try {
+        const [openingsR, candidatesR, leaveR, campaignsR] = await Promise.allSettled([
+          getJson(PM_OPENINGS_LIST_URL),
+          getJson(PM_CANDIDATES_LIST_URL),
+          getJson(PM_LEAVE_LIST_URL + '?status=PENDING'),
+          getJson(PM_CAMPAIGNS_LIST_URL)
+        ]);
+        const val = r => (r.status === 'fulfilled' && Array.isArray(r.value)) ? r.value : [];
+        const openings   = val(openingsR);
+        const candidates = val(candidatesR);
+        const pendingLeave = val(leaveR);
+        const campaigns   = val(campaignsR);
+
+        panel.style.display = '';
+        hrStats.innerHTML = [
+          { num: openings.filter(o => o.status === 'OPEN').length, lbl: 'Open roles' },
+          { num: candidates.length, lbl: 'Candidates in pipeline' },
+          { num: pendingLeave.length, lbl: 'Pending leave' }
+        ].map(t => '<div class="stat"><div class="num">' + t.num + '</div><div class="lbl">' + esc(t.lbl) + '</div></div>').join('');
+
+        mktStats.innerHTML = [
+          { num: campaigns.length, lbl: 'Total campaigns' },
+          { num: campaigns.filter(c => c.status === 'IN_PROGRESS').length, lbl: 'In progress' },
+          { num: campaigns.filter(c => c.status === 'PUBLISHED').length, lbl: 'Published' }
+        ].map(t => '<div class="stat"><div class="num">' + t.num + '</div><div class="lbl">' + esc(t.lbl) + '</div></div>').join('');
+      } catch (_) {
+        panel.style.display = 'none';
       }
     }
 
