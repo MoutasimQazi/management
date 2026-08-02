@@ -291,22 +291,34 @@ async function renderProjects(){
   grid.innerHTML = '<div class="empty">Loading…</div>';
   try {
     await Promise.all([loadEmployees(), loadProjects()]);
-    grid.innerHTML = allProjects.length
-      ? allProjects.map(projectCard).join('')
+    grid.innerHTML = allProjects.length ? projectsTable(allProjects)
       : '<div class="empty">No projects yet. Create your first one above.</div>';
+    wireProjectRowClicks(grid);
   } catch (err) {
     grid.innerHTML = '<div class="empty">Could not load projects (' + esc(err.message) + ').</div>';
   }
 }
-function projectCard(p){
-  return '<a class="project-card" href="#/project/' + p.project_id + '">' +
-    '<h3>' + esc(p.project_name) + '</h3>' +
-    (p.client_name ? '<p><strong>' + esc(p.client_name) + '</strong></p>' : '') +
-    (p.description ? '<p>' + esc(p.description) + '</p>' : '') +
-    '<div class="pcmeta">' + badge(p.status) + prioBadge(p.priority) +
-      (p.due_date ? '<span>Due ' + esc(fmtDay(p.due_date)) + '</span>' : '') +
-    '</div>' +
-  '</a>';
+function projectsTable(rows){
+  return '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+    '<th>Project</th><th>Client</th><th>Status</th><th>Priority</th><th>Due</th>' +
+    '</tr></thead><tbody>' +
+    rows.map(projectRow).join('') +
+    '</tbody></table></div>';
+}
+function projectRow(p){
+  return '<tr class="clickable" data-project-row="' + p.project_id + '">' +
+    '<td><div class="ttitle">' + esc(p.project_name) + '</div>' +
+      (p.description ? '<div class="tsub">' + esc(p.description) + '</div>' : '') + '</td>' +
+    '<td>' + esc(p.client_name || '—') + '</td>' +
+    '<td>' + badge(p.status) + '</td>' +
+    '<td>' + prioBadge(p.priority) + '</td>' +
+    '<td class="nowrap">' + (p.due_date ? esc(fmtDay(p.due_date)) : '—') + '</td>' +
+  '</tr>';
+}
+function wireProjectRowClicks(root){
+  root.querySelectorAll('tr[data-project-row]').forEach(tr => {
+    tr.addEventListener('click', () => { location.hash = '#/project/' + tr.dataset.projectRow; });
+  });
 }
 document.getElementById('newProjectToggle').addEventListener('click', () => {
   document.getElementById('newProjectForm').classList.toggle('open');
@@ -328,7 +340,9 @@ document.getElementById('newProjectForm').addEventListener('submit', async (e) =
     e.target.reset();
     e.target.classList.remove('open');
     await loadProjects();
-    document.getElementById('projectsGrid').innerHTML = allProjects.map(projectCard).join('');
+    const grid = document.getElementById('projectsGrid');
+    grid.innerHTML = allProjects.length ? projectsTable(allProjects) : '<div class="empty">No projects yet. Create your first one above.</div>';
+    wireProjectRowClicks(grid);
   } catch (err) {
     alert('Could not create project: ' + err.message);
   }
@@ -472,9 +486,9 @@ async function renderProjectDetail(projectId){
     window.__mktProjectTasks = tasksForProject;
     const listEl = document.getElementById('projectTasksList');
     listEl.innerHTML = tasksForProject.length
-      ? tasksForProject.map(t => taskRow(t, { showProject: false })).join('')
+      ? tasksTable(tasksForProject, { showProject: false })
       : '<div class="empty">No tasks yet. Add the first one above.</div>';
-    wireTaskRows(listEl, () => renderProjectDetail(projectId));
+    wireTaskRows(listEl, () => renderProjectDetail(projectId), { showProject: false });
   } catch (err) {
     el.innerHTML = '<div class="empty">Could not load project (' + esc(err.message) + ').</div>';
   }
@@ -503,12 +517,21 @@ function applyTasksFilter(){
   const tasks = window.__mktAllTasks || [];
   const rows = filter ? tasks.filter(t => t.status === filter) : tasks;
   listEl.innerHTML = rows.length
-    ? rows.map(t => taskRow(t, { showProject: true })).join('')
+    ? tasksTable(rows, { showProject: true })
     : '<div class="empty">No tasks match this filter.</div>';
-  wireTaskRows(listEl, renderTasks);
+  wireTaskRows(listEl, renderTasks, { showProject: true });
 }
 document.getElementById('tasksFilter').addEventListener('change', applyTasksFilter);
 
+function tasksTable(rows, opts){
+  opts = opts || {};
+  return '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+    '<th>Task</th><th>Assignee</th>' + (opts.showProject ? '<th>Project</th>' : '') +
+    '<th>Est.</th><th>Progress</th><th>Priority</th><th>Status</th><th></th>' +
+    '</tr></thead><tbody>' +
+    rows.map(t => taskRow(t, opts)).join('') +
+    '</tbody></table></div>';
+}
 function taskRow(t, opts){
   opts = opts || {};
   const options = ['TODO','IN_PROGRESS','BLOCKED','COMPLETED','CANCELLED']
@@ -517,40 +540,42 @@ function taskRow(t, opts){
   const selectHtml =
     '<select class="status-select" data-task-id="' + t.task_id + '">' +
       '<option value="">Move to…</option>' + options.join('') + '</select>';
-  return '<div class="task-row" data-task-row="' + t.task_id + '">' +
-    '<div class="tinfo"><div class="ttitle">' + esc(t.task_name) + '</div>' +
-      '<div class="tmeta">' +
-        '<span>' + esc(t.employee_name || 'Unassigned') + '</span>' +
-        (opts.showProject && t.project_id
-          ? '<a class="xref" href="#/project/' + t.project_id + '">' + esc(t.project_name || '') + '</a>'
-          : (opts.showProject ? '<span>' + esc(t.project_name || '') + '</span>' : '')) +
-        (t.eta_hours != null ? '<span>Est. ' + esc(t.eta_hours) + 'h</span>' : '') +
-        (t.progress_percentage != null ? '<span>' + t.progress_percentage + '%</span>' : '') +
-      '</div></div>' +
-    '<div class="tactions">' + prioBadge(t.priority) + badge(t.status) + selectHtml +
+  return '<tr data-task-row="' + t.task_id + '">' +
+    '<td><div class="ttitle">' + esc(t.task_name) + '</div>' +
+      (t.description ? '<div class="tsub">' + esc(t.description) + '</div>' : '') + '</td>' +
+    '<td>' + esc(t.employee_name || 'Unassigned') + '</td>' +
+    (opts.showProject
+      ? '<td>' + (t.project_id ? '<a class="xref" href="#/project/' + t.project_id + '">' + esc(t.project_name || '') + '</a>' : '—') + '</td>'
+      : '') +
+    '<td class="nowrap">' + (t.eta_hours != null ? esc(t.eta_hours) + 'h' : '—') + '</td>' +
+    '<td class="nowrap">' + (t.progress_percentage != null ? t.progress_percentage + '%' : '—') + '</td>' +
+    '<td>' + prioBadge(t.priority) + '</td>' +
+    '<td>' + badge(t.status) + '</td>' +
+    '<td class="actions-cell">' + selectHtml +
       '<button type="button" class="icon-btn" data-task-edit="' + t.task_id + '">Edit</button>' +
       '<button type="button" class="icon-btn danger" data-task-delete="' + t.task_id + '">Delete</button>' +
-    '</div></div>';
+    '</td></tr>';
 }
-function taskEditForm(t){
+function taskEditForm(t, opts){
   const empOptions = allEmployees.map(e =>
     '<option value="' + e.employee_id + '"' + (e.employee_id === t.employee_id ? ' selected' : '') + '>' + esc(e.name) + '</option>').join('');
-  return '<div class="task-row edit-row" data-task-row="' + t.task_id + '">' +
-    '<div class="row" style="flex:1">' +
-      '<div class="field"><input value="' + esc(t.task_name) + '" data-task-field="task_name" placeholder="Task name" /></div>' +
-      '<div class="field"><select data-task-field="employee_id">' + empOptions + '</select></div>' +
-      '<div class="field"><input type="number" min="0" step="0.5" placeholder="Est. hours" value="' + esc(t.eta_hours != null ? t.eta_hours : '') + '" data-task-field="eta_hours" /></div>' +
-      '<div class="field"><select data-task-field="priority">' +
+  const colspan = (opts && opts.showProject) ? 8 : 7;
+  return '<tr data-task-row="' + t.task_id + '"><td colspan="' + colspan + '" class="edit-row-cell">' +
+    '<div class="row">' +
+      '<input value="' + esc(t.task_name) + '" data-task-field="task_name" placeholder="Task name" />' +
+      '<select data-task-field="employee_id">' + empOptions + '</select>' +
+      '<input type="number" min="0" step="0.5" placeholder="Est. hours" value="' + esc(t.eta_hours != null ? t.eta_hours : '') + '" data-task-field="eta_hours" />' +
+      '<select data-task-field="priority">' +
         ['LOW','MEDIUM','HIGH','CRITICAL'].map(p => '<option value="' + p + '"' + (t.priority === p ? ' selected' : '') + '>' + statusLabel(p) + '</option>').join('') +
-      '</select></div>' +
-      '<div class="field" style="grid-column:1/-1"><input value="' + esc(t.description || '') + '" data-task-field="description" placeholder="Description" /></div>' +
+      '</select>' +
+      '<input value="' + esc(t.description || '') + '" data-task-field="description" placeholder="Description" />' +
     '</div>' +
-    '<div class="tactions">' +
+    '<div class="actions">' +
       '<button type="button" class="icon-btn" data-task-save="' + t.task_id + '">Save</button>' +
       '<button type="button" class="icon-btn" data-task-cancel="' + t.task_id + '">Cancel</button>' +
-    '</div></div>';
+    '</div></td></tr>';
 }
-function wireTaskRows(root, onChanged){
+function wireTaskRows(root, onChanged, opts){
   root.querySelectorAll('select[data-task-id]').forEach(sel => {
     sel.addEventListener('change', async () => {
       const status = sel.value;
@@ -574,8 +599,8 @@ function wireTaskRows(root, onChanged){
                 (window.__mktProjectTasks || []).find(x => x.task_id === id);
       if (!t) return;
       const rowEl = root.querySelector('[data-task-row="' + id + '"]');
-      rowEl.outerHTML = taskEditForm(t);
-      wireTaskRows(root, onChanged);
+      rowEl.outerHTML = taskEditForm(t, opts);
+      wireTaskRows(root, onChanged, opts);
     });
   });
   root.querySelectorAll('[data-task-cancel]').forEach(btn => {

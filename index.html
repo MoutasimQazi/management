@@ -773,29 +773,32 @@
       }
     }
 
-    function meetingCard(m){
+function meetingsTable(rows){
+      return '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+        '<th>Meeting</th><th>Date</th><th>ID</th><th>Gist</th><th></th>' +
+        '</tr></thead><tbody>' + rows.map(meetingRow).join('') + '</tbody></table></div>';
+    }
+    function meetingRow(m){
       const idx  = allMeetings.indexOf(m);
       const name = esc(m['Meet Name'] || 'Untitled meeting');
       const date = esc(fmtDate(m.MeetDate));
       const id   = esc(m['Meet Id'] || '');
       const gist = esc(m.ShortSummary || m.Gist || '');
       const rec  = m['Meet link']
-        ? '<a class="rec" href="' + esc(m['Meet link']) + '" target="_blank" rel="noopener">▶ Recording</a>'
+        ? '<a class="rec" href="' + esc(m['Meet link']) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">▶ Recording</a>'
         : '';
-      return (
-        '<article class="meeting">' +
-          '<h3 data-tr>' + name + '</h3>' +
-          '<div class="meta">' +
-            (date ? '<span class="chip date">' + date + '</span>' : '') +
-            (id   ? '<span class="chip id">ID ' + id + '</span>' : '') +
-          '</div>' +
-          (gist ? '<p class="gist" data-tr>' + gist + '</p>' : '') +
-          '<div class="actions">' +
-            '<a class="btn-sm" href="#/meeting/' + idx + '">View details</a>' +
-            rec +
-          '</div>' +
-        '</article>'
-      );
+      return '<tr class="clickable" data-meeting-row="' + idx + '">' +
+        '<td><div class="ttitle" data-tr>' + name + '</div></td>' +
+        '<td class="nowrap">' + (date || '—') + '</td>' +
+        '<td class="nowrap">' + (id || '—') + '</td>' +
+        '<td>' + (gist ? '<span class="tsub" data-tr>' + gist + '</span>' : '—') + '</td>' +
+        '<td class="actions-cell">' + rec + '</td>' +
+      '</tr>';
+    }
+    function wireMeetingRowClicks(root){
+      root.querySelectorAll('tr[data-meeting-row]').forEach(tr => {
+        tr.addEventListener('click', () => { location.hash = '#/meeting/' + tr.dataset.meetingRow; });
+      });
     }
 
     function renderAll(){
@@ -818,8 +821,9 @@
 
       // recent (top 3)
       recentEl.innerHTML = allMeetings.length
-        ? allMeetings.slice(0, 3).map(meetingCard).join('')
+        ? meetingsTable(allMeetings.slice(0, 3))
         : '<div class="empty">No meeting summaries yet.<br>They\'ll appear here after Fireflies records a call.</div>';
+      wireMeetingRowClicks(recentEl);
       translateWithin(recentEl);
 
       renderMeetingList();
@@ -844,7 +848,8 @@
         meetingsEl.innerHTML = '<div class="empty">No meetings match “' + esc(q) + '”.</div>';
         return;
       }
-      meetingsEl.innerHTML = rows.map(meetingCard).join('');
+      meetingsEl.innerHTML = meetingsTable(rows);
+      wireMeetingRowClicks(meetingsEl);
       translateWithin(meetingsEl);
     }
 
@@ -965,18 +970,18 @@
       }
 
       const visible = rows.slice(0, actionsShown);
-      listEl.innerHTML = visible.map(r =>
-        '<div class="arow">' +
-          '<span class="avatar" title="' + esc(r.who) + '">' + esc(initialsOf(r.who)) + '</span>' +
-          '<span class="body">' +
-            '<span class="task" data-tr>' + esc(r.text) + '</span>' +
-            '<span class="meta">' +
-              '<span class="who" data-tr>' + esc(r.who) + '</span>' +
-              '<span data-tr>' + esc(r.meeting) + '</span>' +
-              (r.date ? '<span>' + esc(fmtDate(r.date)) + '</span>' : '') +
-            '</span>' +
-          '</span>' +
-        '</div>').join('');
+      listEl.innerHTML =
+        '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+          '<th>Task</th><th>Person</th><th>Meeting</th><th>Date</th>' +
+        '</tr></thead><tbody>' +
+        visible.map(r =>
+          '<tr>' +
+            '<td><span data-tr>' + esc(r.text) + '</span></td>' +
+            '<td><span data-tr>' + esc(r.who) + '</span></td>' +
+            '<td><span data-tr>' + esc(r.meeting) + '</span></td>' +
+            '<td class="nowrap">' + (r.date ? esc(fmtDate(r.date)) : '—') + '</td>' +
+          '</tr>').join('') +
+        '</tbody></table></div>';
 
       if (rows.length > visible.length) {
         moreBtn.style.display = '';

@@ -143,8 +143,7 @@ async function renderTasks(){
   listEl.innerHTML = '<div class="empty">Loading…</div>';
   try {
     myTasks = await api(PM_TASKS_LIST_URL);
-    listEl.innerHTML = myTasks.length
-      ? myTasks.map(taskRow).join('')
+    listEl.innerHTML = myTasks.length ? tasksTable(myTasks)
       : '<div class="empty">No tasks assigned to you yet.</div>';
     wireTaskRows(listEl);
   } catch (err) {
@@ -152,6 +151,11 @@ async function renderTasks(){
   }
 }
 
+function tasksTable(rows){
+  return '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+    '<th>Task</th><th>Project</th><th>Est.</th><th>Progress</th><th>Priority</th><th>Status</th><th></th>' +
+    '</tr></thead><tbody>' + rows.map(taskRow).join('') + '</tbody></table></div>';
+}
 function taskRow(t){
   const options = ['TODO','IN_PROGRESS','BLOCKED','COMPLETED','CANCELLED']
     .filter(s => s !== t.status)
@@ -159,19 +163,18 @@ function taskRow(t){
   const selectHtml =
     '<select class="status-select" data-task-id="' + t.task_id + '">' +
       '<option value="">Move to…</option>' + options.join('') + '</select>';
-  return '<div class="task-row" data-task-row="' + t.task_id + '">' +
-    '<div class="tinfo"><div class="ttitle">' + esc(t.task_name) + '</div>' +
-      '<div class="tmeta">' +
-        '<span>' + esc(t.project_name || '') + '</span>' +
-        (t.eta_hours != null ? '<span>Est. ' + esc(t.eta_hours) + 'h</span>' : '') +
-        (t.progress_percentage != null ? '<span>' + t.progress_percentage + '% done</span>' : '') +
-      '</div>' +
-      (t.description ? '<div class="tmeta">' + esc(t.description) + '</div>' : '') +
-    '</div>' +
-    '<div class="tactions">' + prioBadge(t.priority) + badge(t.status) + selectHtml +
+  return '<tr data-task-row="' + t.task_id + '">' +
+    '<td><div class="ttitle">' + esc(t.task_name) + '</div>' +
+      (t.description ? '<div class="tsub">' + esc(t.description) + '</div>' : '') + '</td>' +
+    '<td>' + esc(t.project_name || '—') + '</td>' +
+    '<td class="nowrap">' + (t.eta_hours != null ? esc(t.eta_hours) + 'h' : '—') + '</td>' +
+    '<td class="nowrap">' + (t.progress_percentage != null ? t.progress_percentage + '%' : '—') + '</td>' +
+    '<td>' + prioBadge(t.priority) + '</td>' +
+    '<td>' + badge(t.status) + '</td>' +
+    '<td class="actions-cell">' + selectHtml +
       '<input type="number" min="0" max="100" step="5" placeholder="%" style="width:60px" data-progress-input="' + t.task_id + '" />' +
       '<button type="button" class="icon-btn" data-progress-save="' + t.task_id + '">Save %</button>' +
-    '</div></div>';
+    '</td></tr>';
 }
 
 function wireTaskRows(root){
