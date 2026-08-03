@@ -20,7 +20,6 @@ const PM_CANDIDATES_LIST_URL  = PM_API_BASE + "pm-candidates-list.php";
 const PM_CANDIDATES_CREATE_URL= PM_API_BASE + "pm-candidates-create.php";
 const PM_CANDIDATES_UPDATE_URL= PM_API_BASE + "pm-candidates-update.php";
 const PM_LEAVE_LIST_URL       = PM_API_BASE + "pm-leave-list.php";
-const PM_LEAVE_REVIEW_URL     = PM_API_BASE + "pm-leave-review.php";
 const PM_MANAGERS_LIST_URL    = PM_API_BASE + "pm-managers-list.php";
 const PM_MANAGERS_CREATE_URL  = PM_API_BASE + "pm-managers-create.php";
 
@@ -336,6 +335,9 @@ function currentMonth(){
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 }
+// HR tracks leave — approval itself happens on the manager's side (their
+// dashboard), so this page is read-only: the monthly summary plus every
+// request and who it's waiting on / was decided by.
 async function renderLeave(){
   const pendingEl = document.getElementById('pendingLeaveList');
   const allEl = document.getElementById('allLeaveList');
@@ -366,48 +368,27 @@ async function renderLeave(){
     const pending = all.filter(r => r.status === 'PENDING');
     document.getElementById('pendingCount').textContent = String(pending.length);
     pendingEl.innerHTML = pending.length
-      ? pending.map(r => leaveRow(r, true)).join('')
-      : '<div class="empty">Nothing waiting on a decision.</div>';
-    wireLeaveRows(pendingEl);
+      ? pending.map(leaveRow).join('')
+      : '<div class="empty">Nothing pending with a manager right now.</div>';
 
     document.getElementById('allLeaveCount').textContent = String(all.length);
     allEl.innerHTML = all.length
-      ? all.map(r => leaveRow(r, false)).join('')
+      ? all.map(leaveRow).join('')
       : '<div class="empty">No leave requests yet.</div>';
   } catch (err) {
     pendingEl.innerHTML = '<div class="empty">Could not load leave (' + esc(err.message) + ').</div>';
   }
 }
-function leaveRow(r, withActions){
+function leaveRow(r){
   return '<div class="leave-row" data-leave-row="' + r.leave_id + '">' +
     '<div class="linfo"><div class="ltitle">' + esc(r.employee_name) + '</div>' +
       '<div class="lmeta">' +
         '<span>' + esc(fmtDay(r.start_date)) + ' – ' + esc(fmtDay(r.end_date)) + '</span>' +
         (r.reason ? '<span>' + esc(r.reason) + '</span>' : '') +
+        (r.approver_names ? '<span>To ' + esc(r.approver_names) + '</span>' : '') +
         (r.reviewed_by_name ? '<span>Reviewed by ' + esc(r.reviewed_by_name) + '</span>' : '') +
       '</div></div>' +
-    '<div class="tactions">' + badge(r.status) +
-      (withActions
-        ? '<button type="button" class="icon-btn" data-leave-approve="' + r.leave_id + '">Approve</button>' +
-          '<button type="button" class="icon-btn danger" data-leave-reject="' + r.leave_id + '">Reject</button>'
-        : '') +
-    '</div></div>';
-}
-function wireLeaveRows(root){
-  root.querySelectorAll('[data-leave-approve]').forEach(btn => {
-    btn.addEventListener('click', () => reviewLeave(Number(btn.dataset.leaveApprove), 'APPROVED'));
-  });
-  root.querySelectorAll('[data-leave-reject]').forEach(btn => {
-    btn.addEventListener('click', () => reviewLeave(Number(btn.dataset.leaveReject), 'REJECTED'));
-  });
-}
-async function reviewLeave(leaveId, status){
-  try {
-    await api(PM_LEAVE_REVIEW_URL, { method: 'POST', body: { leave_id: leaveId, status } });
-    renderLeave();
-  } catch (err) {
-    alert('Could not update leave request: ' + err.message);
-  }
+    '<div class="tactions">' + badge(r.status) + '</div></div>';
 }
 
 /* ════════════════════════════════════════════════════

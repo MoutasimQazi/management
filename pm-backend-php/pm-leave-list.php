@@ -32,8 +32,9 @@ if (!empty($_GET['mine'])) {
 }
 if (!empty($_GET['approvals'])) {
     // Pending requests waiting on the calling manager: ones that name
-    // them as an approver — ADMIN sees every pending request.
-    if ($user['user_type'] !== 'STAFF') {
+    // them as an approver — ADMIN sees every pending request. HR tracks
+    // but doesn't approve, so it's excluded here too.
+    if ($user['user_type'] !== 'STAFF' || $user['role'] === 'HR') {
         http_response_code(403);
         echo json_encode(['error' => 'Only managers review leave requests.']);
         exit;

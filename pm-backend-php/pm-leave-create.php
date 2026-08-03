@@ -44,10 +44,13 @@ if (!$approverIds) {
     exit;
 }
 
-// Keep only real, active manager rows out of whatever the client sent.
+// Keep only real, active, approval-eligible manager rows out of whatever
+// the client sent — leave approval is a manager-side responsibility, so
+// HR accounts are never valid approvers even if a client tries to send one.
 $placeholders = implode(',', array_fill(0, count($approverIds), '?'));
 $check = $pdo->prepare(
-    "SELECT manager_id FROM managers WHERE is_active = 1 AND manager_id IN ($placeholders)"
+    "SELECT manager_id FROM managers
+     WHERE is_active = 1 AND role IN ('ADMIN', 'MANAGER', 'MARKETING') AND manager_id IN ($placeholders)"
 );
 $check->execute($approverIds);
 $validIds = array_column($check->fetchAll(), 'manager_id');

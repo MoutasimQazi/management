@@ -6,7 +6,10 @@ require 'auth.php';
 $user = requireUser($pdo, $USERS);
 $b = body();
 
-if ($user['user_type'] !== 'STAFF') {
+// Leave approval is a manager-side responsibility — HR tracks requests
+// but doesn't decide them, so HR (and non-staff) accounts are blocked
+// here even if one somehow ended up listed as an approver.
+if ($user['user_type'] !== 'STAFF' || $user['role'] === 'HR') {
     http_response_code(403);
     echo json_encode(['error' => 'Only managers review leave requests.']);
     exit;
