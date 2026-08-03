@@ -127,7 +127,7 @@ function showApp(){
   appView.classList.add('active');
   whoEmail.textContent = session.email || 'signed in';
   roleBadge.textContent = isAdmin ? 'Admin' : 'Marketing';
-  document.getElementById('adminBackLink').style.display = isAdmin ? '' : 'none';
+  document.querySelectorAll('.nav-admin').forEach(a => { a.hidden = !isAdmin; });
   route();
 }
 signOutBtn.addEventListener('click', () => {

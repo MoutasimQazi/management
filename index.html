@@ -94,6 +94,8 @@
         <a href="projects.html" data-nav="pm">Projects</a>
         <a href="#/meetings"  data-nav="meetings">Meetings</a>
         <a href="#/actions"   data-nav="actions">Action items</a>
+        <a href="hr.html" class="nav-admin" hidden>HR</a>
+        <a href="marketing.html" class="nav-admin" hidden>Marketing</a>
       </nav>
 
       <span class="spacer"></span>
@@ -580,6 +582,8 @@
       appView.classList.add('active');
       whoEmail.textContent = session.email || 'signed in';
       setStatus(statusEl, '', '');
+      const isAdmin = String(session.role || '').toUpperCase() === 'ADMIN';
+      document.querySelectorAll('.nav-admin').forEach(a => { a.hidden = !isAdmin; });
       loadMeetings();
       loadProjectsSummary();
       loadLeavePanel();

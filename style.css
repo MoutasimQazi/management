@@ -25,6 +25,18 @@
    ══════════════════════════════════════════════════════ */
 *{ box-sizing:border-box; }
 html, body{ margin:0; min-height:100%; }
+/* Keeps anything scrolled-to clear of the sticky topbar. */
+html{ scroll-padding-top:80px; }
+
+/* Links and buttons had no visible keyboard focus at all — this only
+   shows for keyboard users, so it costs the mouse experience nothing. */
+a:focus-visible,
+button:focus-visible,
+select:focus-visible{
+  outline:2px solid var(--brand);
+  outline-offset:2px;
+  border-radius:6px;
+}
 
 body{
   background:
@@ -402,42 +414,52 @@ button:disabled .btn-spinner{ border-color:rgba(168,162,154,.4); border-top-colo
 .topbar{
   display:flex;
   align-items:center;
-  gap:14px;
-  background:var(--surface);
+  gap:12px;
+  background:rgba(255,255,255,.88);
+  backdrop-filter:blur(12px);
   border:1px solid var(--line);
   border-radius:16px;
-  padding:10px 16px;
+  padding:9px 14px;
   margin-bottom:22px;
   box-shadow:0 14px 34px -24px rgba(20,17,16,.35);
+  /* Sticks to the top so navigation stays reachable on these long pages. */
+  position:sticky;
+  top:10px;
+  z-index:50;
 }
-.topbar .logochip{ padding:8px 12px; border-radius:10px; box-shadow:none; border:none; cursor:pointer; transition:background .15s; }
+.topbar .logochip{ padding:6px 10px; border-radius:10px; box-shadow:none; border:none; cursor:pointer; transition:background .15s; }
 .topbar .logochip:hover{ background:var(--brand-soft); }
-.topbar .logochip img{ height:38px; }
+.topbar .logochip img{ height:32px; }
 .topbar .spacer{ flex:1; }
 .topbar .email{
   font-size:12px; font-weight:600; color:var(--ink-2);
-  max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 
 nav.tabs{
   display:flex;
   align-items:center;
-  gap:4px;
-  margin-left:8px;
+  gap:2px;
+  margin-left:6px;
 }
 nav.tabs a{
   display:inline-flex;
   align-items:center;
   gap:7px;
-  padding:8px 15px;
+  padding:8px 13px;
   border-radius:100px;
-  font-size:12px;
+  font-size:11.5px;
   font-weight:700;
-  letter-spacing:.03em;
+  letter-spacing:.02em;
   color:var(--muted);
   text-decoration:none;
+  /* Without this, multi-word tabs ("Action items") break onto a second
+     line and the whole bar grows uneven. */
+  white-space:nowrap;
   transition:background .15s, color .15s;
 }
+/* The UA's [hidden] rule loses to the display above, so restate it. */
+nav.tabs a[hidden]{ display:none; }
 nav.tabs a:hover{ color:var(--brand-dark); background:var(--brand-soft); }
 nav.tabs a.on{
   background:linear-gradient(180deg, #ff5c26, var(--brand) 55%, #f04310);
@@ -468,23 +490,28 @@ nav.tabs a.on{
 .pagehead .sub{ margin:6px 0 0; }
 
 /* stats row */
+/* auto-fit, not a fixed 2 columns — a fixed count left any odd-numbered
+   row (three tiles is the common case) with a half-width orphan and a
+   large hole beside it. */
 .stats{
   display:grid;
-  grid-template-columns:repeat(2, 1fr);
-  gap:14px;
-  margin-bottom:24px;
+  grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+  gap:12px;
+  margin-bottom:22px;
 }
 .stat{
   background:var(--surface);
   border:1px solid var(--line);
-  border-radius:16px;
-  padding:18px 20px 16px;
+  border-radius:14px;
+  padding:16px 18px 14px;
   box-shadow:0 16px 40px -32px rgba(20,17,16,.4);
+  transition:border-color .18s, transform .18s;
 }
+.stat:hover{ border-color:#f2c9b6; transform:translateY(-1px); }
 .stat .num{
   font-family:"Archivo", sans-serif;
   font-weight:900;
-  font-size:30px;
+  font-size:27px;
   line-height:1;
   color:var(--ink);
   letter-spacing:-.02em;
@@ -502,15 +529,18 @@ nav.tabs a.on{
 .panel-head{
   display:flex;
   align-items:center;
-  gap:12px;
-  margin:0 0 14px;
+  gap:10px;
+  margin:0 0 12px;
   flex-wrap:wrap;
 }
+/* Section headers sit above their content with clear air between blocks;
+   the first one on a page shouldn't add a second gap under the pagehead. */
+.panel-head:not(:first-child){ margin-top:26px; }
 .panel-head h2{
   font-family:"Archivo", sans-serif;
-  font-size:14px;
+  font-size:13px;
   font-weight:800;
-  letter-spacing:.06em;
+  letter-spacing:.07em;
   text-transform:uppercase;
   margin:0;
   color:var(--ink);
@@ -520,7 +550,7 @@ nav.tabs a.on{
 }
 .panel-head h2::before{
   content:"";
-  width:8px; height:8px;
+  width:7px; height:7px;
   border-radius:2px;
   background:var(--brand);
   display:inline-block;
@@ -647,14 +677,16 @@ nav.tabs a.on{
 
 .empty{
   font-size:13px; color:var(--muted);
-  background:var(--surface);
-  border:1px dashed var(--line);
+  background:rgba(255,255,255,.55);
+  border:1px dashed #ded7cf;
   border-radius:14px;
-  padding:26px 20px;
+  padding:30px 22px;
   text-align:center;
-  line-height:1.6;
+  line-height:1.65;
   grid-column:1 / -1;
 }
+.empty a{ color:var(--brand); font-weight:700; text-decoration:none; }
+.empty a:hover{ text-decoration:underline; }
 
 /* dispatch page: centered narrower card */
 .dispatchpage{ max-width:520px; margin:0 auto; }
@@ -935,7 +967,7 @@ nav.tabs a.on{
    8. Responsive
    ══════════════════════════════════════════════════════ */
 @media (max-width:900px){
-  .stats{ grid-template-columns:1fr; }
+  .stats{ grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); }
   .detail-grid{ grid-template-columns:1fr; }
   .actionlayout{ grid-template-columns:1fr; }
   .peoplepane{ position:static; }
@@ -959,8 +991,19 @@ nav.tabs a.on{
   body.dash{ padding:14px 12px 44px; }
   .topbar{ flex-wrap:wrap; gap:8px; padding:12px 14px; }
   .topbar .email{ display:none; }
-  nav.tabs{ order:5; width:100%; margin-left:0; }
-  nav.tabs a{ flex:1; justify-content:center; }
+  /* A swipeable strip beats squeezing six tabs into the width — each
+     stays readable and the active one can be scrolled to. */
+  nav.tabs{
+    order:5; width:100%; margin-left:0;
+    overflow-x:auto; gap:4px; padding-bottom:2px;
+    scrollbar-width:none;
+  }
+  nav.tabs::-webkit-scrollbar{ display:none; }
+  nav.tabs a{ flex:0 0 auto; }
   .searchbox{ width:100%; order:5; }
   .detail-hero{ padding:22px 20px; }
+}
+@media (max-width:560px){
+  .stats{ grid-template-columns:1fr 1fr; }
+  .pagehead{ align-items:flex-start; }
 }

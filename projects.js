@@ -145,6 +145,7 @@ function showApp(){
   whoEmail.textContent = session.email || 'signed in';
   roleBadge.textContent = isAdmin ? 'Admin' : 'Manager';
   roleBadge.className = 'role-badge' + (isAdmin ? '' : ' manager');
+  document.querySelectorAll('.nav-admin').forEach(a => { a.hidden = !isAdmin; });
   route();
 }
 signOutBtn.addEventListener('click', () => {
