@@ -1,0 +1,37 @@
+# ════════════════════════════════════════════════════════════
+# Caching policy
+# ────────────────────────────────────────────────────────────
+# The server was sending no Cache-Control at all for HTML, only
+# Last-Modified. With no explicit directive browsers fall back to
+# *heuristic* caching — roughly 10% of the age of the document — so a
+# deployed change could sit invisible behind a stale page for hours.
+# That is why the nav kept appearing to "not update".
+#
+# HTML and the app's own CSS/JS must always revalidate. That is cheap:
+# the browser sends If-Modified-Since and normally gets back an empty
+# 304, so it costs a round trip, not a re-download. Images and fonts
+# rarely change and are cached hard.
+#
+# Wrapped in IfModule so the site still serves if mod_headers is
+# unavailable, rather than returning a 500.
+# ════════════════════════════════════════════════════════════
+
+<IfModule mod_headers.c>
+    <FilesMatch "\.(html|css|js)$">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
+
+    <FilesMatch "\.(png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf)$">
+        Header set Cache-Control "public, max-age=2592000"
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/html "access plus 0 seconds"
+    ExpiresByType text/css "access plus 0 seconds"
+    ExpiresByType application/javascript "access plus 0 seconds"
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/svg+xml "access plus 30 days"
+</IfModule>
