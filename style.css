@@ -130,11 +130,16 @@
      which is invisible against a dark table — it has to go darker
      still, and harder, to show up at all. */
   --scroll-shadow:rgba(0,0,0,.6);
-  /* The logo mark is dark ink on transparent pixels, so in dark mode it
-     keeps a light plate behind it — a translucent one just produced a
-     grey box with an invisible logo inside. */
-  --logo-chip-bg:#eff0f4;
-  --logo-chip-hover:#ffffff;
+  /* No plate at all in dark mode. The topbar and signed-out card get the
+     light version of the mark (see theme.js), so the logo sits directly on
+     the background exactly as it does in the light theme — a plate here is
+     what made it look like a white box pasted onto the bar.
+
+     The sign-in panel is the exception and keeps its white plate: that
+     panel is the orange gradient in BOTH themes, so it still shows the
+     dark mark. .side overrides these two below. */
+  --logo-chip-bg:transparent;
+  --logo-chip-hover:rgba(255,255,255,.07);
   --topbar-bg:rgba(23,23,27,.88);
 
   /* A solid near-white pill and bright orange text sat on this bar like
@@ -274,6 +279,10 @@ body.dash{
   box-shadow:0 10px 24px -12px rgba(80,10,0,.5);
 }
 .logochip img{ height:30px; width:auto; display:block; }
+/* The sign-in panel sits on the orange gradient in both themes and shows
+   the dark mark, so its plate is always white — it does not follow the
+   theme the way the topbar's does. */
+.side .logochip{ background:#ffffff; }
 
 .pill{
   align-self:flex-start;

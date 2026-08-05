@@ -45,15 +45,33 @@
      already the right colour. Everything below waits for the DOM. */
   root.setAttribute('data-theme', resolved());
 
-  /* One logo file, both themes. logo.png is the dark mark on transparent
-     pixels, so it needs something light behind it — the .logochip plate
-     stays light in dark mode (see --logo-chip-bg) and the mark reads the
-     same either way. No swapping, nothing to keep in sync. */
+  /* logo.png is the dark wordmark on transparent pixels, so on a dark bar
+     it needs either a light plate behind it — which reads as a white box —
+     or a light version of the mark. logo-light.png is that: generated from
+     logo.png with only the neutral wordmark flipped, the brand mark copied
+     through untouched. Both are transparent, so neither needs a plate.
+
+     Scoped to the topbar and the signed-out card. The sign-in panel's logo
+     sits on the orange gradient in BOTH themes, so it keeps the dark mark
+     on its white plate and must not be swapped. */
+  var LOGO_SEL   = '.topbar .logochip img, .pm-signedout .logochip img';
+  var LOGO_LIGHT = 'logo.png';        // dark mark, for light backgrounds
+  var LOGO_DARK  = 'logo-light.png';  // light mark, for dark backgrounds
+
+  function swapLogos(theme) {
+    var wanted = theme === 'dark' ? LOGO_DARK : LOGO_LIGHT;
+    var imgs = document.querySelectorAll(LOGO_SEL);
+    for (var i = 0; i < imgs.length; i++) {
+      // Compare the filename, not the full URL — src reads back absolute.
+      var current = (imgs[i].getAttribute('src') || '').split('?')[0];
+      if (current !== wanted) imgs[i].setAttribute('src', wanted);
+    }
+  }
 
   var LABEL = {
-    auto:  { icon: '◐', text: 'Theme: auto',  title: 'Theme follows your system — click for light' },
-    light: { icon: '☀', text: 'Theme: light', title: 'Light theme — click for dark' },
-    dark:  { icon: '☽', text: 'Theme: dark',  title: 'Dark theme — click to follow your system' }
+    auto:  { icon: '🌗', text: 'Theme: auto',  title: 'Theme follows your system — click for light' },
+    light: { icon: '☀️', text: 'Theme: light', title: 'Light theme — click for dark' },
+    dark:  { icon: '🌙', text: 'Theme: dark',  title: 'Dark theme — click to follow your system' }
   };
 
   function paintButtons() {
@@ -71,7 +89,9 @@
   }
 
   function apply() {
-    root.setAttribute('data-theme', resolved());
+    var theme = resolved();
+    root.setAttribute('data-theme', theme);
+    swapLogos(theme);
     paintButtons();
   }
 
