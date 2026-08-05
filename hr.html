@@ -93,7 +93,7 @@
       <div class="pagehead">
         <div>
           <h1>Leave <em>tracking</em></h1>
-          <p class="sub">Approval happens on the manager's own dashboard — this is a read-only view for HR. The monthly summary refreshes itself on the 1st of every month.</p>
+          <p class="sub">Approval happens on the approver's own dashboard — this is a read-only view for HR. The monthly summary refreshes itself on the 1st of every month.</p>
         </div>
       </div>
 
@@ -107,12 +107,12 @@
       <div id="allLeaveList"></div>
     </section>
 
-    <!-- ── Page: People (staff + employees in one place) ── -->
+    <!-- ── Page: People (staff + developers in one place) ── -->
     <section id="page-people" class="page">
       <div class="pagehead">
         <div>
           <h1><em>People</em></h1>
-          <p class="sub">Everyone in the workspace. "Employee" is the roster that work gets assigned to; every other role is a staff login. Admins can change a role or reset a password here.</p>
+          <p class="sub">Everyone in the workspace. "Developer" is the roster that work gets assigned to; every other role is a staff login. Admins can change a role or reset a password here.</p>
         </div>
       </div>
 
@@ -123,8 +123,8 @@
         <input type="search" id="peopleSearch" class="searchbox" placeholder="Search name, email, department…" />
         <select id="peopleRoleFilter" class="searchbox" style="width:150px">
           <option value="">All roles</option>
-          <option value="EMPLOYEE">Employee</option>
-          <option value="MANAGER">Manager</option>
+          <option value="EMPLOYEE">Developer</option>
+          <option value="MANAGER">Business Analyst</option>
           <option value="QA">QA</option>
           <option value="HR">HR</option>
           <option value="MARKETING">Marketing</option>
@@ -133,15 +133,15 @@
         <button type="button" class="btn-sm" id="personAddToggle" style="border:none">+ Add person</button>
       </div>
 
-      <!-- One form for everyone: picking "Employee" writes to the roster,
+      <!-- One form for everyone: picking "Developer" writes to the roster,
            any other role creates a staff login. -->
       <form id="personAddForm" class="inline-form">
         <div class="row">
           <div class="field"><label>Name</label><input id="personName" required placeholder="Full name" /></div>
           <div class="field"><label>Role</label>
             <select id="personRole">
-              <option value="EMPLOYEE" selected>Employee</option>
-              <option value="MANAGER">Manager</option>
+              <option value="EMPLOYEE" selected>Developer</option>
+              <option value="MANAGER">Business Analyst</option>
               <option value="QA">QA / Tester</option>
               <option value="HR">HR</option>
               <option value="MARKETING">Marketing</option>

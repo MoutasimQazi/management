@@ -13,7 +13,7 @@ if ($user['user_type'] === 'EMPLOYEE') {
     // HR/Admin filing on behalf of an employee.
     if (!in_array($user['role'], ['ADMIN', 'HR'], true)) {
         http_response_code(403);
-        echo json_encode(['error' => 'Only HR/Admin can file leave on behalf of an employee.']);
+        echo json_encode(['error' => 'Only HR/Admin can file leave on behalf of a developer.']);
         exit;
     }
     $employeeId = (int)$b['employee_id'];

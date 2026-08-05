@@ -137,7 +137,7 @@
       </div>
 
       <!-- Pending leave requests addressed to me (admin sees all pending).
-           Approval happens here, on the manager's side — HR only tracks. -->
+           Approval happens here, on the approver's side — HR only tracks. -->
       <div id="approvalsPanel" style="display:none; margin-bottom:24px">
         <div class="panel-head">
           <h2>Leave approvals</h2>
@@ -301,7 +301,7 @@
       renderUserChip(whoEmail, session.email);
       const isAdmin = String(session.role || '').toUpperCase() === 'ADMIN';
       const badgeEl = document.getElementById('roleBadge');
-      badgeEl.textContent = isAdmin ? 'Admin' : 'Manager';
+      badgeEl.textContent = roleBadgeLabel(session.role || 'MANAGER');
       badgeEl.className = 'role-badge' + (isAdmin ? '' : ' manager');
       document.querySelectorAll('.nav-admin').forEach(a => { a.hidden = !isAdmin; });
       loadMeetings();
@@ -536,7 +536,7 @@
         pmStatsEl.innerHTML = tiles.map(t =>
           '<div class="stat"><div class="num">' + t.num + '</div><div class="lbl">' + esc(t.lbl) + '</div></div>').join('');
 
-        pmAttentionTitle.textContent = isAdmin ? 'Open tasks across all managers' : 'Your open tasks';
+        pmAttentionTitle.textContent = isAdmin ? 'Open tasks across all business analysts' : 'Your open tasks';
         const attention = openTasks.slice(0, 5).map(t => ({
           text: t.task_name,
           src: [t.project_name, t.status.replace(/_/g, ' ')].filter(Boolean).join(' · ')
@@ -643,9 +643,9 @@
         box.innerHTML = rows.map(m =>
           '<label class="check"><input type="checkbox" value="' + m.manager_id + '" data-approver />' +
           '<span>' + esc(m.full_name) + '</span></label>').join('') ||
-          '<span class="hint">No managers found.</span>';
+          '<span class="hint">No approvers found.</span>';
       } catch (_) {
-        box.innerHTML = '<span class="hint">Could not load the manager list.</span>';
+        box.innerHTML = '<span class="hint">Could not load the approver list.</span>';
       }
     }
 
@@ -699,7 +699,7 @@
       const approver_ids = [...document.querySelectorAll('#myLeaveApprovers [data-approver]:checked')]
         .map(cb => Number(cb.value));
       if (!start_date || !end_date) return;
-      if (!approver_ids.length) { toast('Pick at least one manager to send this to.', 'err'); return; }
+      if (!approver_ids.length) { toast('Pick at least one approver to send this to.', 'err'); return; }
       try {
         await leaveApi(PM_LEAVE_CREATE_URL, { start_date, end_date, reason, approver_ids });
         e.target.reset();

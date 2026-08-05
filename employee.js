@@ -1,8 +1,8 @@
 /* ════════════════════════════════════════════════════
-   Employee self-service module
+   Developer self-service module
    ────────────────────────────────────────────────────
    Same session as the rest of the workspace ("fireflies.session"),
-   same PHP backend (pm-backend-php/). An employee's token only ever
+   same PHP backend (pm-backend-php/). A developer's token only ever
    returns their own tasks/questions — the backend enforces that, this
    file just renders what comes back.
    ════════════════════════════════════════════════════ */
@@ -343,10 +343,10 @@ async function loadApprovers(){
     box.innerHTML = rows.map(m =>
       '<label class="check"><input type="checkbox" value="' + m.manager_id + '" data-approver />' +
       '<span>' + esc(m.full_name) + '</span></label>').join('') ||
-      '<span class="hint">No managers found.</span>';
+      '<span class="hint">No approvers found.</span>';
     box.dataset.loaded = '1';
   } catch (_) {
-    box.innerHTML = '<span class="hint">Could not load the manager list.</span>';
+    box.innerHTML = '<span class="hint">Could not load the approver list.</span>';
   }
 }
 
@@ -407,7 +407,7 @@ document.getElementById('newLeaveForm').addEventListener('submit', async (e) => 
   const approver_ids = [...document.querySelectorAll('#leaveApprovers [data-approver]:checked')]
     .map(cb => Number(cb.value));
   if (!start_date || !end_date) return;
-  if (!approver_ids.length) { toast('Pick at least one manager to send this to.', 'err'); return; }
+  if (!approver_ids.length) { toast('Pick at least one approver to send this to.', 'err'); return; }
   try {
     await api(PM_LEAVE_CREATE_URL, { method: 'POST', body: { start_date, end_date, reason, approver_ids } });
     e.target.reset();

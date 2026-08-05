@@ -27,7 +27,9 @@ const PM_API_BASE = "https://management.moveneticsdigital.com/pm-backend-php/";
 const PM_EMPLOYEES_LIST_URL   = PM_API_BASE + "pm-employees-list.php";
 const PM_EMPLOYEES_CREATE_URL = PM_API_BASE + "pm-employees-create.php";
 const PM_EMPLOYEES_UPDATE_URL = PM_API_BASE + "pm-employees-update.php";
-const PM_EMPLOYEES_DELETE_URL = PM_API_BASE + "pm-employees-delete.php";
+/* No delete here on purpose. Removing a person — and with it their login —
+   belongs to HR and admins, on HR › People. A BA can add someone to the
+   roster and correct their details, but not take them out of the system. */
 const PM_PROJECTS_LIST_URL    = PM_API_BASE + "pm-projects-list.php";
 const PM_PROJECTS_CREATE_URL  = PM_API_BASE + "pm-projects-create.php";
 const PM_PROJECTS_UPDATE_URL  = PM_API_BASE + "pm-projects-update.php";
@@ -76,6 +78,16 @@ function fmtDay(v){
 }
 function statusLabel(s){
   return String(s || '').toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+/* MANAGER is the stored role; the team calls them business analysts. Only
+   the label changes — see the note in fireflies.js. */
+const ROLE_LABELS = { ADMIN:'Admin', MANAGER:'Business Analyst', HR:'HR',
+                      MARKETING:'Marketing', QA:'QA', EMPLOYEE:'Developer' };
+function roleLabel(role){
+  return ROLE_LABELS[String(role || '').toUpperCase()] || statusLabel(role);
+}
+function roleBadgeLabel(role){
+  return String(role || '').toUpperCase() === 'MANAGER' ? 'BA' : roleLabel(role);
 }
 function badge(status){
   if (!status) return '';
@@ -212,7 +224,7 @@ function showApp(){
   pmSignedOut.classList.remove('active');
   appView.classList.add('active');
   renderUserChip(whoEmail, session.email);
-  roleBadge.textContent = isAdmin ? 'Admin' : 'Manager';
+  roleBadge.textContent = roleBadgeLabel(session.role || 'MANAGER');
   roleBadge.className = 'role-badge' + (isAdmin ? '' : ' manager');
   document.querySelectorAll('.nav-admin').forEach(a => { a.hidden = !isAdmin; });
   route();
@@ -322,13 +334,13 @@ async function renderDashboard(){
 }
 
 /* ════════════════════════════════════════════════════
-   Employees (supporting panel on the Projects page)
+   Developers (supporting panel on the Projects page)
    ════════════════════════════════════════════════════ */
 function renderEmployeesPanel(){
   const listEl = document.getElementById('employeesList');
   listEl.innerHTML = allEmployees.length
     ? allEmployees.map(employeeRow).join('')
-    : '<div class="empty">No employees yet — add one below.</div>';
+    : '<div class="empty">No developers yet — add one below.</div>';
   wireEmployeeRows(listEl);
 }
 
@@ -342,7 +354,6 @@ function employeeRow(e){
     '</div></div>' +
     '<div class="tactions">' +
       '<button type="button" class="icon-btn" data-emp-edit="' + e.employee_id + '">Edit</button>' +
-      '<button type="button" class="icon-btn danger" data-emp-delete="' + e.employee_id + '">Delete</button>' +
     '</div></div>';
 }
 
@@ -387,24 +398,7 @@ function wireEmployeeRows(root){
         renderEmployeesPanel();
         populateEmployeeSelects();
       } catch (err) {
-        toast('Could not save employee: ' + err.message, 'err');
-        btn.disabled = false;
-      }
-    });
-  });
-  root.querySelectorAll('[data-emp-delete]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = Number(btn.dataset.empDelete);
-      const emp = allEmployees.find(e => e.employee_id === id);
-      if (!confirm('Delete ' + (emp ? emp.name : 'this employee') + '? This cannot be undone.')) return;
-      btn.disabled = true;
-      try {
-        await api(PM_EMPLOYEES_DELETE_URL, { method: 'POST', body: { employee_id: id } });
-        await loadEmployees();
-        renderEmployeesPanel();
-        populateEmployeeSelects();
-      } catch (err) {
-        toast('Could not delete employee: ' + err.message, 'err');
+        toast('Could not save developer: ' + err.message, 'err');
         btn.disabled = false;
       }
     });
@@ -428,13 +422,13 @@ document.getElementById('empAddForm').addEventListener('submit', async (e) => {
     renderEmployeesPanel();
     populateEmployeeSelects();
   } catch (err) {
-    toast('Could not add employee: ' + err.message, 'err');
+    toast('Could not add developer: ' + err.message, 'err');
   }
 });
 
 function populateEmployeeSelects(){
   document.querySelectorAll('select[data-role="employee-select"]').forEach(sel => {
-    sel.innerHTML = '<option value="">Select employee…</option>' +
+    sel.innerHTML = '<option value="">Select developer…</option>' +
       allEmployees.map(e => '<option value="' + e.employee_id + '">' + esc(e.name) +
         (e.designation ? ' — ' + esc(e.designation) : '') + '</option>').join('');
   });

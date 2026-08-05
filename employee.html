@@ -34,12 +34,12 @@
         <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
       </a>
       <span class="spacer"></span>
-      <span class="role-badge manager" id="roleBadge">Employee</span>
+      <span class="role-badge manager" id="roleBadge">Developer</span>
       <span class="userchip" id="whoEmail"></span>
       <button type="button" class="linkbtn" id="signOut">Sign out</button>
     </header>
 
-    <!-- Employees only ever have this one section, so there is no section
+    <!-- Developers only ever have this one section, so there is no section
          tier — just the pages within it. -->
     <nav class="subnav">
       <a href="#/tasks"     data-nav="tasks">My tasks</a>
@@ -63,7 +63,7 @@
       <div class="pagehead">
         <div>
           <h1>My <em>questions</em></h1>
-          <p class="sub">Stuck on something? Raise it against one of your tasks and your manager will answer here.</p>
+          <p class="sub">Stuck on something? Raise it against one of your tasks and your business analyst will answer here.</p>
         </div>
       </div>
 
@@ -92,7 +92,7 @@
           <div class="field"><label>From</label><input id="leaveStart" type="date" required /></div>
           <div class="field"><label>To <span class="opt">— leave as-is for a single day</span></label><input id="leaveEnd" type="date" required /></div>
         </div>
-        <div class="field"><label>Send to <span class="opt">— pick one or more managers; any of them can approve</span></label>
+        <div class="field"><label>Send to <span class="opt">— pick one or more approvers; any of them can approve</span></label>
           <div id="leaveApprovers" class="check-group"></div>
         </div>
         <div class="field"><label>Reason <span class="opt">— optional</span></label><input id="leaveReason" placeholder="e.g. Family trip" /></div>

@@ -47,7 +47,7 @@ function showApp(session){
   appView.classList.add('active');
   renderUserChip(whoEmail, session.email);
   const isAdmin = String(session.role || '').toUpperCase() === 'ADMIN';
-  roleBadge.textContent = isAdmin ? 'Admin' : 'Manager';
+  roleBadge.textContent = roleBadgeLabel(session.role || 'MANAGER');
   roleBadge.className = 'role-badge' + (isAdmin ? '' : ' manager');
   document.querySelectorAll('.nav-admin').forEach(a => { a.hidden = !isAdmin; });
   setStatus(statusEl, '', '');

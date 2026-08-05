@@ -9,7 +9,7 @@ $check->execute([$b['employee_id'] ?? 0]);
 $employee = $check->fetch();
 if (!$employee || !$employee['email']) {
     http_response_code(400);
-    echo json_encode(['error' => 'This employee has no login to reset — add an email first.']);
+    echo json_encode(['error' => 'This developer has no login to reset — add an email first.']);
     exit;
 }
 

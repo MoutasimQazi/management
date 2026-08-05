@@ -325,7 +325,7 @@ async function loadProjects(){
 }
 function populateEmployeeSelects(){
   document.querySelectorAll('select[data-role="employee-select"]').forEach(sel => {
-    sel.innerHTML = '<option value="">Select employee…</option>' +
+    sel.innerHTML = '<option value="">Select developer…</option>' +
       allEmployees.map(e => '<option value="' + e.employee_id + '">' + esc(e.name) +
         (e.designation ? ' — ' + esc(e.designation) : '') + '</option>').join('');
   });

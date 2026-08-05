@@ -44,7 +44,7 @@
       </nav>
 
       <span class="spacer"></span>
-      <span class="role-badge" id="roleBadge">Manager</span>
+      <span class="role-badge" id="roleBadge">BA</span>
       <span class="userchip" id="whoEmail"></span>
       <button type="button" class="linkbtn" id="signOut">Sign out</button>
     </header>
@@ -83,7 +83,7 @@
       <div class="pagehead">
         <div>
           <h1>My <em>projects</em></h1>
-          <p class="sub">Projects you own. Yusuf sees every manager's projects too.</p>
+          <p class="sub">Projects you own. Yusuf sees every business analyst's projects too.</p>
         </div>
         <button type="button" class="btn-sm" id="newProjectToggle" style="border:none">+ New project</button>
       </div>
@@ -112,16 +112,17 @@
       </form>
 
       <div class="panel-head">
-        <h2>Employees</h2>
-        <button type="button" class="refresh" id="employeesPanelToggle">Manage employees</button>
+        <h2>Developers</h2>
+        <button type="button" class="refresh" id="employeesPanelToggle">Manage developers</button>
       </div>
       <div id="employeesPanel" class="inline-form" style="margin-bottom:20px">
+        <p class="hint" style="margin:0 0 12px">Add people to the roster and correct their details here. Removing someone, or taking away their login, is done by HR or an admin from HR › People.</p>
         <div id="employeesList"></div>
         <form id="empAddForm" class="row" style="align-items:end">
-          <div class="field"><label>Name</label><input id="empName" required placeholder="Employee name" /></div>
+          <div class="field"><label>Name</label><input id="empName" required placeholder="Developer name" /></div>
           <div class="field"><label>Designation <span class="opt">— optional</span></label><input id="empDesignation" placeholder="e.g. Designer" /></div>
           <div class="field" style="grid-column:1/-1"><label>Department <span class="opt">— optional</span></label><input id="empDepartment" placeholder="e.g. Marketing" /></div>
-          <div class="actions" style="grid-column:1/-1"><button type="submit">Add employee</button></div>
+          <div class="actions" style="grid-column:1/-1"><button type="submit">Add developer</button></div>
         </form>
       </div>
 
@@ -163,7 +164,7 @@
       <div class="pagehead">
         <div>
           <h1><em>Questions</em></h1>
-          <p class="sub">Questions raised by managers, answered by Yusuf.</p>
+          <p class="sub">Questions raised by business analysts, answered by Yusuf.</p>
         </div>
       </div>
 

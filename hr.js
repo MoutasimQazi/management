@@ -22,7 +22,7 @@ const PM_CANDIDATES_UPDATE_URL= PM_API_BASE + "pm-candidates-update.php";
 const PM_LEAVE_LIST_URL       = PM_API_BASE + "pm-leave-list.php";
 const PM_MANAGERS_LIST_URL    = PM_API_BASE + "pm-managers-list.php";
 const PM_MANAGERS_CREATE_URL  = PM_API_BASE + "pm-managers-create.php";
-const PM_MANAGERS_ROLE_URL    = PM_API_BASE + "pm-managers-role.php";
+const PM_PEOPLE_ROLE_URL      = PM_API_BASE + "pm-people-role.php";
 const PM_PEOPLE_LIST_URL      = PM_API_BASE + "pm-people-list.php";
 const PM_PEOPLE_CREATE_URL    = PM_API_BASE + "pm-people-create.php";
 const PM_PROJECTS_LIST_URL    = PM_API_BASE + "pm-projects-list.php";
@@ -69,6 +69,18 @@ function badge(status){
   if (!status) return '';
   return '<span class="status-badge ' + esc(String(status).toLowerCase()) + '">' +
     esc(statusLabel(status)) + '</span>';
+}
+/* MANAGER is the stored role; the team calls them business analysts. Only
+   the label changes — see the note in fireflies.js. */
+const ROLE_LABELS = { ADMIN:'Admin', MANAGER:'Business Analyst', HR:'HR',
+                      MARKETING:'Marketing', QA:'QA', EMPLOYEE:'Developer' };
+function roleLabel(role){
+  return ROLE_LABELS[String(role || '').toUpperCase()] || statusLabel(role);
+}
+function roleTag(role){
+  if (!role) return '';
+  return '<span class="status-badge ' + esc(String(role).toLowerCase()) + '">' +
+    esc(roleLabel(role)) + '</span>';
 }
 
 /* Non-blocking notification, replacing alert(). Sticky toasts stay until
@@ -389,7 +401,7 @@ function currentMonth(){
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 }
-// HR tracks leave — approval itself happens on the manager's side (their
+// HR tracks leave — approval itself happens on the approver's side (their
 // dashboard), so this page is read-only: the monthly summary plus every
 // request and who it's waiting on / was decided by.
 async function renderLeave(){
@@ -423,7 +435,7 @@ async function renderLeave(){
     document.getElementById('pendingCount').textContent = String(pending.length);
     pendingEl.innerHTML = pending.length
       ? pending.map(leaveRow).join('')
-      : '<div class="empty">Nothing pending with a manager right now.</div>';
+      : '<div class="empty">Nothing pending with an approver right now.</div>';
 
     document.getElementById('allLeaveCount').textContent = String(all.length);
     allEl.innerHTML = all.length
@@ -497,7 +509,11 @@ function drawPeople(){
   wirePeopleRows(listEl);
 }
 
-const STAFF_ROLES = ['MANAGER', 'QA', 'HR', 'MARKETING', 'ADMIN'];
+/* Every role anyone can hold, roster included. Moving between EMPLOYEE and
+   a staff role moves a person between two tables, which the backend does
+   by deactivating the old row and creating the new one — so it works in
+   both directions, but it mints (or ends) a login and is confirmed first. */
+const ALL_ROLES = ['EMPLOYEE', 'MANAGER', 'QA', 'HR', 'MARKETING', 'ADMIN'];
 
 function personRow(p){
   const login = p.has_login == 1
@@ -507,15 +523,12 @@ function personRow(p){
         : '<span class="tsub">Set by user</span>')
     : '<span class="status-badge todo">No login</span>';
 
-  // Only staff rows can change role — moving someone between the roster
-  // and a staff login would mean moving rows between tables, and their
-  // tasks/leave history hangs off the employees row.
-  const roleCell = (isAdmin && p.kind === 'STAFF')
-    ? '<select class="status-select" data-role-for="' + p.id + '">' +
-        STAFF_ROLES.map(r => '<option value="' + r + '"' + (p.role === r ? ' selected' : '') + '>' +
-          statusLabel(r) + '</option>').join('') +
+  const roleCell = isAdmin
+    ? '<select class="status-select" data-role-for="' + p.kind + '-' + p.id + '">' +
+        ALL_ROLES.map(r => '<option value="' + r + '"' + (p.role === r ? ' selected' : '') + '>' +
+          esc(roleLabel(r)) + '</option>').join('') +
       '</select>'
-    : badge(p.role);
+    : roleTag(p.role);
 
   return '<tr data-person-row="' + p.kind + '-' + p.id + '">' +
     '<td><div class="ttitle">' + esc(p.name) + '</div>' +
@@ -541,17 +554,43 @@ function wirePeopleRows(root){
 
   root.querySelectorAll('[data-role-for]').forEach(sel => {
     const original = sel.value;
+    const [kind, id] = sel.dataset.roleFor.split('-');
     sel.addEventListener('change', async () => {
+      const role = sel.value;
+      const person = allPeople.find(p => p.kind === kind && p.id === Number(id));
+      const name = person ? person.name : 'this person';
+      const revert = () => { sel.value = original; sel.disabled = false; };
+
+      /* Crossing between the roster and a staff login is not a relabelling:
+         it creates a sign-in (or ends one) and takes the person off the
+         other side. Worth a confirmation; a staff-to-staff change is not. */
+      const gainsLogin = original === 'EMPLOYEE' && role !== 'EMPLOYEE';
+      const losesLogin = original !== 'EMPLOYEE' && role === 'EMPLOYEE';
+      if (gainsLogin && !confirm(
+            'Make ' + name + ' a ' + roleLabel(role) + '?\n\n' +
+            'They get a staff login and come off the developer roster, so no ' +
+            'new tasks can be assigned to them. Their existing tasks, leave ' +
+            'and questions are kept.')) { revert(); return; }
+      if (losesLogin && !confirm(
+            'Move ' + name + ' to the developer roster?\n\n' +
+            'Their staff login stops working and they can be assigned tasks ' +
+            'instead. Everything they reported or approved is kept.')) { revert(); return; }
+
       sel.disabled = true;
       try {
-        await api(PM_MANAGERS_ROLE_URL, { method: 'POST',
-          body: { manager_id: Number(sel.dataset.roleFor), role: sel.value } });
-        toast('Role updated to ' + statusLabel(sel.value) + '.', 'ok');
+        const res = await api(PM_PEOPLE_ROLE_URL, { method: 'POST',
+          body: { kind, id: Number(id), role } });
+        if (res.temp_password) {
+          toast('Now a ' + roleLabel(role) + '. New login for ' + res.login_email +
+                '.\nTemporary password: ' + res.temp_password +
+                '\n\nAlso visible any time in the list below.', 'ok', true);
+        } else {
+          toast('Role updated to ' + roleLabel(role) + '.', 'ok');
+        }
         renderPeople();
       } catch (err) {
         toast('Could not change role: ' + err.message, 'err');
-        sel.value = original;      // put the control back to the truth
-        sel.disabled = false;
+        revert();                  // put the control back to the truth
       }
     });
   });

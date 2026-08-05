@@ -62,6 +62,29 @@ function setStatus(el, kind, msg){
   el.innerHTML = kind ? '<span class="dot"></span><span>' + msg + '</span>' : '';
 }
 
+/* ── Role names ──────────────────────────────────────
+   MANAGER is what the database stores; the team calls them business
+   analysts, so that is what every screen says. The stored value is left
+   alone deliberately — renaming it would mean a migration plus every
+   token, endpoint and role check moving in lockstep, for nothing the
+   user would see. The top-bar badge uses the short form, because
+   "Business Analyst" does not fit beside the name and Sign out. */
+const ROLE_LABELS = {
+  ADMIN:'Admin', MANAGER:'Business Analyst', HR:'HR',
+  MARKETING:'Marketing', QA:'QA', EMPLOYEE:'Developer'
+};
+const ROLE_BADGES = { MANAGER:'BA' };
+
+function roleLabel(role){
+  const r = String(role || '').toUpperCase();
+  return ROLE_LABELS[r] ||
+    r.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+function roleBadgeLabel(role){
+  const r = String(role || '').toUpperCase();
+  return ROLE_BADGES[r] || roleLabel(r);
+}
+
 /* Where a signed-in account lands: ADMIN/MANAGER stay on the Overview /
    Meetings pages, every other role gets its own dedicated page. */
 function roleHome(role){
