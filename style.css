@@ -36,8 +36,90 @@
   --shadow-md:0 2px 4px rgba(26,22,19,.03), 0 8px 20px -6px rgba(26,22,19,.10);
   --shadow-lg:0 4px 8px rgba(26,22,19,.04), 0 24px 48px -14px rgba(26,22,19,.18);
 
+  /* Neutrals and semantic colours that have to flip for dark mode. They
+     were literals scattered through both stylesheets; as tokens the dark
+     palette below is the only place that has to know about them. */
+  --line-3:#ddd6cd;
+  --field-bg:#ffffff;
+  --placeholder:#b3aca4;
+  --empty-border:#ded7cf;
+  --disabled-bg:#e9e4de;
+  --disabled-fg:#a8a29a;
+  --showmore-hover:#ffe3d5;
+  --logo-chip-bg:#ffffff;
+  --topbar-bg:rgba(255,255,255,.88);
+  --inset-hi:#ffffff;
+  --ok-line:#c9e9db;
+  --err-line:#f8d3cd;
+  --err-line-strong:#eebcb4;
+  --warn-line:#f2e3bb;
+  --info:#4353b8;
+  --info-soft:#eef2ff;
+  --info-line:#d8e0fb;
+  --secret-fg:#7a5a1e;
+
   --focus-ring:0 0 0 3px rgba(244,80,30,.15);
 }
+
+/* ──────────────────────────────────────────────────────
+   Dark theme
+   ──────────────────────────────────────────────────────
+   Same tokens, different values — no component rule below needs to know
+   which theme is on. theme.js sets data-theme on <html> before the page
+   paints, resolving "follow my system" to a concrete light/dark so there
+   is only ever one palette to maintain here (and no flash of the wrong
+   one). Without JS the site stays light, which is the safe default.
+
+   The orange gradients (login side panel, hero banners, the active nav
+   pill) keep their literal colours in both themes — they are brand
+   surfaces, and white text on orange works either way. */
+:root[data-theme="dark"]{
+  color-scheme:dark;
+
+  /* Brand: lifted, because the same orange that reads as strong on white
+     is muddy on near-black, and --brand-dark is used as accent *text*. */
+  --brand:#ff6a3d;
+  --brand-dark:#ff9068;
+  --brand-deep:#ffb493;
+  --brand-soft:#2c1a12;
+  --brand-100:#45271a;
+
+  --ink:#f3efea;
+  --ink-2:#c4bcb3;
+  --muted:#8d847b;
+  --line:#332c26;
+  --line-2:#26211c;
+  --line-3:#463e36;
+  /* Not pure black: a warm near-black keeps the brand's temperature and
+     is easier on the eye than #000 behind a full page of text. */
+  --bg:#131110;
+  --surface:#1c1917;
+  --surface-2:#221e1b;
+  --field-bg:#151211;
+  --placeholder:#6f665e;
+  --empty-border:#3a332c;
+  --disabled-bg:#2a2521;
+  --disabled-fg:#6b635b;
+  --showmore-hover:#3a2118;
+  --logo-chip-bg:rgba(255,255,255,.07);
+  --topbar-bg:rgba(28,25,23,.86);
+  --inset-hi:rgba(255,255,255,.04);
+
+  --ok:#4cc38a;   --ok-soft:#14291f;   --ok-line:#1f4634;
+  --err:#ff6f57;  --err-soft:#2e1613;  --err-line:#4d221c; --err-line-strong:#6b2f26;
+  --warn:#e0b055; --warn-soft:#2b2312; --warn-line:#4a3c1c;
+  --info:#93a5f2; --info-soft:#1a1d33; --info-line:#2f3663;
+  --secret-fg:#e8bd66;
+
+  /* On a dark surface a light shadow is invisible — these carry the
+     elevation instead of the near-white gradients used above. */
+  --shadow-sm:0 1px 2px rgba(0,0,0,.45), 0 1px 3px rgba(0,0,0,.35);
+  --shadow-md:0 2px 4px rgba(0,0,0,.35), 0 8px 20px -6px rgba(0,0,0,.55);
+  --shadow-lg:0 4px 8px rgba(0,0,0,.4), 0 24px 48px -14px rgba(0,0,0,.7);
+
+  --focus-ring:0 0 0 3px rgba(255,106,61,.28);
+}
+:root[data-theme="light"]{ color-scheme:light; }
 
 /* ══════════════════════════════════════════════════════
    2. Base / page layout
@@ -129,7 +211,7 @@ body.dash{
 
 .logochip{
   align-self:flex-start;
-  background:#fff;
+  background:var(--logo-chip-bg);
   border-radius:12px;
   padding:10px 14px;
   line-height:0;
@@ -269,10 +351,10 @@ input{
   font-size:14px;
   transition:border-color .15s, box-shadow .15s, background .15s;
 }
-input::placeholder{ color:#b3aca4; }
+input::placeholder{ color:var(--placeholder); }
 input:focus{
   outline:none;
-  background:#fff;
+  background:var(--field-bg);
   border-color:var(--brand);
   box-shadow:var(--focus-ring);
 }
@@ -286,7 +368,7 @@ input:focus{
   transform:translateY(-50%);
   font-size:14px;
   line-height:1;
-  color:#b3aca4;
+  color:var(--placeholder);
   pointer-events:none;
   transition:color .15s;
 }
@@ -303,7 +385,7 @@ input:focus{
   border:none; background:none;
   border-radius:8px;
   font-size:14px;
-  color:#b3aca4;
+  color:var(--placeholder);
   cursor:pointer;
   display:inline-flex;
   align-items:center;
@@ -371,8 +453,8 @@ button{
 button:hover{ filter:brightness(1.04); box-shadow:0 2px 4px rgba(180,50,10,.25), 0 10px 22px -6px rgba(244,80,30,.55), inset 0 1px 0 rgba(255,255,255,.28); }
 button:active{ transform:translateY(1px); box-shadow:0 1px 2px rgba(180,50,10,.3), inset 0 1px 2px rgba(120,30,0,.2); }
 button:disabled{
-  background:#e9e4de;
-  color:#a8a29a;
+  background:var(--disabled-bg);
+  color:var(--disabled-fg);
   cursor:not-allowed;
   box-shadow:none;
   filter:none;
@@ -390,7 +472,7 @@ button .btn-spinner{
   animation:spin .7s linear infinite;
 }
 button.busy .btn-spinner{ display:inline-block; }
-button:disabled .btn-spinner{ border-color:rgba(168,162,154,.4); border-top-color:#a8a29a; }
+button:disabled .btn-spinner{ border-color:rgba(168,162,154,.4); border-top-color:var(--disabled-fg); }
 @keyframes spin{ to{ transform:rotate(360deg); } }
 
 .linkbtn{
@@ -443,7 +525,7 @@ button:disabled .btn-spinner{ border-color:rgba(168,162,154,.4); border-top-colo
   display:flex;
   align-items:center;
   gap:12px;
-  background:rgba(255,255,255,.88);
+  background:var(--topbar-bg);
   backdrop-filter:blur(12px);
   border:1px solid var(--line);
   border-radius:16px;
@@ -545,6 +627,42 @@ nav.subnav [hidden]{ display:none !important; }
    own bottom margin the content would sit 12px under the bar and read as
    cramped, so the bar takes that spacing back. */
 .dashwrap.nosub .topbar{ margin-bottom:26px; }
+
+/* Theme switch. Injected by theme.js rather than written into all seven
+   pages, so every page gets it and there is one place to change it. */
+.theme-toggle{
+  margin:0; flex:none;
+  width:32px; height:32px;
+  padding:0;
+  display:inline-flex; align-items:center; justify-content:center;
+  border:1px solid var(--line);
+  border-radius:50%;
+  background:var(--surface);
+  color:var(--ink-2);
+  font-size:14px; line-height:1;
+  box-shadow:none;
+  cursor:pointer;
+  transition:background .15s, border-color .15s, color .15s, transform .15s;
+}
+.theme-toggle:hover{
+  background:var(--brand-soft);
+  border-color:var(--brand-100);
+  color:var(--brand-dark);
+  filter:none; box-shadow:none;
+  transform:none;
+}
+/* On the sign-in page there is no topbar to sit in, so it goes under the
+   form as a plain text button instead of a floating circle. */
+.theme-toggle.inline{
+  width:auto; height:auto;
+  border:none; background:none;
+  border-radius:100px;
+  padding:4px 8px;
+  font-size:12px; font-weight:600;
+  color:var(--muted);
+  gap:6px;
+}
+.theme-toggle.inline:hover{ background:var(--brand-soft); color:var(--brand-dark); }
 
 
 /* Compact identity: a full email ate ~150px of bar and was truncated to
@@ -815,7 +933,7 @@ nav.subnav [hidden]{ display:none !important; }
 .empty{
   font-size:13px; color:var(--muted);
   background:rgba(255,255,255,.55);
-  border:1px dashed #ded7cf;
+  border:1px dashed var(--empty-border);
   border-radius:14px;
   padding:30px 22px;
   text-align:center;
@@ -1024,7 +1142,10 @@ nav.subnav [hidden]{ display:none !important; }
   border-radius:100px;
   padding:1px 8px;
 }
-.personrow.on .n{ background:#fff; color:var(--brand-dark); }
+/* Sits on the orange active pill in both themes, so the orange here is
+   deliberately literal — var(--brand-dark) lightens in dark mode and
+   would wash out against the white dot. */
+.personrow.on .n{ background:#fff; color:#d33c0e; }
 
 .avatar{
   flex:none;
@@ -1085,7 +1206,7 @@ nav.subnav [hidden]{ display:none !important; }
   border-radius:100px;
   box-shadow:none;
 }
-.showmore:hover{ background:#ffe3d5; filter:none; box-shadow:none; }
+.showmore:hover{ background:var(--showmore-hover); filter:none; box-shadow:none; }
 .sect.today{ border-left:3px solid var(--brand); }
 .sect.today ul li{ flex-wrap:wrap; }
 /* min() rather than a bare 220px: on a very narrow phone the floor would
