@@ -45,7 +45,7 @@
 }
 
 /* project detail hero: title + edit/delete actions */
-.hero-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:12px; }
+.hero-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:12px; flex-wrap:wrap; }
 .hero-top h1{ margin:0; }
 .hero-actions{ display:flex; gap:8px; flex:none; }
 .hero-btn{
@@ -305,7 +305,23 @@ select.status-select:focus{
 
 @media (max-width:820px){
   .inline-form .row{ grid-template-columns:1fr; }
-  .task-row .tactions{ margin-left:0; width:100%; }
+  /* Once a row's text has wrapped, its buttons should start a clean line
+     rather than trailing off the right edge of the wrapped block. */
+  .task-row .tactions,
+  .leave-row .tactions{ margin-left:0; width:100%; }
+  .hero-top h1{ flex:1 1 100%; }
+  .hero-actions{ flex:1 1 100%; }
+  .projects-grid{ grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); }
+}
+@media (max-width:560px){
+  /* One card per row: a 240px card in a ~300px viewport left an awkward
+     sliver, and two never fit. */
+  .projects-grid{ grid-template-columns:1fr; }
+  .inline-form{ padding:16px 14px; }
+  .inline-form .actions{ flex-wrap:wrap; }
+  .inline-form .actions button{ flex:1 1 140px; }
+  .task-row, .leave-row{ padding:12px 13px; }
+  .hero-actions button{ flex:1 1 auto; }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -342,17 +358,37 @@ select.status-select:focus{
 .table-wrap{
   width:100%;
   overflow-x:auto;
-  background:var(--surface);
+  -webkit-overflow-scrolling:touch;
   border:1px solid var(--line);
   border-radius:16px;
   box-shadow:var(--shadow-sm);
   margin-bottom:9px;
+
+  /* A shadow on whichever edge still has table hidden past it, so a phone
+     user can see there is more to the right. The two solid layers scroll
+     with the content (background-attachment:local) and cover the shadows
+     when you reach an end; the shadows themselves stay pinned. Nothing to
+     wire up in JS — it reacts to the scroll position on its own. */
+  background:
+    linear-gradient(to right, var(--surface) 40%, rgba(255,255,255,0)) 0 0 / 34px 100% no-repeat,
+    linear-gradient(to left,  var(--surface) 40%, rgba(255,255,255,0)) 100% 0 / 34px 100% no-repeat,
+    radial-gradient(farthest-side at 0 50%,   rgba(26,22,19,.13), rgba(26,22,19,0)) 0 0 / 13px 100% no-repeat,
+    radial-gradient(farthest-side at 100% 50%, rgba(26,22,19,.13), rgba(26,22,19,0)) 100% 0 / 13px 100% no-repeat,
+    var(--surface);
+  background-attachment:local, local, scroll, scroll;
 }
 .data-table{
   width:100%;
   min-width:620px;   /* below this it scrolls rather than crushing columns */
   border-collapse:collapse;
   font-size:13px;
+}
+/* Phones: trim the padding so more columns fit before scrolling starts,
+   and let the table shrink further before it does. */
+@media (max-width:560px){
+  .data-table{ min-width:520px; font-size:12.5px; }
+  .data-table th{ padding:10px 12px; }
+  .data-table td{ padding:11px 12px; }
 }
 .data-table th{
   text-align:left;
