@@ -30,7 +30,7 @@ const appView     = document.getElementById('appView');
 const whoEmail    = document.getElementById('whoEmail');
 const roleBadge   = document.getElementById('roleBadge');
 const signOutBtn  = document.getElementById('signOut');
-const navLinks    = document.querySelectorAll('nav.subnav a');
+const navLinks    = document.querySelectorAll('nav.sections a[data-nav]');
 const pages       = document.querySelectorAll('.page');
 
 let session = null;
@@ -205,26 +205,6 @@ signOutBtn.addEventListener('click', () => {
 });
 
 /* ── Router ──────────────────────────────────────────── */
-const PAGE_LABELS = { projects: 'Projects', tasks: 'Tasks', campaigns: 'Campaigns' };
-
-function renderBreadcrumb(page, projectId){
-  const el = document.getElementById('breadcrumb');
-  const crumbs = [{ label: 'Campaigns', hash: '#/campaigns' }];
-  if (page === 'project') {
-    const p = allProjects.find(pr => pr.project_id === projectId);
-    crumbs.push({ label: 'Projects', hash: '#/projects' });
-    crumbs.push({ label: p ? p.project_name : 'Project', hash: null });
-  } else if (page !== 'campaigns') {
-    crumbs.push({ label: PAGE_LABELS[page] || page, hash: null });
-  }
-  if (crumbs.length < 2) { el.innerHTML = ''; return; }
-  el.innerHTML = crumbs.map((c, i) => {
-    const isLast = i === crumbs.length - 1;
-    const text = esc(c.label);
-    return (i > 0 ? '<span class="crumb-sep">›</span>' : '') +
-      (c.hash && !isLast ? '<a href="' + c.hash + '">' + text + '</a>' : '<span class="crumb-here">' + text + '</span>');
-  }).join('');
-}
 
 function route(){
   if (!readSession()) { showSignedOut(); return; }
@@ -236,7 +216,6 @@ function route(){
   pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
   const navTarget = page === 'project' ? 'projects' : page;
   navLinks.forEach(a => a.classList.toggle('on', a.dataset.nav === navTarget));
-  renderBreadcrumb(page, Number(parts[1]));
 
   if (page === 'campaigns') renderCampaigns();
   if (page === 'projects')  renderProjects();
@@ -432,7 +411,6 @@ async function renderProjectDetail(projectId){
       el.innerHTML = '<div class="empty">Project not found.</div>';
       return;
     }
-    renderBreadcrumb('project', projectId);
 
     el.innerHTML =
       '<div class="detail-hero">' +

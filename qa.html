@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=5">
-  <link rel="stylesheet" href="projects.css?v=5">
+  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="projects.css?v=6">
 </head>
 
 <body>
@@ -33,13 +33,13 @@
       <a class="logochip" id="homeLogo" href="#/bugs" title="Bugs">
         <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
       </a>
-      <!-- Tier 1: which section. Other sections are admin-only. -->
       <nav class="sections">
-        <a href="index.html#/dashboard" class="nav-admin" hidden>Overview</a>
+        <a href="index.html#/dashboard" class="nav-admin" hidden>Dashboard</a>
+        <a href="#/bugs"  data-nav="bugs">Bugs</a>
+        <a href="#/cases" data-nav="cases">Test cases</a>
         <a href="projects.html" class="nav-admin" hidden>Projects</a>
         <a href="hr.html" class="nav-admin" hidden>HR</a>
         <a href="marketing.html" class="nav-admin" hidden>Marketing</a>
-        <a href="qa.html" class="on">QA</a>
       </nav>
 
       <span class="spacer"></span>
@@ -47,12 +47,6 @@
       <span class="userchip" id="whoEmail"></span>
       <button type="button" class="linkbtn" id="signOut">Sign out</button>
     </header>
-
-    <!-- Tier 2: pages within QA. -->
-    <nav class="subnav">
-      <a href="#/bugs"  data-nav="bugs">Bugs</a>
-      <a href="#/cases" data-nav="cases">Test cases</a>
-    </nav>
 
     <!-- ── Page: Bugs ──────────────────────────────────── -->
     <section id="page-bugs" class="page">
@@ -136,6 +130,6 @@
 
   </div>
 
-  <script src="qa.js?v=5"></script>
+  <script src="qa.js?v=6"></script>
 </body>
 </html>

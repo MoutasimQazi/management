@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=5">
-  <link rel="stylesheet" href="projects.css?v=5">
+  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="projects.css?v=6">
 </head>
 
 <body>
@@ -33,12 +33,12 @@
       <a class="logochip" id="homeLogo" href="#/campaigns" title="Campaigns">
         <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
       </a>
-      <!-- Tier 1: which section. Other sections are admin-only. -->
       <nav class="sections">
-        <a href="index.html#/dashboard" class="nav-admin" hidden>Overview</a>
-        <a href="projects.html" class="nav-admin" hidden>Projects</a>
+        <a href="index.html#/dashboard" class="nav-admin" hidden>Dashboard</a>
+        <a href="#/campaigns" data-nav="campaigns">Campaigns</a>
+        <a href="#/projects"  data-nav="projects">Projects</a>
+        <a href="#/tasks"     data-nav="tasks">Tasks</a>
         <a href="hr.html" class="nav-admin" hidden>HR</a>
-        <a href="marketing.html" class="on">Marketing</a>
         <a href="qa.html" class="nav-admin" hidden>QA</a>
       </nav>
 
@@ -47,15 +47,6 @@
       <span class="userchip" id="whoEmail"></span>
       <button type="button" class="linkbtn" id="signOut">Sign out</button>
     </header>
-
-    <!-- Tier 2: pages within Marketing. -->
-    <nav class="subnav">
-      <a href="#/campaigns" data-nav="campaigns">Campaigns</a>
-      <a href="#/projects"  data-nav="projects">Projects</a>
-      <a href="#/tasks"     data-nav="tasks">Tasks</a>
-    </nav>
-
-    <nav class="breadcrumb" id="breadcrumb"></nav>
 
     <!-- ── Page: Campaigns ──────────────────────────────── -->
     <section id="page-campaigns" class="page">
@@ -149,6 +140,6 @@
 
   </div>
 
-  <script src="marketing.js?v=5"></script>
+  <script src="marketing.js?v=6"></script>
 </body>
 </html>

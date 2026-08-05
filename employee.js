@@ -22,7 +22,7 @@ const pmSignedOut = document.getElementById('pmSignedOut');
 const appView     = document.getElementById('appView');
 const whoEmail    = document.getElementById('whoEmail');
 const signOutBtn  = document.getElementById('signOut');
-const navLinks    = document.querySelectorAll('nav.subnav a');
+const navLinks    = document.querySelectorAll('nav.sections a[data-nav]');
 const pages       = document.querySelectorAll('.page');
 
 let session = null;
