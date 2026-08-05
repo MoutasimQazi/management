@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=6">
-  <link rel="stylesheet" href="projects.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="projects.css?v=7">
 
 </head>
 
@@ -87,13 +87,9 @@
         <img src="logo.png"
              alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
       </a>
-      <!-- One row: this page's own tabs first, then the other sections.
-           Admin-only destinations stay hidden for everyone else. -->
+      <!-- Tier 1: which section of the workspace. -->
       <nav class="sections">
-        <a href="#/dashboard" data-nav="dashboard">Dashboard</a>
-        <a href="#/meetings"  data-nav="meetings">Meetings</a>
-        <a href="#/actions"   data-nav="actions">Action items</a>
-        <a href="#/dispatch"  data-nav="dispatch">Dispatch</a>
+        <a href="#/dashboard" class="on">Overview</a>
         <a href="projects.html">Projects</a>
         <a href="hr.html" class="nav-admin" hidden>HR</a>
         <a href="marketing.html" class="nav-admin" hidden>Marketing</a>
@@ -105,6 +101,14 @@
       <span class="userchip" id="whoEmail"></span>
       <button type="button" class="linkbtn" id="signOut">Sign out</button>
     </header>
+
+    <!-- Tier 2: pages within this section. -->
+    <nav class="subnav">
+      <a href="#/dashboard" data-nav="dashboard">Dashboard</a>
+      <a href="#/meetings"  data-nav="meetings">Meetings</a>
+      <a href="#/actions"   data-nav="actions">Action items</a>
+      <a href="#/dispatch"  data-nav="dispatch">Dispatch</a>
+    </nav>
 
     <!-- ── Page: Dashboard ─────────────────────────────── -->
     <section id="page-dashboard" class="page">
@@ -378,7 +382,7 @@
     const myLeaveList  = document.getElementById('myLeaveList');
     const approvalsPanel = document.getElementById('approvalsPanel');
     const approvalsList  = document.getElementById('approvalsList');
-    const navLinks    = document.querySelectorAll('nav.sections a[data-nav]');
+    const navLinks    = document.querySelectorAll('nav.subnav a');
     const pages       = document.querySelectorAll('.page');
 
     let allMeetings = [];      // sheet rows, sorted newest first

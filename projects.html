@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=6">
-  <link rel="stylesheet" href="projects.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="projects.css?v=7">
 </head>
 
 <body>
@@ -33,11 +33,10 @@
       <a class="logochip" id="homeLogo" href="#/dashboard" title="Dashboard">
         <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
       </a>
+      <!-- Tier 1: which section of the workspace. -->
       <nav class="sections">
-        <a href="index.html#/dashboard">Dashboard</a>
-        <a href="#/projects"  data-nav="projects">Projects</a>
-        <a href="#/tasks"     data-nav="tasks">Tasks</a>
-        <a href="#/questions" data-nav="questions">Questions</a>
+        <a href="index.html#/dashboard">Overview</a>
+        <a href="#/projects" class="on">Projects</a>
         <a href="hr.html" class="nav-admin" hidden>HR</a>
         <a href="marketing.html" class="nav-admin" hidden>Marketing</a>
         <a href="qa.html" class="nav-admin" hidden>QA</a>
@@ -48,6 +47,13 @@
       <span class="userchip" id="whoEmail"></span>
       <button type="button" class="linkbtn" id="signOut">Sign out</button>
     </header>
+
+    <!-- Tier 2: pages within this section. -->
+    <nav class="subnav">
+      <a href="#/projects"  data-nav="projects">Projects</a>
+      <a href="#/tasks"     data-nav="tasks">Tasks</a>
+      <a href="#/questions" data-nav="questions">Questions</a>
+    </nav>
 
     <!-- ── Page: Dashboard ─────────────────────────────── -->
     <section id="page-dashboard" class="page">
@@ -174,6 +180,6 @@
 
   </div>
 
-  <script src="projects.js?v=6"></script>
+  <script src="projects.js?v=7"></script>
 </body>
 </html>

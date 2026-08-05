@@ -455,10 +455,14 @@ button:disabled .btn-spinner{ border-color:rgba(168,162,154,.4); border-top-colo
 .topbar .logochip img{ height:32px; }
 .topbar .spacer{ flex:1; }
 
-/* Navigation.
+/* Navigation is two tiers, because the app genuinely has two levels:
+   sections, each with its own pages. Flattening both into a single row
+   was tried and was worse — a page tab and a whole-section jump ended up
+   looking identical.
 
-   One row: this page's own tabs plus links to the other sections. The
-   active tab is a filled pill; everything else is quiet text. */
+   Tier 1 (in the topbar): which section you are in. Pills.
+   Tier 2 (below it): pages within that section. Underline tabs.
+   Different shapes, so the two levels can never be confused. */
 nav.sections{
   display:flex;
   align-items:center;
@@ -486,6 +490,40 @@ nav.sections a.on{
 }
 /* The UA's [hidden] rule loses to the display above, so restate it. */
 nav.sections [hidden]{ display:none !important; }
+
+nav.subnav{
+  display:flex;
+  align-items:center;
+  gap:22px;
+  margin:0 0 24px;
+  padding:0 6px;
+  border-bottom:1px solid var(--line);
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+nav.subnav::-webkit-scrollbar{ display:none; }
+nav.subnav a{
+  position:relative;
+  flex:none;
+  padding:11px 2px 12px;
+  font-size:13px;
+  font-weight:600;
+  color:var(--muted);
+  text-decoration:none;
+  white-space:nowrap;
+  transition:color .15s;
+}
+nav.subnav a:hover{ color:var(--ink); }
+nav.subnav a.on{ color:var(--brand-dark); font-weight:700; }
+nav.subnav a.on::after{
+  content:"";
+  position:absolute;
+  left:0; right:0; bottom:-1px;
+  height:2px;
+  background:var(--brand);
+  border-radius:2px 2px 0 0;
+}
+nav.subnav [hidden]{ display:none !important; }
 
 
 /* Compact identity: a full email ate ~150px of bar and was truncated to

@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=6">
-  <link rel="stylesheet" href="projects.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="projects.css?v=7">
 </head>
 
 <body>
@@ -33,13 +33,12 @@
       <a class="logochip" id="homeLogo" href="#/openings" title="Openings">
         <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
       </a>
+      <!-- Tier 1: which section. Other sections are admin-only —
+           HR staff have just this one. -->
       <nav class="sections">
-        <a href="index.html#/dashboard" class="nav-admin" hidden>Dashboard</a>
-        <a href="#/openings" data-nav="openings">Openings</a>
-        <a href="#/leave"    data-nav="leave">Leave</a>
-        <a href="#/people"   data-nav="people">People</a>
-        <a href="#/qa" data-nav="qa" id="qaNavLink" hidden>QA access</a>
+        <a href="index.html#/dashboard" class="nav-admin" hidden>Overview</a>
         <a href="projects.html" class="nav-admin" hidden>Projects</a>
+        <a href="hr.html" class="on">HR</a>
         <a href="marketing.html" class="nav-admin" hidden>Marketing</a>
         <a href="qa.html" class="nav-admin" hidden>QA</a>
       </nav>
@@ -49,6 +48,14 @@
       <span class="userchip" id="whoEmail"></span>
       <button type="button" class="linkbtn" id="signOut">Sign out</button>
     </header>
+
+    <!-- Tier 2: pages within HR. -->
+    <nav class="subnav">
+      <a href="#/openings" data-nav="openings">Openings</a>
+      <a href="#/leave"    data-nav="leave">Leave</a>
+      <a href="#/people"   data-nav="people">People</a>
+      <a href="#/qa" data-nav="qa" id="qaNavLink" hidden>QA access</a>
+    </nav>
 
     <!-- ── Page: Openings (list) ───────────────────────── -->
     <section id="page-openings" class="page">
@@ -169,6 +176,6 @@
 
   </div>
 
-  <script src="hr.js?v=6"></script>
+  <script src="hr.js?v=7"></script>
 </body>
 </html>

@@ -47,7 +47,7 @@ const appView     = document.getElementById('appView');
 const whoEmail    = document.getElementById('whoEmail');
 const roleBadge   = document.getElementById('roleBadge');
 const signOutBtn  = document.getElementById('signOut');
-const navLinks    = document.querySelectorAll('nav.sections a[data-nav]');
+const navLinks    = document.querySelectorAll('nav.subnav a');
 const pages       = document.querySelectorAll('.page');
 
 let session  = null;
