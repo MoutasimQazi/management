@@ -99,9 +99,9 @@
   text-transform:uppercase;
   border-radius:100px;
   padding:4px 10px;
-  background:var(--ink);
-  /* --ink inverts between themes; the label has to invert with it. */
-  color:var(--surface);
+  background:var(--badge-bg);
+  color:var(--badge-fg);
+  border:1px solid var(--badge-border);
   flex:none;
 }
 
@@ -373,8 +373,8 @@ select.status-select:focus{
   background:
     linear-gradient(to right, var(--surface) 40%, rgba(255,255,255,0)) 0 0 / 34px 100% no-repeat,
     linear-gradient(to left,  var(--surface) 40%, rgba(255,255,255,0)) 100% 0 / 34px 100% no-repeat,
-    radial-gradient(farthest-side at 0 50%,   rgba(26,22,19,.13), rgba(26,22,19,0)) 0 0 / 13px 100% no-repeat,
-    radial-gradient(farthest-side at 100% 50%, rgba(26,22,19,.13), rgba(26,22,19,0)) 100% 0 / 13px 100% no-repeat,
+    radial-gradient(farthest-side at 0 50%,   var(--scroll-shadow), transparent) 0 0 / 13px 100% no-repeat,
+    radial-gradient(farthest-side at 100% 50%, var(--scroll-shadow), transparent) 100% 0 / 13px 100% no-repeat,
     var(--surface);
   background-attachment:local, local, scroll, scroll;
 }

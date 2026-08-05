@@ -45,19 +45,10 @@
      already the right colour. Everything below waits for the DOM. */
   root.setAttribute('data-theme', resolved());
 
-  var LOGO_LIGHT = 'logo.png';       // dark mark, for light backgrounds
-  var LOGO_DARK  = 'logodark.png';   // light mark, for dark backgrounds
-
-  function swapLogos(theme) {
-    var wanted = theme === 'dark' ? LOGO_DARK : LOGO_LIGHT;
-    var imgs = document.querySelectorAll('.logochip img');
-    for (var i = 0; i < imgs.length; i++) {
-      var img = imgs[i];
-      // Compare the filename, not the full URL — src reads back absolute.
-      var current = (img.getAttribute('src') || '').split('?')[0];
-      if (current !== wanted) img.setAttribute('src', wanted);
-    }
-  }
+  /* One logo file, both themes. logo.png is the dark mark on transparent
+     pixels, so it needs something light behind it — the .logochip plate
+     stays light in dark mode (see --logo-chip-bg) and the mark reads the
+     same either way. No swapping, nothing to keep in sync. */
 
   var LABEL = {
     auto:  { icon: '◐', text: 'Theme: auto',  title: 'Theme follows your system — click for light' },
@@ -80,9 +71,7 @@
   }
 
   function apply() {
-    var theme = resolved();
-    root.setAttribute('data-theme', theme);
-    swapLogos(theme);
+    root.setAttribute('data-theme', resolved());
     paintButtons();
   }
 

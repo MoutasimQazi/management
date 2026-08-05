@@ -46,8 +46,21 @@
   --disabled-bg:#e9e4de;
   --disabled-fg:#a8a29a;
   --showmore-hover:#ffe3d5;
+  --empty-bg:rgba(255,255,255,.55);
+  --scroll-shadow:rgba(26,22,19,.13);
   --logo-chip-bg:#ffffff;
+  --logo-chip-hover:#fff3ee;
   --topbar-bg:rgba(255,255,255,.88);
+  /* Topbar chrome. In light these are strong marks on a white bar; in dark
+     the same strength becomes glare, so they get their own tokens rather
+     than inverting a neutral and hoping for the best. */
+  --badge-bg:var(--ink);
+  --badge-fg:var(--surface);
+  --badge-border:transparent;
+  --linkbtn-bg:var(--brand-soft);
+  --linkbtn-fg:var(--brand);
+  --linkbtn-hover-bg:var(--brand-soft);
+  --linkbtn-hover-fg:var(--brand-dark);
   --inset-hi:#ffffff;
   --ok-line:#c9e9db;
   --err-line:#f8d3cd;
@@ -76,39 +89,71 @@
 :root[data-theme="dark"]{
   color-scheme:dark;
 
-  /* Brand: lifted, because the same orange that reads as strong on white
-     is muddy on near-black, and --brand-dark is used as accent *text*. */
+  /* Neutral greys, not warm ones. Tinting the darks toward the brand
+     seemed logical — the brand is orange — but a warm near-black reads as
+     muddy brown, and it flattens the accent: orange pops hardest against a
+     neutral, weakest against a background that shares its hue. The faint
+     cool cast here is what makes the orange look orange. */
   --brand:#ff6a3d;
   --brand-dark:#ff9068;
   --brand-deep:#ffb493;
-  --brand-soft:#2c1a12;
-  --brand-100:#45271a;
+  /* The accent *surfaces* stay warm on purpose — they are meant to read as
+     tinted orange. It is the page behind them that must not. */
+  --brand-soft:#2b1a14;
+  --brand-100:#452a1d;
 
-  --ink:#f3efea;
-  --ink-2:#c4bcb3;
-  --muted:#8d847b;
-  --line:#332c26;
-  --line-2:#26211c;
-  --line-3:#463e36;
-  /* Not pure black: a warm near-black keeps the brand's temperature and
-     is easier on the eye than #000 behind a full page of text. */
-  --bg:#131110;
-  --surface:#1c1917;
-  --surface-2:#221e1b;
-  --field-bg:#151211;
-  --placeholder:#6f665e;
-  --empty-border:#3a332c;
-  --disabled-bg:#2a2521;
-  --disabled-fg:#6b635b;
-  --showmore-hover:#3a2118;
-  --logo-chip-bg:rgba(255,255,255,.07);
-  --topbar-bg:rgba(28,25,23,.86);
+  --ink:#eceef3;
+  --ink-2:#b8bcc5;
+  --muted:#83868f;
+  --line:#2a2a31;
+  --line-2:#212126;
+  --line-3:#3a3a43;
+  /* Not pure black: a hair of blue keeps large dark areas from looking
+     like a dead screen, and is easier on the eye than #000 behind text. */
+  --bg:#0f0f12;
+  --surface:#17171b;
+  --surface-2:#1d1d22;
+  --field-bg:#121215;
+  --placeholder:#6a6d76;
+  /* The dashed outline is the main thing giving an empty state its shape
+     now that the fill is almost nothing, so it is lifted enough to be
+     clearly visible rather than matching the ordinary hairlines. */
+  --empty-border:#4a4b57;
+  --disabled-bg:#26262c;
+  --disabled-fg:#63656e;
+  --showmore-hover:#33201a;
+  /* A 55%-white panel — which is what the light theme uses — became a
+     pale grey slab here. An empty state should read as an absence, so
+     in dark it is the faintest lift off the page instead. */
+  --empty-bg:rgba(255,255,255,.022);
+  /* The table's scroll-edge shadow is near-black ink in light mode,
+     which is invisible against a dark table — it has to go darker
+     still, and harder, to show up at all. */
+  --scroll-shadow:rgba(0,0,0,.6);
+  /* The logo mark is dark ink on transparent pixels, so in dark mode it
+     keeps a light plate behind it — a translucent one just produced a
+     grey box with an invisible logo inside. */
+  --logo-chip-bg:#eff0f4;
+  --logo-chip-hover:#ffffff;
+  --topbar-bg:rgba(23,23,27,.88);
+
+  /* A solid near-white pill and bright orange text sat on this bar like
+     two headlights. Both drop back to quiet chrome and keep the accent
+     for hover, so the one orange thing in the bar is the section you are
+     actually on. */
+  --badge-bg:rgba(255,255,255,.07);
+  --badge-fg:#c8cbd2;
+  --badge-border:#3a3a43;
+  --linkbtn-bg:rgba(255,255,255,.05);
+  --linkbtn-fg:#a2a5ae;
+  --linkbtn-hover-bg:var(--brand-soft);
+  --linkbtn-hover-fg:var(--brand);
   --inset-hi:rgba(255,255,255,.04);
 
-  --ok:#4cc38a;   --ok-soft:#14291f;   --ok-line:#1f4634;
-  --err:#ff6f57;  --err-soft:#2e1613;  --err-line:#4d221c; --err-line-strong:#6b2f26;
-  --warn:#e0b055; --warn-soft:#2b2312; --warn-line:#4a3c1c;
-  --info:#93a5f2; --info-soft:#1a1d33; --info-line:#2f3663;
+  --ok:#4cc38a;   --ok-soft:#112620;   --ok-line:#1d4534;
+  --err:#ff6f57;  --err-soft:#2b1614;  --err-line:#4a221d; --err-line-strong:#683029;
+  --warn:#e2b457; --warn-soft:#2a2314; --warn-line:#483c1e;
+  --info:#93a5f2; --info-soft:#191c30; --info-line:#2e355f;
   --secret-fg:#e8bd66;
 
   /* On a dark surface a light shadow is invisible — these carry the
@@ -119,6 +164,17 @@
 
   --focus-ring:0 0 0 3px rgba(255,106,61,.28);
 }
+
+/* The page wash is an orange glow in the corners. At the light theme's
+   strength it put a brown cast across a dark page, so it is dialled back
+   to a hint — present in the corners, invisible behind the content. */
+:root[data-theme="dark"] body{
+  background:
+    radial-gradient(1100px 600px at 88% -12%, rgba(255,106,61,.05), transparent 62%),
+    radial-gradient(800px 520px at -5% 108%, rgba(120,140,255,.035), transparent 65%),
+    var(--bg);
+}
+
 :root[data-theme="light"]{ color-scheme:light; }
 
 /* ══════════════════════════════════════════════════════
@@ -477,12 +533,12 @@ button:disabled .btn-spinner{ border-color:rgba(168,162,154,.4); border-top-colo
 
 .linkbtn{
   margin:0; width:auto; padding:6px 12px; flex:none;
-  background:var(--brand-soft); color:var(--brand);
+  background:var(--linkbtn-bg); color:var(--linkbtn-fg);
   font-size:10px; font-weight:800;
   letter-spacing:.14em; text-transform:uppercase;
   border-radius:100px; box-shadow:none;
 }
-.linkbtn:hover{ background:var(--brand-soft); box-shadow:none; filter:none; color:var(--brand-dark); }
+.linkbtn:hover{ background:var(--linkbtn-hover-bg); box-shadow:none; filter:none; color:var(--linkbtn-hover-fg); }
 
 .refresh{
   margin:0; width:auto;
@@ -538,7 +594,7 @@ button:disabled .btn-spinner{ border-color:rgba(168,162,154,.4); border-top-colo
   z-index:50;
 }
 .topbar .logochip{ padding:6px 10px; border-radius:10px; box-shadow:none; border:none; cursor:pointer; transition:background .15s; }
-.topbar .logochip:hover{ background:var(--brand-soft); }
+.topbar .logochip:hover{ background:var(--logo-chip-hover); }
 .topbar .logochip img{ height:32px; }
 .topbar .spacer{ flex:1; }
 
@@ -932,7 +988,7 @@ nav.subnav [hidden]{ display:none !important; }
 
 .empty{
   font-size:13px; color:var(--muted);
-  background:rgba(255,255,255,.55);
+  background:var(--empty-bg);
   border:1px dashed var(--empty-border);
   border-radius:14px;
   padding:30px 22px;
