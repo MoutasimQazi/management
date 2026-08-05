@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Movenetics Digital · Meetings</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="projects.css?v=8">
+</head>
+
+<body>
+
+  <!-- ══ Signed-out state (no login form here — session is shared) ══ -->
+  <div id="pmSignedOut" class="view active">
+    <div class="pm-signedout">
+      <span class="logochip" style="margin-bottom:18px; display:inline-flex">
+        <img src="logo.png" alt="Movenetics Digital" style="height:30px" onerror="this.parentElement.style.display='none'" />
+      </span>
+      <h1>Sign <em>in</em></h1>
+      <p>This page uses the same sign-in as the rest of the workspace. Sign in there first, then come back to this tab.</p>
+      <a class="btn-sm" href="index.html">Go to sign in →</a>
+    </div>
+  </div>
+
+  <!-- ══ Signed-in app ══════════════════════════════════ -->
+  <div id="appView" class="view dashwrap">
+
+    <header class="topbar">
+      <a class="logochip" id="homeLogo" href="#/meetings" title="Meetings">
+        <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
+      </a>
+      <!-- Tier 1: which section of the workspace. -->
+      <nav class="sections">
+        <a href="index.html#/dashboard">Overview</a>
+        <a href="meetings.html" class="on">Meetings</a>
+        <a href="projects.html">Projects</a>
+        <a href="hr.html" class="nav-admin" hidden>HR</a>
+        <a href="marketing.html" class="nav-admin" hidden>Marketing</a>
+        <a href="qa.html" class="nav-admin" hidden>QA</a>
+      </nav>
+
+      <span class="spacer"></span>
+      <span class="role-badge" id="roleBadge"></span>
+      <span class="userchip" id="whoEmail"></span>
+      <button type="button" class="linkbtn" id="signOut">Sign out</button>
+    </header>
+
+    <!-- Tier 2: pages within Meetings. These belong to this section only —
+         the Overview page deliberately has no second tier. -->
+    <nav class="subnav">
+      <a href="#/meetings" data-nav="meetings">Meetings</a>
+      <a href="#/actions"  data-nav="actions">Action items</a>
+      <a href="#/dispatch" data-nav="dispatch">Dispatch</a>
+    </nav>
+
+    <!-- ── Page: My meetings ───────────────────────────── -->
+    <section id="page-meetings" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>My <em>meetings</em></h1>
+          <p class="sub">Every call Fireflies has recorded for you, newest first.</p>
+        </div>
+        <a class="btn-sm" href="#/dispatch">+ New dispatch</a>
+      </div>
+
+      <div class="panel-head">
+        <h2>All meetings</h2>
+        <span class="count" id="meetCount">0</span>
+        <span class="spacer"></span>
+        <input type="search" id="search" class="searchbox" placeholder="Search meetings…" />
+        <button type="button" class="refresh" id="refresh">Refresh</button>
+      </div>
+      <div id="meetings"></div>
+    </section>
+
+    <!-- ── Page: Action items (all, grouped by person) ── -->
+    <section id="page-actions" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>Action <em>items</em></h1>
+          <p class="sub">Every action item from all your meetings, grouped by person.</p>
+        </div>
+      </div>
+
+      <div class="actionlayout">
+
+        <!-- Left: pick a person -->
+        <aside class="peoplepane">
+          <input type="search" id="actionSearch" class="searchbox" placeholder="Search tasks or people…" />
+          <div id="peopleList" class="peoplelist"></div>
+        </aside>
+
+        <!-- Right: chronological list -->
+        <div class="actionmain">
+          <div class="panel-head">
+            <h2 id="actionsTitle">All action items</h2>
+            <span class="count" id="actionCount">0</span>
+            <span class="spacer"></span>
+            <span class="hint">Newest first</span>
+          </div>
+          <div id="actionList"></div>
+          <button type="button" class="showmore" id="actionsMore" style="display:none">Load more</button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── Page: Dispatch ──────────────────────────────── -->
+    <section id="page-dispatch" class="page">
+      <div class="dispatchpage">
+        <div class="card">
+          <h1>Send <em>Fireflies</em><br>to a meeting</h1>
+          <p class="sub">Paste the meeting link and the Fireflies bot joins to record and transcribe. Works with Zoom, Google Meet, and Teams links.</p>
+
+          <form id="form">
+            <div class="field">
+              <label for="meetingLink">Meeting link</label>
+              <input id="meetingLink" name="meetingLink" type="url"
+                     placeholder="https://meet.google.com/abc-defg-hij" required />
+            </div>
+
+            <div class="field">
+              <label for="title">Meeting title <span class="opt">— optional</span></label>
+              <input id="title" name="title" type="text" placeholder="Weekly standup" />
+            </div>
+
+            <button id="submit" type="submit">Send Fireflies in →</button>
+          </form>
+
+          <div id="status" class="status" role="status"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Page: Meeting details ───────────────────────── -->
+    <section id="page-meeting" class="page">
+      <a class="backlink" href="#/meetings">← Back to my meetings</a>
+      <div id="detailContent"></div>
+    </section>
+
+  </div>
+
+  <script src="fireflies.js?v=8"></script>
+  <script src="meetings.js?v=8"></script>
+</body>
+</html>

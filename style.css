@@ -467,9 +467,20 @@ nav.sections{
   display:flex;
   align-items:center;
   gap:2px;
-  margin-left:4px;
+  /* Six sections can outgrow the bar on a small laptop. Let the strip
+     scroll instead of shoving Sign out off the edge. The padding is
+     cancelled by the negative margin, so it only buys room for the
+     active pill's shadow — without it, overflow would clip the glow. */
+  min-width:0;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:none;
+  margin:-8px 0 -8px 4px;
+  padding:8px 0;
 }
+nav.sections::-webkit-scrollbar{ display:none; }
 nav.sections a{
+  flex:0 0 auto;
   display:inline-flex;
   align-items:center;
   padding:8px 14px;
@@ -524,6 +535,11 @@ nav.subnav a.on::after{
   border-radius:2px 2px 0 0;
 }
 nav.subnav [hidden]{ display:none !important; }
+
+/* Overview has a single page and so no second tier. Without the sub-nav's
+   own bottom margin the content would sit 12px under the bar and read as
+   cramped, so the bar takes that spacing back. */
+.dashwrap.nosub .topbar{ margin-bottom:26px; }
 
 
 /* Compact identity: a full email ate ~150px of bar and was truncated to
@@ -1147,12 +1163,9 @@ nav.subnav [hidden]{ display:none !important; }
   /* A swipeable strip beats squeezing the sections into the width — each
      stays readable and the active one can be scrolled to. */
   nav.sections{
-    order:5; width:100%; margin-left:0;
-    overflow-x:auto; gap:4px; padding-bottom:2px;
-    scrollbar-width:none;
+    order:5; width:100%; gap:4px;
+    margin:0; padding:6px 0 2px;
   }
-  nav.sections::-webkit-scrollbar{ display:none; }
-  nav.sections a{ flex:0 0 auto; }
   .searchbox{ width:100%; order:5; }
   .detail-hero{ padding:22px 20px; }
 }
