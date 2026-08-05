@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="projects.css">
+  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="projects.css?v=5">
 </head>
 
 <body>
@@ -33,17 +33,19 @@
       <a class="logochip" id="homeLogo" href="#/tasks" title="My tasks">
         <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
       </a>
-      <nav class="tabs">
-        <a href="#/tasks"     data-nav="tasks">My tasks</a>
-        <a href="#/questions" data-nav="questions">Questions</a>
-        <a href="#/leave"     data-nav="leave">Leave</a>
-      </nav>
-
       <span class="spacer"></span>
       <span class="role-badge manager" id="roleBadge">Employee</span>
       <span class="userchip" id="whoEmail"></span>
       <button type="button" class="linkbtn" id="signOut">Sign out</button>
     </header>
+
+    <!-- Employees only ever have this one section, so there is no section
+         tier — just the pages within it. -->
+    <nav class="subnav">
+      <a href="#/tasks"     data-nav="tasks">My tasks</a>
+      <a href="#/questions" data-nav="questions">Questions</a>
+      <a href="#/leave"     data-nav="leave">Leave</a>
+    </nav>
 
     <!-- ── Page: My tasks ──────────────────────────────── -->
     <section id="page-tasks" class="page">

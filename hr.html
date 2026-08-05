@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="projects.css">
+  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="projects.css?v=5">
 </head>
 
 <body>
@@ -33,17 +33,13 @@
       <a class="logochip" id="homeLogo" href="#/openings" title="Openings">
         <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
       </a>
-      <!-- Left of the divider: HR's own pages. Right of it: jumps to another
-           section, admin-only — HR staff have no other section to reach. -->
-      <nav class="tabs">
-        <a href="#/openings"  data-nav="openings">Openings</a>
-        <a href="#/leave"     data-nav="leave">Leave</a>
-        <a href="#/employees" data-nav="employees">Employees</a>
-        <a href="#/staff" data-nav="staff" id="staffNavLink" hidden>Staff</a>
-        <span class="nav-sep nav-admin" hidden></span>
-        <a href="index.html#/dashboard" class="nav-jump nav-admin" hidden>Dashboard</a>
-        <a href="projects.html" class="nav-jump nav-admin" hidden>Projects</a>
-        <a href="marketing.html" class="nav-jump nav-admin" hidden>Marketing</a>
+      <!-- Tier 1: which section. Only admins can reach other sections —
+           HR staff have just this one, so their pills stay hidden. -->
+      <nav class="sections">
+        <a href="index.html#/dashboard" class="nav-admin" hidden>Overview</a>
+        <a href="projects.html" class="nav-admin" hidden>Projects</a>
+        <a href="hr.html" class="on">HR</a>
+        <a href="marketing.html" class="nav-admin" hidden>Marketing</a>
       </nav>
 
       <span class="spacer"></span>
@@ -51,6 +47,14 @@
       <span class="userchip" id="whoEmail"></span>
       <button type="button" class="linkbtn" id="signOut">Sign out</button>
     </header>
+
+    <!-- Tier 2: pages within HR. -->
+    <nav class="subnav">
+      <a href="#/openings"  data-nav="openings">Openings</a>
+      <a href="#/leave"     data-nav="leave">Leave</a>
+      <a href="#/employees" data-nav="employees">Employees</a>
+      <a href="#/staff" data-nav="staff" id="staffNavLink" hidden>Staff</a>
+    </nav>
 
     <nav class="breadcrumb" id="breadcrumb"></nav>
 

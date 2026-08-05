@@ -443,7 +443,7 @@ button:disabled .btn-spinner{ border-color:rgba(168,162,154,.4); border-top-colo
   border:1px solid var(--line);
   border-radius:16px;
   padding:9px 14px;
-  margin-bottom:22px;
+  margin-bottom:12px;
   box-shadow:var(--shadow-sm);
   /* Sticks to the top so navigation stays reachable on these long pages. */
   position:sticky;
@@ -455,61 +455,74 @@ button:disabled .btn-spinner{ border-color:rgba(168,162,154,.4); border-top-colo
 .topbar .logochip img{ height:32px; }
 .topbar .spacer{ flex:1; }
 
-nav.tabs{
+/* Navigation is two tiers, because the app genuinely has two levels:
+   four sections, each with its own pages. Flattening both into one row
+   was the problem — a page tab and a whole-section jump looked identical.
+
+   Tier 1 (in the topbar): which section you are in. Pills.
+   Tier 2 (below it): pages within that section. Underline tabs.
+   Different shapes, so the two levels can never be confused. */
+nav.sections{
   display:flex;
   align-items:center;
   gap:2px;
-  margin-left:6px;
+  margin-left:4px;
 }
-nav.tabs a{
+nav.sections a{
   display:inline-flex;
   align-items:center;
-  gap:7px;
-  padding:8px 13px;
+  padding:8px 14px;
   border-radius:100px;
-  font-size:11.5px;
+  font-size:12.5px;
   font-weight:700;
-  letter-spacing:.02em;
+  letter-spacing:.01em;
   color:var(--muted);
   text-decoration:none;
-  /* Without this, multi-word tabs ("Action items") break onto a second
-     line and the whole bar grows uneven. */
   white-space:nowrap;
   transition:background .15s, color .15s;
 }
-/* The UA's [hidden] rule loses to the display above, so restate it. */
-nav.tabs [hidden]{ display:none !important; }
-nav.tabs a:hover{ color:var(--brand-dark); background:var(--brand-soft); }
-nav.tabs a.on{
+nav.sections a:hover{ color:var(--brand-dark); background:var(--brand-soft); }
+nav.sections a.on{
   background:linear-gradient(180deg, #ff6236, var(--brand) 55%, #e5460f);
   color:#fff;
   box-shadow:0 1px 2px rgba(180,50,10,.2), 0 5px 14px -5px rgba(244,80,30,.5);
 }
+/* The UA's [hidden] rule loses to the display above, so restate it. */
+nav.sections [hidden]{ display:none !important; }
 
-/* Two different kinds of link were sharing one flat row: tabs that switch
-   page *within* this section, and jumps that leave for another section
-   entirely. Identical pills made "HR" look like a sibling of "Tasks".
-   A divider plus a lighter treatment separates them. */
-.nav-sep{
-  width:1px;
-  height:18px;
-  background:var(--line);
-  margin:0 8px;
+nav.subnav{
+  display:flex;
+  align-items:center;
+  gap:22px;
+  margin:0 0 24px;
+  padding:0 6px;
+  border-bottom:1px solid var(--line);
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+nav.subnav::-webkit-scrollbar{ display:none; }
+nav.subnav a{
+  position:relative;
   flex:none;
-}
-nav.tabs a.nav-jump{
-  color:var(--muted);
+  padding:11px 2px 12px;
+  font-size:13px;
   font-weight:600;
+  color:var(--muted);
+  text-decoration:none;
+  white-space:nowrap;
+  transition:color .15s;
 }
-nav.tabs a.nav-jump::after{
-  content:"↗";
-  font-size:9px;
-  line-height:1;
-  opacity:.5;
-  margin-left:-2px;
+nav.subnav a:hover{ color:var(--ink); }
+nav.subnav a.on{ color:var(--brand-dark); font-weight:700; }
+nav.subnav a.on::after{
+  content:"";
+  position:absolute;
+  left:0; right:0; bottom:-1px;
+  height:2px;
+  background:var(--brand);
+  border-radius:2px 2px 0 0;
 }
-nav.tabs a.nav-jump:hover{ color:var(--brand-dark); background:var(--brand-soft); }
-nav.tabs a.nav-jump:hover::after{ opacity:.8; }
+nav.subnav [hidden]{ display:none !important; }
 
 /* Compact identity: a full email ate ~150px of bar and was truncated to
    uselessness anyway. Show the handle, keep the full address on hover. */
@@ -1129,15 +1142,15 @@ nav.tabs a.nav-jump:hover::after{ opacity:.8; }
   /* The avatar alone still identifies who's signed in; the handle is the
      first thing worth dropping when the bar gets tight. */
   .topbar .userchip .uname{ display:none; }
-  /* A swipeable strip beats squeezing six tabs into the width — each
+  /* A swipeable strip beats squeezing the sections into the width — each
      stays readable and the active one can be scrolled to. */
-  nav.tabs{
+  nav.sections{
     order:5; width:100%; margin-left:0;
     overflow-x:auto; gap:4px; padding-bottom:2px;
     scrollbar-width:none;
   }
-  nav.tabs::-webkit-scrollbar{ display:none; }
-  nav.tabs a{ flex:0 0 auto; }
+  nav.sections::-webkit-scrollbar{ display:none; }
+  nav.sections a{ flex:0 0 auto; }
   .searchbox{ width:100%; order:5; }
   .detail-hero{ padding:22px 20px; }
 }

@@ -22,7 +22,7 @@ const pmSignedOut = document.getElementById('pmSignedOut');
 const appView     = document.getElementById('appView');
 const whoEmail    = document.getElementById('whoEmail');
 const signOutBtn  = document.getElementById('signOut');
-const navLinks    = document.querySelectorAll('nav.tabs a');
+const navLinks    = document.querySelectorAll('nav.subnav a');
 const pages       = document.querySelectorAll('.page');
 
 let session = null;
@@ -112,15 +112,21 @@ document.addEventListener('submit', (e) => {
    and told you nothing. Show initial + handle; full address on hover. */
 function renderUserChip(el, email){
   const addr = email || '';
-  const handle = addr.split('@')[0] || 'signed in';
+  const handle = addr.split('@')[0] || '';
+  const parts = handle.split(/[._-]+/).filter(Boolean);
+  // "yusuf.shaikh" -> "Yusuf Shaikh" / "YS". Showing the raw handle next
+  // to its own first letter read as a stutter ("yyusuf.shaikh").
+  const name = parts.length
+    ? parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
+    : 'Signed in';
+  const initials = (parts.length > 1 ? parts[0][0] + parts[1][0]
+                                     : (parts[0] || '?').slice(0, 2)).toUpperCase();
   el.title = addr;
   el.innerHTML = '';
   const av = document.createElement('span');
-  av.className = 'uavatar';
-  av.textContent = (handle[0] || '?');
+  av.className = 'uavatar'; av.textContent = initials;
   const nm = document.createElement('span');
-  nm.className = 'uname';
-  nm.textContent = handle;
+  nm.className = 'uname'; nm.textContent = name;
   el.appendChild(av); el.appendChild(nm);
 }
 
