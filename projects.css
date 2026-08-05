@@ -8,21 +8,23 @@
 .icon-btn{
   margin:0; width:auto; flex:none;
   padding:6px 12px;
-  font-size:10.5px;
-  font-weight:800;
-  letter-spacing:.06em;
-  text-transform:uppercase;
+  font-size:11.5px;
+  font-weight:600;
+  letter-spacing:0;
+  text-transform:none;
   border-radius:100px;
-  background:var(--line-2);
+  background:var(--surface);
+  border:1px solid var(--line);
   color:var(--ink-2);
   box-shadow:none;
+  transition:background .15s, border-color .15s, color .15s;
 }
-.icon-btn:hover{ background:#e6e0d8; filter:none; box-shadow:none; }
-.icon-btn.danger{ background:#fdeceb; color:var(--err); }
-.icon-btn.danger:hover{ background:#fbdbd8; }
+.icon-btn:hover{ background:var(--line-2); border-color:#ddd6cd; color:var(--ink); filter:none; box-shadow:none; }
+.icon-btn.danger{ background:var(--surface); border-color:#f3d5d0; color:var(--err); }
+.icon-btn.danger:hover{ background:var(--err-soft); border-color:#eebcb4; }
 
 /* edit-in-place row (employee / task) */
-.task-row.edit-row{ background:#fbfaf8; align-items:flex-start; }
+.task-row.edit-row{ background:var(--surface-2); align-items:flex-start; }
 .task-row.edit-row input,
 .task-row.edit-row select{
   width:100%; padding:9px 11px; font-size:13px;
@@ -96,44 +98,48 @@
   letter-spacing:.1em;
   text-transform:uppercase;
   border-radius:100px;
-  padding:3px 9px;
+  padding:4px 10px;
   background:var(--ink);
   color:#fff;
+  flex:none;
 }
-.role-badge.manager{ background:var(--line-2); color:var(--ink-2); }
+.role-badge.manager{ background:var(--line-2); color:var(--ink-2); border:1px solid var(--line); }
 
-/* status badges used across tasks / approvals / questions */
+/* Status badges used across tasks / approvals / questions.
+   Each carries a matching hairline border so the pills read as distinct
+   objects rather than flat colour blocks on a white row. */
 .status-badge{
   display:inline-flex;
   align-items:center;
   gap:5px;
-  font-size:10.5px;
-  font-weight:800;
-  letter-spacing:.05em;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.06em;
   text-transform:uppercase;
   border-radius:100px;
-  padding:3px 10px;
+  padding:3px 9px;
   white-space:nowrap;
+  border:1px solid transparent;
 }
 /* task statuses */
-.status-badge.todo        { background:var(--line-2); color:var(--ink-2); }
-.status-badge.in_progress { background:#fff1ea; color:var(--brand-dark); }
-.status-badge.blocked     { background:#fdeceb; color:var(--err); }
-.status-badge.completed   { background:#e6f6ee; color:var(--ok); }
-.status-badge.cancelled   { background:var(--line-2); color:var(--muted); }
+.status-badge.todo        { background:var(--line-2); color:var(--ink-2); border-color:var(--line); }
+.status-badge.in_progress { background:var(--brand-soft); color:var(--brand-dark); border-color:var(--brand-100); }
+.status-badge.blocked     { background:var(--err-soft); color:var(--err); border-color:#f8d3cd; }
+.status-badge.completed   { background:var(--ok-soft); color:var(--ok); border-color:#c9e9db; }
+.status-badge.cancelled   { background:var(--line-2); color:var(--muted); border-color:var(--line); }
 /* project statuses */
-.status-badge.planning    { background:#eef2ff; color:#4353b8; }
-.status-badge.active      { background:#e6f6ee; color:var(--ok); }
-.status-badge.on_hold     { background:#fff7d6; color:#8a6d00; }
+.status-badge.planning    { background:#eef2ff; color:#4353b8; border-color:#d8e0fb; }
+.status-badge.active      { background:var(--ok-soft); color:var(--ok); border-color:#c9e9db; }
+.status-badge.on_hold     { background:var(--warn-soft); color:var(--warn); border-color:#f2e3bb; }
 /* question statuses */
-.status-badge.open        { background:#fff1ea; color:var(--brand-dark); }
-.status-badge.answered    { background:#e6f6ee; color:var(--ok); }
-.status-badge.closed      { background:var(--line-2); color:var(--muted); }
+.status-badge.open        { background:var(--brand-soft); color:var(--brand-dark); border-color:var(--brand-100); }
+.status-badge.answered    { background:var(--ok-soft); color:var(--ok); border-color:#c9e9db; }
+.status-badge.closed      { background:var(--line-2); color:var(--muted); border-color:var(--line); }
 /* priorities */
-.status-badge.prio-low      { background:var(--line-2); color:var(--muted); }
-.status-badge.prio-medium   { background:#eef2ff; color:#4353b8; }
-.status-badge.prio-high     { background:#fff1ea; color:var(--brand-dark); }
-.status-badge.prio-critical { background:#fdeceb; color:var(--err); }
+.status-badge.prio-low      { background:var(--line-2); color:var(--muted); border-color:var(--line); }
+.status-badge.prio-medium   { background:#eef2ff; color:#4353b8; border-color:#d8e0fb; }
+.status-badge.prio-high     { background:var(--brand-soft); color:var(--brand-dark); border-color:var(--brand-100); }
+.status-badge.prio-critical { background:var(--err-soft); color:var(--err); border-color:#f8d3cd; }
 
 /* project cards on the Projects page */
 .projects-grid{
@@ -147,17 +153,17 @@
   gap:10px;
   background:var(--surface);
   border:1px solid var(--line);
-  border-radius:16px;
-  padding:18px 20px 16px;
-  box-shadow:0 16px 40px -32px rgba(20,17,16,.4);
+  border-radius:var(--radius-md);
+  padding:20px 22px 18px;
+  box-shadow:var(--shadow-sm);
   text-decoration:none;
   color:inherit;
   transition:box-shadow .18s, transform .18s, border-color .18s;
 }
 .project-card:hover{
-  transform:translateY(-1px);
-  border-color:#f2c9b6;
-  box-shadow:0 20px 44px -28px rgba(20,17,16,.4);
+  transform:translateY(-2px);
+  border-color:var(--brand-100);
+  box-shadow:var(--shadow-md);
 }
 .project-card h3{
   margin:0;
@@ -174,12 +180,13 @@
 
 /* toggleable "+ new" inline forms */
 .inline-form{
-  background:#fbfaf8;
-  border:1px solid var(--line-2);
-  border-radius:14px;
-  padding:16px 18px;
+  background:var(--surface-2);
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  padding:18px 20px;
   margin-bottom:16px;
   display:none;
+  box-shadow:inset 0 1px 0 #fff;
 }
 .inline-form.open{ display:grid; gap:12px; }
 .inline-form .row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
@@ -248,7 +255,7 @@ select.status-select:focus{
 }
 .question-card .qtext{ font-size:13.5px; color:var(--ink); line-height:1.6; margin:0 0 10px; }
 .question-card .answer-block{
-  background:#fbfaf8; border:1px solid var(--line-2); border-radius:10px;
+  background:var(--surface-2); border:1px solid var(--line-2); border-radius:10px;
   padding:11px 14px; font-size:13px; color:var(--ink-2); line-height:1.6;
 }
 .question-card .answer-block .aby{
@@ -293,7 +300,7 @@ select.status-select:focus{
 .pm-signedout{
   max-width:420px; margin:60px auto 0; text-align:center;
   background:var(--surface); border:1px solid var(--line); border-radius:16px;
-  padding:32px 28px; box-shadow:0 20px 50px -34px rgba(20,17,16,.4);
+  padding:32px 28px; box-shadow:var(--shadow-md);
 }
 .pm-signedout p{ color:var(--muted); font-size:13.5px; line-height:1.6; margin:0 0 18px; }
 
@@ -310,19 +317,19 @@ select.status-select:focus{
 .question-card .qmeta .who{ color:var(--brand-dark); font-weight:800; }
 
 /* leave request statuses */
-.status-badge.pending    { background:#fff7d6; color:#8a6d00; }
-.status-badge.approved   { background:#e6f6ee; color:var(--ok); }
-.status-badge.rejected   { background:#fdeceb; color:var(--err); }
+.status-badge.pending    { background:var(--warn-soft); color:var(--warn); border-color:#f2e3bb; }
+.status-badge.approved   { background:var(--ok-soft); color:var(--ok); border-color:#c9e9db; }
+.status-badge.rejected   { background:var(--err-soft); color:var(--err); border-color:#f8d3cd; }
 /* candidate pipeline stages */
-.status-badge.applied    { background:var(--line-2); color:var(--ink-2); }
-.status-badge.screening  { background:#eef2ff; color:#4353b8; }
-.status-badge.interview  { background:#fff1ea; color:var(--brand-dark); }
-.status-badge.offer      { background:#fff7d6; color:#8a6d00; }
-.status-badge.hired      { background:#e6f6ee; color:var(--ok); }
+.status-badge.applied    { background:var(--line-2); color:var(--ink-2); border-color:var(--line); }
+.status-badge.screening  { background:#eef2ff; color:#4353b8; border-color:#d8e0fb; }
+.status-badge.interview  { background:var(--brand-soft); color:var(--brand-dark); border-color:var(--brand-100); }
+.status-badge.offer      { background:var(--warn-soft); color:var(--warn); border-color:#f2e3bb; }
+.status-badge.hired      { background:var(--ok-soft); color:var(--ok); border-color:#c9e9db; }
 /* campaign / content calendar statuses */
-.status-badge.idea       { background:var(--line-2); color:var(--ink-2); }
-.status-badge.planned    { background:#eef2ff; color:#4353b8; }
-.status-badge.published  { background:#e6f6ee; color:var(--ok); }
+.status-badge.idea       { background:var(--line-2); color:var(--ink-2); border-color:var(--line); }
+.status-badge.planned    { background:#eef2ff; color:#4353b8; border-color:#d8e0fb; }
+.status-badge.published  { background:var(--ok-soft); color:var(--ok); border-color:#c9e9db; }
 
 /* ══════════════════════════════════════════════════════
    Data tables — tasks, projects, meetings, action items.
@@ -339,7 +346,7 @@ select.status-select:focus{
   background:var(--surface);
   border:1px solid var(--line);
   border-radius:16px;
-  box-shadow:0 16px 40px -32px rgba(20,17,16,.4);
+  box-shadow:var(--shadow-sm);
   margin-bottom:9px;
 }
 .data-table{
@@ -350,19 +357,19 @@ select.status-select:focus{
 }
 .data-table th{
   text-align:left;
-  font-size:10px; font-weight:800;
+  font-size:10px; font-weight:700;
   letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
-  padding:11px 16px; background:#fbfaf8;
+  padding:12px 16px; background:var(--surface-2);
   border-bottom:1px solid var(--line);
   white-space:nowrap;
 }
 .data-table td{
-  padding:12px 16px; color:var(--ink-2);
+  padding:13px 16px; color:var(--ink-2);
   border-top:1px solid var(--line-2);
   vertical-align:middle;
 }
-.data-table tbody tr{ transition:background .12s; }
-.data-table tbody tr:hover{ background:#fbfaf8; }
+.data-table tbody tr{ transition:background .12s, box-shadow .12s; }
+.data-table tbody tr:hover{ background:var(--brand-soft); }
 .data-table tr.clickable{ cursor:pointer; }
 .data-table td.nowrap{ white-space:nowrap; }
 
@@ -393,7 +400,7 @@ select.status-select:focus{
 
 /* Edit-in-place: one full-width cell spanning the row, so the inputs get
    real space instead of being jammed into the original columns. */
-.data-table .edit-row-cell{ padding:14px 16px; background:#fbfaf8; }
+.data-table .edit-row-cell{ padding:14px 16px; background:var(--surface-2); }
 .data-table .edit-row-cell .row{
   display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));
   gap:10px; margin-bottom:10px;

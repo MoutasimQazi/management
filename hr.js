@@ -65,6 +65,31 @@ function badge(status){
     esc(statusLabel(status)) + '</span>';
 }
 
+/* Non-blocking notification, replacing alert(). Sticky toasts stay until
+   dismissed — used for generated passwords, which need time to copy. */
+function toast(msg, kind, sticky){
+  let host = document.getElementById('toastHost');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'toastHost';
+    host.className = 'toast-host';
+    document.body.appendChild(host);
+  }
+  const el = document.createElement('div');
+  el.className = 'toast ' + (kind || 'info');
+  const msgEl = document.createElement('span');
+  msgEl.className = 'tmsg';
+  msgEl.textContent = msg;              // textContent, so messages can't inject markup
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = 'tclose'; btn.textContent = '×';
+  btn.setAttribute('aria-label', 'Dismiss');
+  const close = () => { el.classList.add('leaving'); setTimeout(() => el.remove(), 200); };
+  btn.addEventListener('click', close);
+  el.appendChild(msgEl); el.appendChild(btn);
+  host.appendChild(el);
+  if (!sticky) setTimeout(close, kind === 'err' ? 6500 : 4000);
+}
+
 function readSession(){
   for (const store of [localStorage, sessionStorage]) {
     try {
@@ -213,7 +238,7 @@ document.getElementById('newOpeningForm').addEventListener('submit', async (e) =
     e.target.classList.remove('open');
     renderOpenings();
   } catch (err) {
-    alert('Could not create opening: ' + err.message);
+    toast('Could not create opening: ' + err.message, 'err');
   }
 });
 
@@ -264,7 +289,7 @@ async function renderOpeningDetail(openingId){
           body: { opening_id: openingId, title: opening.title, department: opening.department, notes: opening.notes, status } });
         allOpenings = [];
         renderOpeningDetail(openingId);
-      } catch (err) { alert('Could not save: ' + err.message); }
+      } catch (err) { toast('Could not save: ' + err.message, 'err'); }
     });
     document.getElementById('newCandidateToggle').addEventListener('click', () => {
       document.getElementById('newCandidateForm').classList.toggle('open');
@@ -282,7 +307,7 @@ async function renderOpeningDetail(openingId){
       try {
         await api(PM_CANDIDATES_CREATE_URL, { method: 'POST', body: { opening_id: openingId, name, email, phone, notes } });
         renderOpeningDetail(openingId);
-      } catch (err) { alert('Could not add candidate: ' + err.message); }
+      } catch (err) { toast('Could not add candidate: ' + err.message, 'err'); }
     });
 
     const listEl = document.getElementById('candidatesList');
@@ -321,7 +346,7 @@ function wireCandidateRows(root, onChanged){
         await api(PM_CANDIDATES_UPDATE_URL, { method: 'POST', body: { candidate_id: id, name, stage } });
         onChanged();
       } catch (err) {
-        alert('Could not move candidate: ' + err.message);
+        toast('Could not move candidate: ' + err.message, 'err');
         sel.disabled = false; sel.value = '';
       }
     });
@@ -465,11 +490,11 @@ function wireEmployeeRows(root){
         const result = await api(PM_EMPLOYEES_UPDATE_URL, { method: 'POST',
           body: { employee_id: id, name, designation, department, email } });
         if (result.temp_password) {
-          alert('Login created for ' + result.login_email + '.\nTemporary password: ' + result.temp_password + '\n\nAlso visible any time in the list below.');
+          toast('Login created for ' + result.login_email + '.\nTemporary password: ' + result.temp_password + '\n\nAlso visible any time in the list below.', 'ok', true);
         }
         renderEmployees();
       } catch (err) {
-        alert('Could not save employee: ' + err.message);
+        toast('Could not save employee: ' + err.message, 'err');
         btn.disabled = false;
       }
     });
@@ -484,7 +509,7 @@ function wireEmployeeRows(root){
         await api(PM_EMPLOYEES_DELETE_URL, { method: 'POST', body: { employee_id: id } });
         renderEmployees();
       } catch (err) {
-        alert('Could not delete employee: ' + err.message);
+        toast('Could not delete employee: ' + err.message, 'err');
         btn.disabled = false;
       }
     });
@@ -497,7 +522,7 @@ function wireEmployeeRows(root){
         await api(PM_EMPLOYEES_RESET_PW_URL, { method: 'POST', body: { employee_id: id } });
         renderEmployees();
       } catch (err) {
-        alert('Could not reset password: ' + err.message);
+        toast('Could not reset password: ' + err.message, 'err');
         btn.disabled = false;
       }
     });
@@ -514,11 +539,11 @@ document.getElementById('empAddForm').addEventListener('submit', async (e) => {
     const result = await api(PM_EMPLOYEES_CREATE_URL, { method: 'POST', body: { name, department, designation, email } });
     document.getElementById('empAddForm').reset();
     if (result.temp_password) {
-      alert('Login created for ' + result.login_email + '.\nTemporary password: ' + result.temp_password + '\n\nAlso visible any time in the list below.');
+      toast('Login created for ' + result.login_email + '.\nTemporary password: ' + result.temp_password + '\n\nAlso visible any time in the list below.', 'ok', true);
     }
     renderEmployees();
   } catch (err) {
-    alert('Could not add employee: ' + err.message);
+    toast('Could not add employee: ' + err.message, 'err');
   }
 });
 
@@ -550,7 +575,7 @@ async function renderStaff(){
           await api(PM_MANAGERS_RESET_PW_URL, { method: 'POST', body: { manager_id: id } });
           renderStaff();
         } catch (err) {
-          alert('Could not reset password: ' + err.message);
+          toast('Could not reset password: ' + err.message, 'err');
           btn.disabled = false;
         }
       });
@@ -573,7 +598,7 @@ document.getElementById('newStaffForm').addEventListener('submit', async (e) => 
       esc(result.temp_password) + '</strong> — also visible any time in the list below.</div>';
     renderStaff();
   } catch (err) {
-    alert('Could not create account: ' + err.message);
+    toast('Could not create account: ' + err.message, 'err');
   }
 });
 

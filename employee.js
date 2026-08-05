@@ -61,6 +61,31 @@ function prioBadge(p){
     esc(statusLabel(p)) + '</span>';
 }
 
+/* Non-blocking notification, replacing alert(). Sticky toasts stay until
+   dismissed — used for generated passwords, which need time to copy. */
+function toast(msg, kind, sticky){
+  let host = document.getElementById('toastHost');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'toastHost';
+    host.className = 'toast-host';
+    document.body.appendChild(host);
+  }
+  const el = document.createElement('div');
+  el.className = 'toast ' + (kind || 'info');
+  const msgEl = document.createElement('span');
+  msgEl.className = 'tmsg';
+  msgEl.textContent = msg;              // textContent, so messages can't inject markup
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = 'tclose'; btn.textContent = '×';
+  btn.setAttribute('aria-label', 'Dismiss');
+  const close = () => { el.classList.add('leaving'); setTimeout(() => el.remove(), 200); };
+  btn.addEventListener('click', close);
+  el.appendChild(msgEl); el.appendChild(btn);
+  host.appendChild(el);
+  if (!sticky) setTimeout(close, kind === 'err' ? 6500 : 4000);
+}
+
 function readSession(){
   for (const store of [localStorage, sessionStorage]) {
     try {
@@ -189,7 +214,7 @@ function wireTaskRows(root){
         await api(PM_TASKS_STATUS_URL, { method: 'POST', body: { task_id: taskId, status } });
         renderTasks();
       } catch (err) {
-        alert('Could not update task: ' + err.message);
+        toast('Could not update task: ' + err.message, 'err');
         sel.disabled = false;
         sel.value = '';
       }
@@ -208,7 +233,7 @@ function wireTaskRows(root){
           body: { task_id: id, status: t ? t.status : 'IN_PROGRESS', progress: Number(progress) } });
         renderTasks();
       } catch (err) {
-        alert('Could not update progress: ' + err.message);
+        toast('Could not update progress: ' + err.message, 'err');
         btn.disabled = false;
       }
     });
@@ -248,7 +273,7 @@ document.getElementById('newQuestionForm').addEventListener('submit', async (e) 
     e.target.reset();
     renderQuestions();
   } catch (err) {
-    alert('Could not send question: ' + err.message);
+    toast('Could not send question: ' + err.message, 'err');
   }
 });
 function questionCard(q){
@@ -319,6 +344,17 @@ function leaveRow(r){
     '<div class="tactions">' + badge(r.status) + '</div>' +
   '</div>';
 }
+/* Single-day leave is the common case — picking the start date fills the
+   end date to match, so it takes one click instead of two calendars. */
+(function wireLeaveDates(){
+  const start = document.getElementById('leaveStart');
+  const end   = document.getElementById('leaveEnd');
+  start.addEventListener('change', () => {
+    end.min = start.value;
+    if (!end.value || end.value < start.value) end.value = start.value;
+  });
+})();
+
 document.getElementById('newLeaveForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const start_date = document.getElementById('leaveStart').value;
@@ -327,13 +363,13 @@ document.getElementById('newLeaveForm').addEventListener('submit', async (e) => 
   const approver_ids = [...document.querySelectorAll('#leaveApprovers [data-approver]:checked')]
     .map(cb => Number(cb.value));
   if (!start_date || !end_date) return;
-  if (!approver_ids.length) { alert('Pick at least one manager to send this to.'); return; }
+  if (!approver_ids.length) { toast('Pick at least one manager to send this to.', 'err'); return; }
   try {
     await api(PM_LEAVE_CREATE_URL, { method: 'POST', body: { start_date, end_date, reason, approver_ids } });
     e.target.reset();
     renderLeave();
   } catch (err) {
-    alert('Could not submit leave request: ' + err.message);
+    toast('Could not submit leave request: ' + err.message, 'err');
   }
 });
 

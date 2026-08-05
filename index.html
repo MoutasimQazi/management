@@ -154,7 +154,7 @@
         <form id="myLeaveForm" class="inline-form">
           <div class="row">
             <div class="field"><label>From</label><input id="myLeaveStart" type="date" required /></div>
-            <div class="field"><label>To</label><input id="myLeaveEnd" type="date" required /></div>
+            <div class="field"><label>To <span class="opt">— leave as-is for a single day</span></label><input id="myLeaveEnd" type="date" required /></div>
           </div>
           <div class="field"><label>Send to</label><div id="myLeaveApprovers" class="check-group"></div></div>
           <div class="field"><label>Reason <span class="opt">— optional</span></label><input id="myLeaveReason" placeholder="e.g. Family trip" /></div>
@@ -539,6 +539,31 @@
     /* ════════════════════════════════════════════════════
        4. Session storage
        ════════════════════════════════════════════════════ */
+    /* Non-blocking notification, replacing alert(). Sticky toasts stay until
+       dismissed — used for generated passwords, which need time to copy. */
+    function toast(msg, kind, sticky){
+      let host = document.getElementById('toastHost');
+      if (!host) {
+        host = document.createElement('div');
+        host.id = 'toastHost';
+        host.className = 'toast-host';
+        document.body.appendChild(host);
+      }
+      const el = document.createElement('div');
+      el.className = 'toast ' + (kind || 'info');
+      const msgEl = document.createElement('span');
+      msgEl.className = 'tmsg';
+      msgEl.textContent = msg;              // textContent, so messages can't inject markup
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'tclose'; btn.textContent = '×';
+      btn.setAttribute('aria-label', 'Dismiss');
+      const close = () => { el.classList.add('leaving'); setTimeout(() => el.remove(), 200); };
+      btn.addEventListener('click', close);
+      el.appendChild(msgEl); el.appendChild(btn);
+      host.appendChild(el);
+      if (!sticky) setTimeout(close, kind === 'err' ? 6500 : 4000);
+    }
+
     function readSession(){
       for (const store of [localStorage, sessionStorage]) {
         try {
@@ -1170,7 +1195,7 @@
               loadApprovals();
               loadLeavePanel();
             } catch (err) {
-              alert('Could not update the request: ' + err.message);
+              toast('Could not update the request: ' + err.message, 'err');
               btn.disabled = false;
             }
           });
@@ -1216,6 +1241,20 @@
         myLeaveList.innerHTML = '';
       }
     }
+    /* A single-day leave is by far the common case, and making people pick
+       the same date twice in two calendars was needless work: choosing a
+       start date fills the end date to match, and stops it being set
+       earlier than the start. Picking a real range still works — just
+       change the end date afterwards. */
+    (function wireLeaveDates(){
+      const start = document.getElementById('myLeaveStart');
+      const end   = document.getElementById('myLeaveEnd');
+      start.addEventListener('change', () => {
+        end.min = start.value;
+        if (!end.value || end.value < start.value) end.value = start.value;
+      });
+    })();
+
     document.getElementById('myLeaveToggle').addEventListener('click', () => {
       document.getElementById('myLeaveForm').classList.toggle('open');
     });
@@ -1230,14 +1269,14 @@
       const approver_ids = [...document.querySelectorAll('#myLeaveApprovers [data-approver]:checked')]
         .map(cb => Number(cb.value));
       if (!start_date || !end_date) return;
-      if (!approver_ids.length) { alert('Pick at least one manager to send this to.'); return; }
+      if (!approver_ids.length) { toast('Pick at least one manager to send this to.', 'err'); return; }
       try {
         await leaveApi(PM_LEAVE_CREATE_URL, { start_date, end_date, reason, approver_ids });
         e.target.reset();
         e.target.classList.remove('open');
         loadMyLeave();
       } catch (err) {
-        alert('Could not submit leave request: ' + err.message);
+        toast('Could not submit leave request: ' + err.message, 'err');
       }
     });
 

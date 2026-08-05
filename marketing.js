@@ -71,6 +71,31 @@ function prioBadge(p){
     esc(statusLabel(p)) + '</span>';
 }
 
+/* Non-blocking notification, replacing alert(). Sticky toasts stay until
+   dismissed — used for generated passwords, which need time to copy. */
+function toast(msg, kind, sticky){
+  let host = document.getElementById('toastHost');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'toastHost';
+    host.className = 'toast-host';
+    document.body.appendChild(host);
+  }
+  const el = document.createElement('div');
+  el.className = 'toast ' + (kind || 'info');
+  const msgEl = document.createElement('span');
+  msgEl.className = 'tmsg';
+  msgEl.textContent = msg;              // textContent, so messages can't inject markup
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = 'tclose'; btn.textContent = '×';
+  btn.setAttribute('aria-label', 'Dismiss');
+  const close = () => { el.classList.add('leaving'); setTimeout(() => el.remove(), 200); };
+  btn.addEventListener('click', close);
+  el.appendChild(msgEl); el.appendChild(btn);
+  host.appendChild(el);
+  if (!sticky) setTimeout(close, kind === 'err' ? 6500 : 4000);
+}
+
 function readSession(){
   for (const store of [localStorage, sessionStorage]) {
     try {
@@ -221,7 +246,7 @@ function wireCampaignRows(root){
         await api(PM_CAMPAIGNS_UPDATE_URL, { method: 'POST', body: { campaign_id: id, title, status } });
         renderCampaigns();
       } catch (err) {
-        alert('Could not move campaign: ' + err.message);
+        toast('Could not move campaign: ' + err.message, 'err');
         sel.disabled = false; sel.value = '';
       }
     });
@@ -235,7 +260,7 @@ function wireCampaignRows(root){
         await api(PM_CAMPAIGNS_DELETE_URL, { method: 'POST', body: { campaign_id: id } });
         renderCampaigns();
       } catch (err) {
-        alert('Could not delete campaign: ' + err.message);
+        toast('Could not delete campaign: ' + err.message, 'err');
         btn.disabled = false;
       }
     });
@@ -260,7 +285,7 @@ document.getElementById('newCampaignForm').addEventListener('submit', async (e) 
     e.target.classList.remove('open');
     renderCampaigns();
   } catch (err) {
-    alert('Could not create campaign: ' + err.message);
+    toast('Could not create campaign: ' + err.message, 'err');
   }
 });
 
@@ -344,7 +369,7 @@ document.getElementById('newProjectForm').addEventListener('submit', async (e) =
     grid.innerHTML = allProjects.length ? projectsTable(allProjects) : '<div class="empty">No projects yet. Create your first one above.</div>';
     wireProjectRowClicks(grid);
   } catch (err) {
-    alert('Could not create project: ' + err.message);
+    toast('Could not create project: ' + err.message, 'err');
   }
 });
 
@@ -444,7 +469,7 @@ async function renderProjectDetail(projectId){
         allProjects = [];
         renderProjectDetail(projectId);
       } catch (err) {
-        alert('Could not save project: ' + err.message);
+        toast('Could not save project: ' + err.message, 'err');
       }
     });
     document.getElementById('deleteProjectBtn').addEventListener('click', async () => {
@@ -454,7 +479,7 @@ async function renderProjectDetail(projectId){
         allProjects = [];
         location.hash = '#/projects';
       } catch (err) {
-        alert('Could not delete project: ' + err.message);
+        toast('Could not delete project: ' + err.message, 'err');
       }
     });
 
@@ -479,7 +504,7 @@ async function renderProjectDetail(projectId){
         e.target.classList.remove('open');
         renderProjectDetail(projectId);
       } catch (err) {
-        alert('Could not create task: ' + err.message);
+        toast('Could not create task: ' + err.message, 'err');
       }
     });
 
@@ -586,7 +611,7 @@ function wireTaskRows(root, onChanged, opts){
         await api(PM_TASKS_STATUS_URL, { method: 'POST', body: { task_id: taskId, status } });
         onChanged();
       } catch (err) {
-        alert('Could not update task: ' + err.message);
+        toast('Could not update task: ' + err.message, 'err');
         sel.disabled = false;
         sel.value = '';
       }
@@ -622,7 +647,7 @@ function wireTaskRows(root, onChanged, opts){
           body: { task_id: id, task_name, employee_id: Number(employee_id), eta_hours, priority, description } });
         onChanged();
       } catch (err) {
-        alert('Could not save task: ' + err.message);
+        toast('Could not save task: ' + err.message, 'err');
         btn.disabled = false;
       }
     });
@@ -636,7 +661,7 @@ function wireTaskRows(root, onChanged, opts){
         await api(PM_TASKS_DELETE_URL, { method: 'POST', body: { task_id: id } });
         onChanged();
       } catch (err) {
-        alert('Could not delete task: ' + err.message);
+        toast('Could not delete task: ' + err.message, 'err');
         btn.disabled = false;
       }
     });
