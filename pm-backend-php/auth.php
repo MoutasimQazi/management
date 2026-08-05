@@ -1,17 +1,21 @@
 <?php
-// DELIBERATELY EMPTY — do not put tokens back in this file.
+// Mirrors the n8n "Check Credentials1" node so a token issued by that
+// login is recognised here too. requireManager() checks the DB
+// `managers.token` column first and only falls back to this list.
 //
-// This used to hold the six managers' bearer tokens inline, mirroring the
-// n8n "Check Credentials1" node. Because this repo is public, those tokens
-// were readable by anyone, and the fallback below meant that knowing one
-// granted full API access. They have since been rotated; the live values
-// now live only in the `managers.token` column, which requireManager()
-// checks first.
-//
-// Every account (the original managers included) authenticates through
-// that DB lookup now, so this array has no entries. Leaving it empty is
-// what keeps the old published tokens from working.
-$USERS = [];
+// SECURITY DEBT: this repo is public, so these tokens are readable by
+// anyone and grant full API access. Rotating them requires updating the
+// n8n node in the same change — rotating only one side signs everyone
+// out, which is exactly what happened when it was attempted. Do both
+// together, or make the repository private first.
+$USERS = [
+    ['email' => 'yusuf.shaikh@moveneticsdigital.com',   'token' => 'tok_yusuf_7d1c277c49791954'],
+    ['email' => 'akruti.patel@moveneticsdigital.com',   'token' => 'tok_akruti_1203f0abfeea57ea'],
+    ['email' => 'binson.abraham@moveneticsdigital.com', 'token' => 'tok_binson_831812f4fc9ec934'],
+    ['email' => 'sapna.kaintu@moveneticsdigital.com',   'token' => 'tok_sapna_45a4494a4bb99fff'],
+    ['email' => 'noor.beskar@moveneticsdigital.com',    'token' => 'tok_noor_3673c02679e15c15'],
+    ['email' => 'asad.dongri@moveneticsdigital.com',    'token' => 'tok_asad_18d02455c601d090'],
+];
 
 // Pulls the Bearer token out of the request, however the current server
 // happens to expose it.
