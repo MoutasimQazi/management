@@ -86,6 +86,28 @@ function toast(msg, kind, sticky){
   if (!sticky) setTimeout(close, kind === 'err' ? 6500 : 4000);
 }
 
+/* Double-submit guard. None of the create forms disabled their submit
+   button while the request was in flight, so an impatient double-click
+   created two projects / tasks / employees. Capture-phase so it applies
+   to every form without touching each handler; re-enables when the
+   handler resets the form (the success path) or after a timeout. */
+document.addEventListener('submit', (e) => {
+  const form = e.target;
+  if (!(form instanceof HTMLFormElement)) return;
+  const btn = form.querySelector('button[type="submit"]') ||
+              form.querySelector('button:not([type="button"])');
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  let timer;
+  const release = () => {
+    btn.disabled = false;
+    clearTimeout(timer);
+    form.removeEventListener('reset', release);
+  };
+  timer = setTimeout(release, 6000);
+  form.addEventListener('reset', release);
+}, true);
+
 function readSession(){
   for (const store of [localStorage, sessionStorage]) {
     try {
