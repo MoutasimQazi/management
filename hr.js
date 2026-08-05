@@ -22,6 +22,12 @@ const PM_CANDIDATES_UPDATE_URL= PM_API_BASE + "pm-candidates-update.php";
 const PM_LEAVE_LIST_URL       = PM_API_BASE + "pm-leave-list.php";
 const PM_MANAGERS_LIST_URL    = PM_API_BASE + "pm-managers-list.php";
 const PM_MANAGERS_CREATE_URL  = PM_API_BASE + "pm-managers-create.php";
+const PM_MANAGERS_ROLE_URL    = PM_API_BASE + "pm-managers-role.php";
+const PM_PEOPLE_LIST_URL      = PM_API_BASE + "pm-people-list.php";
+const PM_PEOPLE_CREATE_URL    = PM_API_BASE + "pm-people-create.php";
+const PM_PROJECTS_LIST_URL    = PM_API_BASE + "pm-projects-list.php";
+const PM_QA_ASSIGNMENTS_URL   = PM_API_BASE + "pm-qa-assignments-list.php";
+const PM_QA_ASSIGN_URL        = PM_API_BASE + "pm-qa-assign.php";
 
 /* ── DOM references ─────────────────────────────────── */
 const pmSignedOut = document.getElementById('pmSignedOut');
@@ -190,7 +196,7 @@ function showApp(){
   appView.classList.add('active');
   renderUserChip(whoEmail, session.email);
   roleBadge.textContent = isAdmin ? 'Admin' : 'HR';
-  document.getElementById('staffNavLink').hidden = !isAdmin;
+  document.getElementById('qaNavLink').hidden = !isAdmin;
   document.querySelectorAll('.nav-admin').forEach(a => { a.hidden = !isAdmin; });
   route();
 }
@@ -200,7 +206,7 @@ signOutBtn.addEventListener('click', () => {
 });
 
 /* ── Router ──────────────────────────────────────────── */
-const PAGE_LABELS = { openings: 'Openings', leave: 'Leave', employees: 'Employees', staff: 'Staff' };
+const PAGE_LABELS = { openings: 'Openings', leave: 'Leave', people: 'People', qa: 'QA access' };
 
 function renderBreadcrumb(page, openingId){
   const el = document.getElementById('breadcrumb');
@@ -225,8 +231,8 @@ function route(){
   const hash  = location.hash || '#/openings';
   const parts = hash.replace(/^#\//, '').split('/');
   let page    = parts[0] || 'openings';
-  if (!['openings','opening','leave','employees','staff'].includes(page)) page = 'openings';
-  if (page === 'staff' && !isAdmin) page = 'openings';
+  if (!['openings','opening','leave','people','qa'].includes(page)) page = 'openings';
+  if (page === 'qa' && !isAdmin) page = 'openings';
 
   pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
   const navTarget = page === 'opening' ? 'openings' : page;
@@ -236,8 +242,8 @@ function route(){
   if (page === 'openings')  renderOpenings();
   if (page === 'opening')   renderOpeningDetail(Number(parts[1]));
   if (page === 'leave')     renderLeave();
-  if (page === 'employees') renderEmployees();
-  if (page === 'staff')     renderStaff();
+  if (page === 'people')    renderPeople();
+  if (page === 'qa')        renderQaAccess();
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);
@@ -461,80 +467,148 @@ function leaveRow(r){
 }
 
 /* ════════════════════════════════════════════════════
-   Employees
+   People — one directory over staff logins and the roster
+   ────────────────────────────────────────────────────
+   `managers` and `employees` remain separate tables (tasks, leave,
+   questions and bugs all hold foreign keys into `employees`), but there
+   is no reason the admin screen should expose that split. Each row
+   carries `kind` so the right endpoints get used per person.
    ════════════════════════════════════════════════════ */
-async function renderEmployees(){
-  const listEl = document.getElementById('employeesList');
+let allPeople = [];
+
+async function renderPeople(){
+  const listEl = document.getElementById('peopleList');
   listEl.innerHTML = '<div class="empty">Loading…</div>';
   try {
-    allEmployees = await api(PM_EMPLOYEES_LIST_URL);
-    drawEmployees();
+    allPeople = await api(PM_PEOPLE_LIST_URL);
+    drawPeople();
   } catch (err) {
-    listEl.innerHTML = '<div class="empty">Could not load employees (' + esc(err.message) + ').</div>';
+    listEl.innerHTML = '<div class="empty">Could not load people (' + esc(err.message) + ').</div>';
   }
 }
 
-// Filter + draw. Split out from the fetch so typing in the search box
-// re-renders instantly instead of hitting the network on every keystroke.
-function drawEmployees(){
-  const listEl = document.getElementById('employeesList');
-  const q = (document.getElementById('empSearch').value || '').trim().toLowerCase();
-  const rows = q
-    ? allEmployees.filter(e => [e.name, e.email, e.department, e.designation]
-        .some(v => String(v || '').toLowerCase().includes(q)))
-    : allEmployees;
+// Filter + draw, split from the fetch so typing re-renders instantly
+// instead of hitting the network on every keystroke.
+function drawPeople(){
+  const listEl = document.getElementById('peopleList');
+  const q = (document.getElementById('peopleSearch').value || '').trim().toLowerCase();
+  const roleFilter = document.getElementById('peopleRoleFilter').value;
 
-  document.getElementById('empCount').textContent =
-    q ? rows.length + ' of ' + allEmployees.length : String(allEmployees.length);
+  const rows = allPeople.filter(p =>
+    (!roleFilter || p.role === roleFilter) &&
+    (!q || [p.name, p.email, p.department, p.designation]
+        .some(v => String(v || '').toLowerCase().includes(q))));
 
-  if (!allEmployees.length) {
-    listEl.innerHTML = '<div class="empty">No employees yet — use “+ Add employee”.</div>';
+  document.getElementById('peopleCount').textContent =
+    (q || roleFilter) ? rows.length + ' of ' + allPeople.length : String(allPeople.length);
+
+  if (!allPeople.length) {
+    listEl.innerHTML = '<div class="empty">Nobody here yet — use “+ Add person”.</div>';
     return;
   }
   if (!rows.length) {
-    listEl.innerHTML = '<div class="empty">No one matches “' + esc(q) + '”.</div>';
+    listEl.innerHTML = '<div class="empty">Nobody matches that filter.</div>';
     return;
   }
+
   listEl.innerHTML =
     '<div class="table-wrap"><table class="data-table"><thead><tr>' +
-      '<th>Name</th><th>Department</th><th>Email</th><th>Login</th><th></th>' +
-    '</tr></thead><tbody>' + rows.map(employeeRow).join('') + '</tbody></table></div>';
-  wireEmployeeRows(listEl);
+      '<th>Name</th><th>Role</th><th>Email</th><th>Login</th><th></th>' +
+    '</tr></thead><tbody>' + rows.map(personRow).join('') + '</tbody></table></div>';
+  wirePeopleRows(listEl);
 }
 
-function employeeRow(e){
-  const login = e.has_login == 1
-    ? (e.temp_password
-        ? '<code class="secret">' + esc(e.temp_password) + '</code>' +
-          '<button type="button" class="icon-btn" data-copy="' + esc(e.temp_password) + '">Copy</button>'
-        : '<span class="status-badge completed">Has login</span>')
+const STAFF_ROLES = ['MANAGER', 'QA', 'HR', 'MARKETING', 'ADMIN'];
+
+function personRow(p){
+  const login = p.has_login == 1
+    ? (p.temp_password
+        ? '<code class="secret">' + esc(p.temp_password) + '</code>' +
+          '<button type="button" class="icon-btn" data-copy="' + esc(p.temp_password) + '">Copy</button>'
+        : '<span class="tsub">Set by user</span>')
     : '<span class="status-badge todo">No login</span>';
-  return '<tr data-emp-row="' + e.employee_id + '">' +
-    '<td><div class="ttitle">' + esc(e.name) + '</div>' +
-      (e.designation ? '<div class="tsub">' + esc(e.designation) + '</div>' : '') + '</td>' +
-    '<td>' + esc(e.department || '—') + '</td>' +
-    '<td>' + esc(e.email || '—') + '</td>' +
+
+  // Only staff rows can change role — moving someone between the roster
+  // and a staff login would mean moving rows between tables, and their
+  // tasks/leave history hangs off the employees row.
+  const roleCell = (isAdmin && p.kind === 'STAFF')
+    ? '<select class="status-select" data-role-for="' + p.id + '">' +
+        STAFF_ROLES.map(r => '<option value="' + r + '"' + (p.role === r ? ' selected' : '') + '>' +
+          statusLabel(r) + '</option>').join('') +
+      '</select>'
+    : badge(p.role);
+
+  return '<tr data-person-row="' + p.kind + '-' + p.id + '">' +
+    '<td><div class="ttitle">' + esc(p.name) + '</div>' +
+      (p.designation || p.department
+        ? '<div class="tsub">' + esc([p.designation, p.department].filter(Boolean).join(' · ')) + '</div>'
+        : '') +
+      (p.is_active == 0 ? '<div class="tsub">Deactivated</div>' : '') + '</td>' +
+    '<td>' + roleCell + '</td>' +
+    '<td>' + esc(p.email || '—') + '</td>' +
     '<td class="nowrap">' + login + '</td>' +
     '<td class="actions-cell">' +
-      '<button type="button" class="icon-btn" data-emp-edit="' + e.employee_id + '">Edit</button>' +
-      (e.has_login == 1
-        ? '<button type="button" class="icon-btn" data-emp-reset-pw="' + e.employee_id + '">Reset</button>'
+      (p.has_login == 1 && isAdmin
+        ? '<button type="button" class="icon-btn" data-reset-pw="' + p.kind + '-' + p.id + '">Reset password</button>'
         : '') +
-      '<button type="button" class="icon-btn danger" data-emp-delete="' + e.employee_id + '">Delete</button>' +
+      (p.kind === 'EMPLOYEE'
+        ? '<button type="button" class="icon-btn danger" data-emp-delete="' + p.id + '">Delete</button>'
+        : '') +
     '</td></tr>';
 }
-function employeeEditForm(e){
-  return '<tr data-emp-row="' + e.employee_id + '"><td colspan="5" class="edit-row-cell">' +
-    '<div class="row">' +
-      '<input value="' + esc(e.name) + '" data-emp-field="name" placeholder="Name" />' +
-      '<input value="' + esc(e.designation || '') + '" data-emp-field="designation" placeholder="Designation" />' +
-      '<input value="' + esc(e.department || '') + '" data-emp-field="department" placeholder="Department" />' +
-      '<input value="' + esc(e.email || '') + '" data-emp-field="email" type="email" placeholder="Email — grants login" />' +
-    '</div>' +
-    '<div class="actions">' +
-      '<button type="button" class="icon-btn" data-emp-save="' + e.employee_id + '">Save</button>' +
-      '<button type="button" class="icon-btn" data-emp-cancel="' + e.employee_id + '">Cancel</button>' +
-    '</div></td></tr>';
+
+function wirePeopleRows(root){
+  wireCopyButtons(root);
+
+  root.querySelectorAll('[data-role-for]').forEach(sel => {
+    const original = sel.value;
+    sel.addEventListener('change', async () => {
+      sel.disabled = true;
+      try {
+        await api(PM_MANAGERS_ROLE_URL, { method: 'POST',
+          body: { manager_id: Number(sel.dataset.roleFor), role: sel.value } });
+        toast('Role updated to ' + statusLabel(sel.value) + '.', 'ok');
+        renderPeople();
+      } catch (err) {
+        toast('Could not change role: ' + err.message, 'err');
+        sel.value = original;      // put the control back to the truth
+        sel.disabled = false;
+      }
+    });
+  });
+
+  root.querySelectorAll('[data-reset-pw]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const [kind, id] = btn.dataset.resetPw.split('-');
+      btn.disabled = true;
+      try {
+        await api(kind === 'STAFF' ? PM_MANAGERS_RESET_PW_URL : PM_EMPLOYEES_RESET_PW_URL,
+          { method: 'POST',
+            body: kind === 'STAFF' ? { manager_id: Number(id) } : { employee_id: Number(id) } });
+        toast('Password reset — the new one is in the list.', 'ok');
+        renderPeople();
+      } catch (err) {
+        toast('Could not reset password: ' + err.message, 'err');
+        btn.disabled = false;
+      }
+    });
+  });
+
+  root.querySelectorAll('[data-emp-delete]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = Number(btn.dataset.empDelete);
+      const person = allPeople.find(p => p.kind === 'EMPLOYEE' && p.id === id);
+      if (!confirm('Delete ' + (person ? person.name : 'this person') + '? This cannot be undone.')) return;
+      btn.disabled = true;
+      try {
+        await api(PM_EMPLOYEES_DELETE_URL, { method: 'POST', body: { employee_id: id } });
+        renderPeople();
+      } catch (err) {
+        toast('Could not delete: ' + err.message, 'err');
+        btn.disabled = false;
+      }
+    });
+  });
 }
 
 // Copy-to-clipboard for generated passwords — they were displayed but
@@ -551,164 +625,115 @@ function wireCopyButtons(root){
     });
   });
 }
-function wireEmployeeRows(root){
-  wireCopyButtons(root);
-  root.querySelectorAll('[data-emp-edit]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = Number(btn.dataset.empEdit);
-      const emp = allEmployees.find(e => e.employee_id === id);
-      const rowEl = root.querySelector('[data-emp-row="' + id + '"]');
-      rowEl.outerHTML = employeeEditForm(emp);
-      wireEmployeeRows(root);
-    });
-  });
-  root.querySelectorAll('[data-emp-cancel]').forEach(btn => {
-    btn.addEventListener('click', () => renderEmployees());
-  });
-  root.querySelectorAll('[data-emp-save]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = Number(btn.dataset.empSave);
-      const rowEl = root.querySelector('[data-emp-row="' + id + '"]');
-      const name = rowEl.querySelector('[data-emp-field="name"]').value.trim();
-      const designation = rowEl.querySelector('[data-emp-field="designation"]').value.trim();
-      const department = rowEl.querySelector('[data-emp-field="department"]').value.trim();
-      const email = rowEl.querySelector('[data-emp-field="email"]').value.trim();
-      if (!name) return;
-      btn.disabled = true;
-      try {
-        const result = await api(PM_EMPLOYEES_UPDATE_URL, { method: 'POST',
-          body: { employee_id: id, name, designation, department, email } });
-        if (result.temp_password) {
-          toast('Login created for ' + result.login_email + '.\nTemporary password: ' + result.temp_password + '\n\nAlso visible any time in the list below.', 'ok', true);
-        }
-        renderEmployees();
-      } catch (err) {
-        toast('Could not save employee: ' + err.message, 'err');
-        btn.disabled = false;
-      }
-    });
-  });
-  root.querySelectorAll('[data-emp-delete]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = Number(btn.dataset.empDelete);
-      const emp = allEmployees.find(e => e.employee_id === id);
-      if (!confirm('Delete ' + (emp ? emp.name : 'this employee') + '? This cannot be undone.')) return;
-      btn.disabled = true;
-      try {
-        await api(PM_EMPLOYEES_DELETE_URL, { method: 'POST', body: { employee_id: id } });
-        renderEmployees();
-      } catch (err) {
-        toast('Could not delete employee: ' + err.message, 'err');
-        btn.disabled = false;
-      }
-    });
-  });
-  root.querySelectorAll('[data-emp-reset-pw]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = Number(btn.dataset.empResetPw);
-      btn.disabled = true;
-      try {
-        await api(PM_EMPLOYEES_RESET_PW_URL, { method: 'POST', body: { employee_id: id } });
-        renderEmployees();
-      } catch (err) {
-        toast('Could not reset password: ' + err.message, 'err');
-        btn.disabled = false;
-      }
-    });
-  });
-}
-document.getElementById('empSearch').addEventListener('input', drawEmployees);
-document.getElementById('empAddToggle').addEventListener('click', () => {
-  document.getElementById('empAddForm').classList.toggle('open');
-  document.getElementById('empName').focus();
+
+document.getElementById('peopleSearch').addEventListener('input', drawPeople);
+document.getElementById('peopleRoleFilter').addEventListener('change', drawPeople);
+document.getElementById('personAddToggle').addEventListener('click', () => {
+  document.getElementById('personAddForm').classList.toggle('open');
+  document.getElementById('personName').focus();
 });
-document.getElementById('empAddCancel').addEventListener('click', () => {
-  document.getElementById('empAddForm').classList.remove('open');
+document.getElementById('personAddCancel').addEventListener('click', () => {
+  document.getElementById('personAddForm').classList.remove('open');
 });
 
-document.getElementById('empAddForm').addEventListener('submit', async (e) => {
+// Department/designation only mean anything for roster entries, and a
+// staff login can't exist without an email — so the form follows the role.
+function syncPersonForm(){
+  const isEmployee = document.getElementById('personRole').value === 'EMPLOYEE';
+  document.getElementById('personDeptField').hidden = !isEmployee;
+  document.getElementById('personDesigField').hidden = !isEmployee;
+  document.getElementById('personEmailHint').textContent =
+    isEmployee ? '— optional, grants a login' : '— required for a staff login';
+  document.getElementById('personEmail').required = !isEmployee;
+}
+document.getElementById('personRole').addEventListener('change', syncPersonForm);
+syncPersonForm();
+
+document.getElementById('personAddForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const name = document.getElementById('empName').value.trim();
-  const department = document.getElementById('empDepartment').value.trim();
-  const designation = document.getElementById('empDesignation').value.trim();
-  const email = document.getElementById('empEmail').value.trim();
+  const name = document.getElementById('personName').value.trim();
+  const role = document.getElementById('personRole').value;
+  const email = document.getElementById('personEmail').value.trim();
   if (!name) return;
+  if (role !== 'EMPLOYEE' && !email) {
+    toast('A staff login needs an email address.', 'err');
+    return;
+  }
   try {
-    const result = await api(PM_EMPLOYEES_CREATE_URL, { method: 'POST', body: { name, department, designation, email } });
-    document.getElementById('empAddForm').reset();
-    document.getElementById('empAddForm').classList.remove('open');
+    const result = await api(PM_PEOPLE_CREATE_URL, { method: 'POST', body: {
+      name, role, email,
+      department: document.getElementById('personDepartment').value.trim(),
+      designation: document.getElementById('personDesignation').value.trim()
+    }});
+    e.target.reset();
+    syncPersonForm();
+    e.target.classList.remove('open');
     if (result.temp_password) {
-      toast('Login created for ' + result.login_email + '.\nTemporary password: ' + result.temp_password + '\n\nAlso visible any time in the list below.', 'ok', true);
+      toast('Login created for ' + result.login_email +
+            '.\nTemporary password: ' + result.temp_password +
+            '\n\nAlso visible any time in the list below.', 'ok', true);
+    } else {
+      toast('Added to the roster.', 'ok');
     }
-    renderEmployees();
+    renderPeople();
   } catch (err) {
-    toast('Could not add employee: ' + err.message, 'err');
+    toast('Could not add person: ' + err.message, 'err');
   }
 });
 
 /* ════════════════════════════════════════════════════
-   Staff accounts (ADMIN only)
+   QA access — which projects each QA account can see
    ════════════════════════════════════════════════════ */
-async function renderStaff(){
-  if (!isAdmin) return;
-  const listEl = document.getElementById('staffList');
-  listEl.innerHTML = '<div class="empty">Loading…</div>';
+async function renderQaAccess(){
+  const el = document.getElementById('qaAccessList');
+  if (!isAdmin) { el.innerHTML = '<div class="empty">Admins only.</div>'; return; }
+  el.innerHTML = '<div class="empty">Loading…</div>';
   try {
-    const rows = await api(PM_MANAGERS_LIST_URL);
-    listEl.innerHTML = rows.length
-      ? '<div class="table-wrap"><table class="data-table"><thead><tr>' +
-          '<th>Name</th><th>Email</th><th>Role</th><th>Password</th><th></th>' +
-        '</tr></thead><tbody>' +
-        rows.map(m =>
-          '<tr data-mgr-row="' + m.manager_id + '">' +
-            '<td><div class="ttitle">' + esc(m.full_name) + '</div>' +
-              (!m.is_active ? '<div class="tsub">Deactivated</div>' : '') + '</td>' +
-            '<td>' + esc(m.email) + '</td>' +
-            '<td>' + badge(m.role) + '</td>' +
-            '<td class="nowrap">' + (m.temp_password
-                ? '<code class="secret">' + esc(m.temp_password) + '</code>' +
-                  '<button type="button" class="icon-btn" data-copy="' + esc(m.temp_password) + '">Copy</button>'
-                : (m.has_login == 1 ? '<span class="tsub">Set by user</span>' : '<span class="status-badge todo">No login</span>')) + '</td>' +
-            '<td class="actions-cell">' +
-              (m.has_login == 1 ? '<button type="button" class="icon-btn" data-mgr-reset-pw="' + m.manager_id + '">Reset password</button>' : '') +
-            '</td></tr>').join('') +
-        '</tbody></table></div>'
-      : '<div class="empty">No staff accounts yet.</div>';
-    wireCopyButtons(listEl);
-    listEl.querySelectorAll('[data-mgr-reset-pw]').forEach(btn => {
+    const [qas, projects] = await Promise.all([
+      api(PM_QA_ASSIGNMENTS_URL),
+      api(PM_PROJECTS_LIST_URL)
+    ]);
+    if (!qas.length) {
+      el.innerHTML = '<div class="empty">No QA accounts yet. Add one from ' +
+        '<a class="xref" href="#/people">People</a> with the QA role.</div>';
+      return;
+    }
+    if (!projects.length) {
+      el.innerHTML = '<div class="empty">No projects exist yet to assign.</div>';
+      return;
+    }
+    el.innerHTML = qas.map(q =>
+      '<div class="sect" style="margin-bottom:14px" data-qa-card="' + q.qa_id + '">' +
+        '<h4>' + esc(q.full_name) + '</h4>' +
+        '<div class="check-group" style="margin-bottom:12px">' +
+          projects.map(p =>
+            '<label class="check"><input type="checkbox" value="' + p.project_id + '"' +
+            (q.project_ids.includes(p.project_id) ? ' checked' : '') + ' data-qa-proj />' +
+            '<span>' + esc(p.project_name) + '</span></label>').join('') +
+        '</div>' +
+        '<button type="button" class="icon-btn" data-qa-save="' + q.qa_id + '">Save access</button>' +
+      '</div>').join('');
+
+    el.querySelectorAll('[data-qa-save]').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const id = Number(btn.dataset.mgrResetPw);
+        const qaId = Number(btn.dataset.qaSave);
+        const card = el.querySelector('[data-qa-card="' + qaId + '"]');
+        const ids = [...card.querySelectorAll('[data-qa-proj]:checked')].map(c => Number(c.value));
         btn.disabled = true;
         try {
-          await api(PM_MANAGERS_RESET_PW_URL, { method: 'POST', body: { manager_id: id } });
-          renderStaff();
+          await api(PM_QA_ASSIGN_URL, { method: 'POST', body: { qa_id: qaId, project_ids: ids } });
+          toast(ids.length ? 'Access saved — ' + ids.length + ' project(s).'
+                           : 'Access cleared — this QA account now sees nothing.', 'ok');
         } catch (err) {
-          toast('Could not reset password: ' + err.message, 'err');
-          btn.disabled = false;
+          toast('Could not save access: ' + err.message, 'err');
         }
+        btn.disabled = false;
       });
     });
   } catch (err) {
-    listEl.innerHTML = '<div class="empty">Could not load staff accounts (' + esc(err.message) + ').</div>';
+    el.innerHTML = '<div class="empty">Could not load QA access (' + esc(err.message) + ').</div>';
   }
 }
-document.getElementById('newStaffForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const full_name = document.getElementById('staffName').value.trim();
-  const email = document.getElementById('staffEmail').value.trim();
-  const role = document.getElementById('staffRole').value;
-  if (!full_name || !email) return;
-  try {
-    const result = await api(PM_MANAGERS_CREATE_URL, { method: 'POST', body: { full_name, email, role } });
-    e.target.reset();
-    document.getElementById('staffCreatedNotice').innerHTML =
-      '<div class="empty">Account created for ' + esc(result.login_email) + '. Temporary password: <strong>' +
-      esc(result.temp_password) + '</strong> — also visible any time in the list below.</div>';
-    renderStaff();
-  } catch (err) {
-    toast('Could not create account: ' + err.message, 'err');
-  }
-});
 
 /* ════════════════════════════════════════════════════
    Boot

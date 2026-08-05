@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Movenetics Digital · QA</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="projects.css?v=5">
+</head>
+
+<body>
+
+  <!-- ══ Signed-out state (no login form here — session is shared) ══ -->
+  <div id="pmSignedOut" class="view active">
+    <div class="pm-signedout">
+      <span class="logochip" style="margin-bottom:18px; display:inline-flex">
+        <img src="logo.png" alt="Movenetics Digital" style="height:30px" onerror="this.parentElement.style.display='none'" />
+      </span>
+      <h1>Sign <em>in</em></h1>
+      <p>This page uses the same sign-in as the rest of the workspace. Sign in there first, then come back to this tab.</p>
+      <a class="btn-sm" href="index.html">Go to sign in →</a>
+    </div>
+  </div>
+
+  <!-- ══ Signed-in app ══════════════════════════════════ -->
+  <div id="appView" class="view dashwrap">
+
+    <header class="topbar">
+      <a class="logochip" id="homeLogo" href="#/bugs" title="Bugs">
+        <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
+      </a>
+      <!-- Tier 1: which section. Other sections are admin-only. -->
+      <nav class="sections">
+        <a href="index.html#/dashboard" class="nav-admin" hidden>Overview</a>
+        <a href="projects.html" class="nav-admin" hidden>Projects</a>
+        <a href="hr.html" class="nav-admin" hidden>HR</a>
+        <a href="marketing.html" class="nav-admin" hidden>Marketing</a>
+        <a href="qa.html" class="on">QA</a>
+      </nav>
+
+      <span class="spacer"></span>
+      <span class="role-badge manager" id="roleBadge">QA</span>
+      <span class="userchip" id="whoEmail"></span>
+      <button type="button" class="linkbtn" id="signOut">Sign out</button>
+    </header>
+
+    <!-- Tier 2: pages within QA. -->
+    <nav class="subnav">
+      <a href="#/bugs"  data-nav="bugs">Bugs</a>
+      <a href="#/cases" data-nav="cases">Test cases</a>
+    </nav>
+
+    <!-- ── Page: Bugs ──────────────────────────────────── -->
+    <section id="page-bugs" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>Bug <em>tracker</em></h1>
+          <p class="sub">Defects raised against the projects you're testing. Open and reopened bugs sort to the top, most severe first.</p>
+        </div>
+        <button type="button" class="btn-sm" id="newBugToggle" style="border:none">+ Report bug</button>
+      </div>
+
+      <form id="newBugForm" class="inline-form">
+        <div class="row">
+          <div class="field"><label>Project</label><select id="bugProject" required></select></div>
+          <div class="field"><label>Severity</label>
+            <select id="bugSeverity">
+              <option value="LOW">Low</option>
+              <option value="MEDIUM" selected>Medium</option>
+              <option value="HIGH">High</option>
+              <option value="CRITICAL">Critical</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>Title</label><input id="bugTitle" required placeholder="What is broken?" /></div>
+        <div class="field"><label>Steps to reproduce <span class="opt">— optional</span></label><textarea id="bugSteps" placeholder="1. Go to…&#10;2. Click…&#10;Expected: …  Actual: …"></textarea></div>
+        <div class="actions">
+          <button type="submit">Report bug</button>
+          <button type="button" class="secondary" id="bugCancelBtn">Cancel</button>
+        </div>
+      </form>
+
+      <div class="panel-head">
+        <h2>Bugs</h2>
+        <span class="count" id="bugCount">0</span>
+        <span class="spacer"></span>
+        <input type="search" id="bugSearch" class="searchbox" placeholder="Search title, project…" />
+        <select id="bugStatusFilter" class="searchbox" style="width:170px">
+          <option value="">All statuses</option>
+          <option value="OPEN">Open</option>
+          <option value="IN_PROGRESS">In progress</option>
+          <option value="FIXED">Fixed</option>
+          <option value="VERIFIED">Verified</option>
+          <option value="CLOSED">Closed</option>
+          <option value="REOPENED">Reopened</option>
+        </select>
+      </div>
+      <div id="bugsList"></div>
+    </section>
+
+    <!-- ── Page: Test cases ────────────────────────────── -->
+    <section id="page-cases" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>Test <em>cases</em></h1>
+          <p class="sub">Reusable checks per project. Record a result each round — a failure can open a bug in the same step.</p>
+        </div>
+        <button type="button" class="btn-sm" id="newCaseToggle" style="border:none">+ New test case</button>
+      </div>
+
+      <form id="newCaseForm" class="inline-form">
+        <div class="row">
+          <div class="field"><label>Project</label><select id="caseProject" required></select></div>
+          <div class="field"><label>Title</label><input id="caseTitle" required placeholder="e.g. Login with valid credentials" /></div>
+        </div>
+        <div class="field"><label>Steps <span class="opt">— optional</span></label><textarea id="caseSteps" placeholder="1. …&#10;2. …"></textarea></div>
+        <div class="field"><label>Expected result <span class="opt">— optional</span></label><input id="caseExpected" placeholder="What should happen" /></div>
+        <div class="actions">
+          <button type="submit">Create test case</button>
+          <button type="button" class="secondary" id="caseCancelBtn">Cancel</button>
+        </div>
+      </form>
+
+      <div class="panel-head">
+        <h2>Cases</h2>
+        <span class="count" id="caseCount">0</span>
+        <span class="spacer"></span>
+        <input type="search" id="caseSearch" class="searchbox" placeholder="Search case, project…" />
+      </div>
+      <div id="casesList"></div>
+    </section>
+
+  </div>
+
+  <script src="qa.js?v=5"></script>
+</body>
+</html>

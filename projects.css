@@ -103,7 +103,6 @@
   color:#fff;
   flex:none;
 }
-.role-badge.manager{ background:var(--line-2); color:var(--ink-2); border:1px solid var(--line); }
 
 /* Status badges used across tasks / approvals / questions.
    Each carries a matching hairline border so the pills read as distinct

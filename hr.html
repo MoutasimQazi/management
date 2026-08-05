@@ -40,6 +40,7 @@
         <a href="projects.html" class="nav-admin" hidden>Projects</a>
         <a href="hr.html" class="on">HR</a>
         <a href="marketing.html" class="nav-admin" hidden>Marketing</a>
+        <a href="qa.html" class="nav-admin" hidden>QA</a>
       </nav>
 
       <span class="spacer"></span>
@@ -52,8 +53,8 @@
     <nav class="subnav">
       <a href="#/openings"  data-nav="openings">Openings</a>
       <a href="#/leave"     data-nav="leave">Leave</a>
-      <a href="#/employees" data-nav="employees">Employees</a>
-      <a href="#/staff" data-nav="staff" id="staffNavLink" hidden>Staff</a>
+      <a href="#/people"    data-nav="people">People</a>
+      <a href="#/qa" data-nav="qa" id="qaNavLink" hidden>QA access</a>
     </nav>
 
     <nav class="breadcrumb" id="breadcrumb"></nav>
@@ -107,71 +108,73 @@
       <div id="allLeaveList"></div>
     </section>
 
-    <!-- ── Page: Employees ─────────────────────────────── -->
-    <section id="page-employees" class="page">
+    <!-- ── Page: People (staff + employees in one place) ── -->
+    <section id="page-people" class="page">
       <div class="pagehead">
         <div>
-          <h1><em>Employees</em></h1>
-          <p class="sub">The full roster. Add an email to give an employee their own login.</p>
+          <h1><em>People</em></h1>
+          <p class="sub">Everyone in the workspace. "Employee" is the roster that work gets assigned to; every other role is a staff login. Admins can change a role or reset a password here.</p>
         </div>
       </div>
 
-      <!-- Search matters here: this roster is 50+ people, and scrolling was
-           the only way to find anyone. The add form starts collapsed so the
-           list you came for is what you actually see. -->
       <div class="panel-head">
-        <h2>Roster</h2>
-        <span class="count" id="empCount">0</span>
+        <h2>Directory</h2>
+        <span class="count" id="peopleCount">0</span>
         <span class="spacer"></span>
-        <input type="search" id="empSearch" class="searchbox" placeholder="Search name, email, department…" />
-        <button type="button" class="btn-sm" id="empAddToggle" style="border:none">+ Add employee</button>
+        <input type="search" id="peopleSearch" class="searchbox" placeholder="Search name, email, department…" />
+        <select id="peopleRoleFilter" class="searchbox" style="width:150px">
+          <option value="">All roles</option>
+          <option value="EMPLOYEE">Employee</option>
+          <option value="MANAGER">Manager</option>
+          <option value="QA">QA</option>
+          <option value="HR">HR</option>
+          <option value="MARKETING">Marketing</option>
+          <option value="ADMIN">Admin</option>
+        </select>
+        <button type="button" class="btn-sm" id="personAddToggle" style="border:none">+ Add person</button>
       </div>
 
-      <form id="empAddForm" class="inline-form">
+      <!-- One form for everyone: picking "Employee" writes to the roster,
+           any other role creates a staff login. -->
+      <form id="personAddForm" class="inline-form">
         <div class="row">
-          <div class="field"><label>Name</label><input id="empName" required placeholder="Employee name" /></div>
-          <div class="field"><label>Designation <span class="opt">— optional</span></label><input id="empDesignation" placeholder="e.g. Designer" /></div>
+          <div class="field"><label>Name</label><input id="personName" required placeholder="Full name" /></div>
+          <div class="field"><label>Role</label>
+            <select id="personRole">
+              <option value="EMPLOYEE" selected>Employee</option>
+              <option value="MANAGER">Manager</option>
+              <option value="QA">QA / Tester</option>
+              <option value="HR">HR</option>
+              <option value="MARKETING">Marketing</option>
+              <option value="ADMIN">Admin</option>
+            </select>
+          </div>
         </div>
         <div class="row">
-          <div class="field"><label>Department <span class="opt">— optional</span></label><input id="empDepartment" placeholder="e.g. Marketing" /></div>
-          <div class="field"><label>Email <span class="opt">— optional, grants login</span></label><input id="empEmail" type="email" placeholder="name@moveneticsdigital.com" /></div>
+          <div class="field"><label>Email <span class="opt" id="personEmailHint">— optional, grants a login</span></label><input id="personEmail" type="email" placeholder="name@moveneticsdigital.com" /></div>
+          <div class="field" id="personDeptField"><label>Department <span class="opt">— optional</span></label><input id="personDepartment" placeholder="e.g. Engineering" /></div>
         </div>
+        <div class="field" id="personDesigField"><label>Designation <span class="opt">— optional</span></label><input id="personDesignation" placeholder="e.g. Designer" /></div>
         <div class="actions">
-          <button type="submit">Add employee</button>
-          <button type="button" class="secondary" id="empAddCancel">Cancel</button>
+          <button type="submit">Add person</button>
+          <button type="button" class="secondary" id="personAddCancel">Cancel</button>
         </div>
       </form>
-      <div id="employeesList"></div>
+
+      <div id="peopleList"></div>
     </section>
 
-    <!-- ── Page: Staff accounts (ADMIN only) ───────────── -->
-    <section id="page-staff" class="page">
+    <!-- ── Page: QA project access (ADMIN only) ────────── -->
+    <section id="page-qa" class="page">
       <div class="pagehead">
         <div>
-          <h1>Staff <em>accounts</em></h1>
-          <p class="sub">Create HR / Marketing / Manager logins. A temporary password is shown once — share it directly with them.</p>
+          <h1>QA <em>access</em></h1>
+          <p class="sub">QA accounts only see the projects you tick here — bugs and test cases are scoped to them.</p>
         </div>
       </div>
-
-      <form id="newStaffForm" class="inline-form open">
-        <div class="row">
-          <div class="field"><label>Full name</label><input id="staffName" required placeholder="Full name" /></div>
-          <div class="field"><label>Email</label><input id="staffEmail" type="email" required placeholder="name@moveneticsdigital.com" /></div>
-        </div>
-        <div class="field"><label>Role</label>
-          <select id="staffRole">
-            <option value="HR">HR</option>
-            <option value="MARKETING">Marketing</option>
-            <option value="MANAGER">Manager</option>
-            <option value="ADMIN">Admin</option>
-          </select>
-        </div>
-        <div class="actions"><button type="submit">Create account</button></div>
-      </form>
-
-      <div id="staffCreatedNotice"></div>
-      <div id="staffList"></div>
+      <div id="qaAccessList"></div>
     </section>
+
 
   </div>
 
