@@ -109,12 +109,30 @@
         </div>
       </div>
 
-      <form id="empAddForm" class="inline-form open row" style="align-items:end">
-        <div class="field"><label>Name</label><input id="empName" required placeholder="Employee name" /></div>
-        <div class="field"><label>Designation <span class="opt">— optional</span></label><input id="empDesignation" placeholder="e.g. Designer" /></div>
-        <div class="field"><label>Department <span class="opt">— optional</span></label><input id="empDepartment" placeholder="e.g. Marketing" /></div>
-        <div class="field"><label>Email <span class="opt">— optional, grants login</span></label><input id="empEmail" type="email" placeholder="name@moveneticsdigital.com" /></div>
-        <div class="actions" style="grid-column:1/-1"><button type="submit">Add employee</button></div>
+      <!-- Search matters here: this roster is 50+ people, and scrolling was
+           the only way to find anyone. The add form starts collapsed so the
+           list you came for is what you actually see. -->
+      <div class="panel-head">
+        <h2>Roster</h2>
+        <span class="count" id="empCount">0</span>
+        <span class="spacer"></span>
+        <input type="search" id="empSearch" class="searchbox" placeholder="Search name, email, department…" />
+        <button type="button" class="btn-sm" id="empAddToggle" style="border:none">+ Add employee</button>
+      </div>
+
+      <form id="empAddForm" class="inline-form">
+        <div class="row">
+          <div class="field"><label>Name</label><input id="empName" required placeholder="Employee name" /></div>
+          <div class="field"><label>Designation <span class="opt">— optional</span></label><input id="empDesignation" placeholder="e.g. Designer" /></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Department <span class="opt">— optional</span></label><input id="empDepartment" placeholder="e.g. Marketing" /></div>
+          <div class="field"><label>Email <span class="opt">— optional, grants login</span></label><input id="empEmail" type="email" placeholder="name@moveneticsdigital.com" /></div>
+        </div>
+        <div class="actions">
+          <button type="submit">Add employee</button>
+          <button type="button" class="secondary" id="empAddCancel">Cancel</button>
+        </div>
       </form>
       <div id="employeesList"></div>
     </section>

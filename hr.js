@@ -424,46 +424,91 @@ async function renderEmployees(){
   listEl.innerHTML = '<div class="empty">Loading…</div>';
   try {
     allEmployees = await api(PM_EMPLOYEES_LIST_URL);
-    listEl.innerHTML = allEmployees.length
-      ? allEmployees.map(employeeRow).join('')
-      : '<div class="empty">No employees yet — add one above.</div>';
-    wireEmployeeRows(listEl);
+    drawEmployees();
   } catch (err) {
     listEl.innerHTML = '<div class="empty">Could not load employees (' + esc(err.message) + ').</div>';
   }
 }
+
+// Filter + draw. Split out from the fetch so typing in the search box
+// re-renders instantly instead of hitting the network on every keystroke.
+function drawEmployees(){
+  const listEl = document.getElementById('employeesList');
+  const q = (document.getElementById('empSearch').value || '').trim().toLowerCase();
+  const rows = q
+    ? allEmployees.filter(e => [e.name, e.email, e.department, e.designation]
+        .some(v => String(v || '').toLowerCase().includes(q)))
+    : allEmployees;
+
+  document.getElementById('empCount').textContent =
+    q ? rows.length + ' of ' + allEmployees.length : String(allEmployees.length);
+
+  if (!allEmployees.length) {
+    listEl.innerHTML = '<div class="empty">No employees yet — use “+ Add employee”.</div>';
+    return;
+  }
+  if (!rows.length) {
+    listEl.innerHTML = '<div class="empty">No one matches “' + esc(q) + '”.</div>';
+    return;
+  }
+  listEl.innerHTML =
+    '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+      '<th>Name</th><th>Department</th><th>Email</th><th>Login</th><th></th>' +
+    '</tr></thead><tbody>' + rows.map(employeeRow).join('') + '</tbody></table></div>';
+  wireEmployeeRows(listEl);
+}
+
 function employeeRow(e){
-  return '<div class="task-row" data-emp-row="' + e.employee_id + '">' +
-    '<div class="tinfo"><div class="ttitle">' + esc(e.name) + '</div>' +
-    '<div class="tmeta">' +
-      (e.designation ? '<span>' + esc(e.designation) + '</span>' : '') +
-      (e.department ? '<span>' + esc(e.department) + '</span>' : '') +
-      (e.email ? '<span>' + esc(e.email) + '</span>' : '') +
-      '<span>' + (e.has_login == 1 ? 'Has login' : 'No login yet') + '</span>' +
-      (e.temp_password ? '<span>Password: <strong>' + esc(e.temp_password) + '</strong></span>' : '') +
-    '</div></div>' +
-    '<div class="tactions">' +
+  const login = e.has_login == 1
+    ? (e.temp_password
+        ? '<code class="secret">' + esc(e.temp_password) + '</code>' +
+          '<button type="button" class="icon-btn" data-copy="' + esc(e.temp_password) + '">Copy</button>'
+        : '<span class="status-badge completed">Has login</span>')
+    : '<span class="status-badge todo">No login</span>';
+  return '<tr data-emp-row="' + e.employee_id + '">' +
+    '<td><div class="ttitle">' + esc(e.name) + '</div>' +
+      (e.designation ? '<div class="tsub">' + esc(e.designation) + '</div>' : '') + '</td>' +
+    '<td>' + esc(e.department || '—') + '</td>' +
+    '<td>' + esc(e.email || '—') + '</td>' +
+    '<td class="nowrap">' + login + '</td>' +
+    '<td class="actions-cell">' +
       '<button type="button" class="icon-btn" data-emp-edit="' + e.employee_id + '">Edit</button>' +
       (e.has_login == 1
-        ? '<button type="button" class="icon-btn" data-emp-reset-pw="' + e.employee_id + '">Reset password</button>'
+        ? '<button type="button" class="icon-btn" data-emp-reset-pw="' + e.employee_id + '">Reset</button>'
         : '') +
       '<button type="button" class="icon-btn danger" data-emp-delete="' + e.employee_id + '">Delete</button>' +
-    '</div></div>';
+    '</td></tr>';
 }
 function employeeEditForm(e){
-  return '<div class="task-row edit-row" data-emp-row="' + e.employee_id + '">' +
-    '<div class="row" style="flex:1">' +
-      '<div class="field"><input value="' + esc(e.name) + '" data-emp-field="name" placeholder="Name" /></div>' +
-      '<div class="field"><input value="' + esc(e.designation || '') + '" data-emp-field="designation" placeholder="Designation" /></div>' +
-      '<div class="field"><input value="' + esc(e.department || '') + '" data-emp-field="department" placeholder="Department" /></div>' +
-      '<div class="field"><input value="' + esc(e.email || '') + '" data-emp-field="email" type="email" placeholder="Email — grants login" /></div>' +
+  return '<tr data-emp-row="' + e.employee_id + '"><td colspan="5" class="edit-row-cell">' +
+    '<div class="row">' +
+      '<input value="' + esc(e.name) + '" data-emp-field="name" placeholder="Name" />' +
+      '<input value="' + esc(e.designation || '') + '" data-emp-field="designation" placeholder="Designation" />' +
+      '<input value="' + esc(e.department || '') + '" data-emp-field="department" placeholder="Department" />' +
+      '<input value="' + esc(e.email || '') + '" data-emp-field="email" type="email" placeholder="Email — grants login" />' +
     '</div>' +
-    '<div class="tactions">' +
+    '<div class="actions">' +
       '<button type="button" class="icon-btn" data-emp-save="' + e.employee_id + '">Save</button>' +
       '<button type="button" class="icon-btn" data-emp-cancel="' + e.employee_id + '">Cancel</button>' +
-    '</div></div>';
+    '</div></td></tr>';
+}
+
+// Copy-to-clipboard for generated passwords — they were displayed but
+// could only be transcribed by hand, which is where typos come from.
+function wireCopyButtons(root){
+  root.querySelectorAll('[data-copy]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(btn.dataset.copy);
+        toast('Password copied to clipboard.', 'ok');
+      } catch (_) {
+        toast('Could not copy automatically — select the text and copy it.', 'err');
+      }
+    });
+  });
 }
 function wireEmployeeRows(root){
+  wireCopyButtons(root);
   root.querySelectorAll('[data-emp-edit]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = Number(btn.dataset.empEdit);
@@ -528,6 +573,15 @@ function wireEmployeeRows(root){
     });
   });
 }
+document.getElementById('empSearch').addEventListener('input', drawEmployees);
+document.getElementById('empAddToggle').addEventListener('click', () => {
+  document.getElementById('empAddForm').classList.toggle('open');
+  document.getElementById('empName').focus();
+});
+document.getElementById('empAddCancel').addEventListener('click', () => {
+  document.getElementById('empAddForm').classList.remove('open');
+});
+
 document.getElementById('empAddForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const name = document.getElementById('empName').value.trim();
@@ -538,6 +592,7 @@ document.getElementById('empAddForm').addEventListener('submit', async (e) => {
   try {
     const result = await api(PM_EMPLOYEES_CREATE_URL, { method: 'POST', body: { name, department, designation, email } });
     document.getElementById('empAddForm').reset();
+    document.getElementById('empAddForm').classList.remove('open');
     if (result.temp_password) {
       toast('Login created for ' + result.login_email + '.\nTemporary password: ' + result.temp_password + '\n\nAlso visible any time in the list below.', 'ok', true);
     }
@@ -557,16 +612,25 @@ async function renderStaff(){
   try {
     const rows = await api(PM_MANAGERS_LIST_URL);
     listEl.innerHTML = rows.length
-      ? rows.map(m =>
-          '<div class="task-row" data-mgr-row="' + m.manager_id + '"><div class="tinfo"><div class="ttitle">' + esc(m.full_name) + '</div>' +
-          '<div class="tmeta"><span>' + esc(m.email) + '</span><span>' + (m.has_login == 1 ? 'Has login' : 'No login yet') + '</span>' +
-          (!m.is_active ? '<span>Deactivated</span>' : '') +
-          (m.temp_password ? '<span>Password: <strong>' + esc(m.temp_password) + '</strong></span>' : '') +
-          '</div></div>' +
-          '<div class="tactions">' + badge(m.role) +
-          (m.has_login == 1 ? '<button type="button" class="icon-btn" data-mgr-reset-pw="' + m.manager_id + '">Reset password</button>' : '') +
-          '</div></div>').join('')
+      ? '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+          '<th>Name</th><th>Email</th><th>Role</th><th>Password</th><th></th>' +
+        '</tr></thead><tbody>' +
+        rows.map(m =>
+          '<tr data-mgr-row="' + m.manager_id + '">' +
+            '<td><div class="ttitle">' + esc(m.full_name) + '</div>' +
+              (!m.is_active ? '<div class="tsub">Deactivated</div>' : '') + '</td>' +
+            '<td>' + esc(m.email) + '</td>' +
+            '<td>' + badge(m.role) + '</td>' +
+            '<td class="nowrap">' + (m.temp_password
+                ? '<code class="secret">' + esc(m.temp_password) + '</code>' +
+                  '<button type="button" class="icon-btn" data-copy="' + esc(m.temp_password) + '">Copy</button>'
+                : (m.has_login == 1 ? '<span class="tsub">Set by user</span>' : '<span class="status-badge todo">No login</span>')) + '</td>' +
+            '<td class="actions-cell">' +
+              (m.has_login == 1 ? '<button type="button" class="icon-btn" data-mgr-reset-pw="' + m.manager_id + '">Reset password</button>' : '') +
+            '</td></tr>').join('') +
+        '</tbody></table></div>'
       : '<div class="empty">No staff accounts yet.</div>';
+    wireCopyButtons(listEl);
     listEl.querySelectorAll('[data-mgr-reset-pw]').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = Number(btn.dataset.mgrResetPw);

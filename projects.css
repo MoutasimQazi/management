@@ -428,6 +428,21 @@ select.status-select:focus{
 }
 .leave-row .tactions{ display:flex; align-items:center; gap:8px; margin-left:auto; }
 
+/* Generated password shown inline in admin tables — monospace so
+   look-alike characters (0/O, 1/l) can be told apart, with a Copy button
+   beside it so nobody has to transcribe it by hand. */
+.secret{
+  font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size:12px;
+  background:var(--warn-soft);
+  border:1px solid #f2e3bb;
+  color:#7a5a1e;
+  border-radius:6px;
+  padding:2px 7px;
+  margin-right:6px;
+  user-select:all;          /* one click selects the whole value */
+}
+
 /* "Send to" approver picker on leave forms — a row of labelled
    checkboxes (reuses .check from style.css for each item). */
 .check-group{
