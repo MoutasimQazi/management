@@ -87,19 +87,21 @@
         <img src="logo.png"
              alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
       </a>
-      <!-- Kept deliberately small: Tasks/Questions live inside the Projects
-           module's own tabs, and Dispatch is the "+ New dispatch" button. -->
+      <!-- Left of the divider: pages on this screen. Right of it: jumps to
+           another section of the workspace. -->
       <nav class="tabs">
         <a href="#/dashboard" data-nav="dashboard">Dashboard</a>
-        <a href="projects.html" data-nav="pm">Projects</a>
         <a href="#/meetings"  data-nav="meetings">Meetings</a>
         <a href="#/actions"   data-nav="actions">Action items</a>
-        <a href="hr.html" class="nav-admin" hidden>HR</a>
-        <a href="marketing.html" class="nav-admin" hidden>Marketing</a>
+        <span class="nav-sep"></span>
+        <a href="projects.html" class="nav-jump">Projects</a>
+        <a href="hr.html" class="nav-jump nav-admin" hidden>HR</a>
+        <a href="marketing.html" class="nav-jump nav-admin" hidden>Marketing</a>
       </nav>
 
       <span class="spacer"></span>
-      <span class="email" id="whoEmail"></span>
+      <span class="role-badge" id="roleBadge"></span>
+      <span class="userchip" id="whoEmail"></span>
       <button type="button" class="linkbtn" id="signOut">Sign out</button>
     </header>
 
@@ -586,6 +588,22 @@
       form.addEventListener('reset', release);
     }, true);
 
+    /* The bar showed the full address truncated mid-domain, which cost ~150px
+       and told you nothing. Show initial + handle; full address on hover. */
+    function renderUserChip(el, email){
+      const addr = email || '';
+      const handle = addr.split('@')[0] || 'signed in';
+      el.title = addr;
+      el.innerHTML = '';
+      const av = document.createElement('span');
+      av.className = 'uavatar';
+      av.textContent = (handle[0] || '?');
+      const nm = document.createElement('span');
+      nm.className = 'uname';
+      nm.textContent = handle;
+      el.appendChild(av); el.appendChild(nm);
+    }
+
     function readSession(){
       for (const store of [localStorage, sessionStorage]) {
         try {
@@ -627,9 +645,12 @@
       document.body.classList.add('dash');
       loginView.classList.remove('active');
       appView.classList.add('active');
-      whoEmail.textContent = session.email || 'signed in';
+      renderUserChip(whoEmail, session.email);
       setStatus(statusEl, '', '');
       const isAdmin = String(session.role || '').toUpperCase() === 'ADMIN';
+      const badgeEl = document.getElementById('roleBadge');
+      badgeEl.textContent = isAdmin ? 'Admin' : 'Manager';
+      badgeEl.className = 'role-badge' + (isAdmin ? '' : ' manager');
       document.querySelectorAll('.nav-admin').forEach(a => { a.hidden = !isAdmin; });
       loadMeetings();
       loadProjectsSummary();

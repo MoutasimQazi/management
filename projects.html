@@ -33,20 +33,21 @@
       <a class="logochip" id="homeLogo" href="#/dashboard" title="Dashboard">
         <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
       </a>
-      <!-- Slim on purpose: meetings/dispatch/actions live on the main
-           dashboard — one click away via the Dashboard tab. -->
+      <!-- Left of the divider: pages in the Projects module. Right of it:
+           jumps to another section of the workspace. -->
       <nav class="tabs">
-        <a href="index.html#/dashboard" data-nav="dashboard">Dashboard</a>
         <a href="#/projects"  data-nav="projects">Projects</a>
         <a href="#/tasks"     data-nav="tasks">Tasks</a>
         <a href="#/questions" data-nav="questions">Questions</a>
-        <a href="hr.html" class="nav-admin" hidden>HR</a>
-        <a href="marketing.html" class="nav-admin" hidden>Marketing</a>
+        <span class="nav-sep"></span>
+        <a href="index.html#/dashboard" class="nav-jump">Dashboard</a>
+        <a href="hr.html" class="nav-jump nav-admin" hidden>HR</a>
+        <a href="marketing.html" class="nav-jump nav-admin" hidden>Marketing</a>
       </nav>
 
       <span class="spacer"></span>
       <span class="role-badge" id="roleBadge">Manager</span>
-      <span class="email" id="whoEmail"></span>
+      <span class="userchip" id="whoEmail"></span>
       <button type="button" class="linkbtn" id="signOut">Sign out</button>
     </header>
 

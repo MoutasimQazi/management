@@ -33,17 +33,20 @@
       <a class="logochip" id="homeLogo" href="#/campaigns" title="Campaigns">
         <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
       </a>
+      <!-- Left of the divider: Marketing's own pages. Right of it: jumps to
+           another section, admin-only. -->
       <nav class="tabs">
         <a href="#/campaigns" data-nav="campaigns">Campaigns</a>
         <a href="#/projects"  data-nav="projects">Projects</a>
         <a href="#/tasks"     data-nav="tasks">Tasks</a>
-        <a href="index.html#/dashboard" class="nav-admin" hidden>Dashboard</a>
-        <a href="hr.html" class="nav-admin" hidden>HR</a>
+        <span class="nav-sep nav-admin" hidden></span>
+        <a href="index.html#/dashboard" class="nav-jump nav-admin" hidden>Dashboard</a>
+        <a href="hr.html" class="nav-jump nav-admin" hidden>HR</a>
       </nav>
 
       <span class="spacer"></span>
       <span class="role-badge manager" id="roleBadge">Marketing</span>
-      <span class="email" id="whoEmail"></span>
+      <span class="userchip" id="whoEmail"></span>
       <button type="button" class="linkbtn" id="signOut">Sign out</button>
     </header>
 

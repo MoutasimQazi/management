@@ -454,10 +454,6 @@ button:disabled .btn-spinner{ border-color:rgba(168,162,154,.4); border-top-colo
 .topbar .logochip:hover{ background:var(--brand-soft); }
 .topbar .logochip img{ height:32px; }
 .topbar .spacer{ flex:1; }
-.topbar .email{
-  font-size:12px; font-weight:600; color:var(--ink-2);
-  max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
 
 nav.tabs{
   display:flex;
@@ -482,12 +478,56 @@ nav.tabs a{
   transition:background .15s, color .15s;
 }
 /* The UA's [hidden] rule loses to the display above, so restate it. */
-nav.tabs a[hidden]{ display:none; }
+nav.tabs [hidden]{ display:none !important; }
 nav.tabs a:hover{ color:var(--brand-dark); background:var(--brand-soft); }
 nav.tabs a.on{
-  background:linear-gradient(180deg, #ff5c26, var(--brand) 55%, #f04310);
+  background:linear-gradient(180deg, #ff6236, var(--brand) 55%, #e5460f);
   color:#fff;
-  box-shadow:0 8px 18px -10px rgba(244,80,30,.5);
+  box-shadow:0 1px 2px rgba(180,50,10,.2), 0 5px 14px -5px rgba(244,80,30,.5);
+}
+
+/* Two different kinds of link were sharing one flat row: tabs that switch
+   page *within* this section, and jumps that leave for another section
+   entirely. Identical pills made "HR" look like a sibling of "Tasks".
+   A divider plus a lighter treatment separates them. */
+.nav-sep{
+  width:1px;
+  height:18px;
+  background:var(--line);
+  margin:0 8px;
+  flex:none;
+}
+nav.tabs a.nav-jump{
+  color:var(--muted);
+  font-weight:600;
+}
+nav.tabs a.nav-jump::after{
+  content:"↗";
+  font-size:9px;
+  line-height:1;
+  opacity:.5;
+  margin-left:-2px;
+}
+nav.tabs a.nav-jump:hover{ color:var(--brand-dark); background:var(--brand-soft); }
+nav.tabs a.nav-jump:hover::after{ opacity:.8; }
+
+/* Compact identity: a full email ate ~150px of bar and was truncated to
+   uselessness anyway. Show the handle, keep the full address on hover. */
+.topbar .userchip{
+  display:inline-flex; align-items:center; gap:7px;
+  font-size:12px; font-weight:600; color:var(--ink-2);
+  max-width:150px; flex:none;
+}
+.topbar .userchip .uavatar{
+  width:24px; height:24px; flex:none;
+  border-radius:50%;
+  background:linear-gradient(158deg, #ff8a5c, var(--brand-dark));
+  color:#fff; font-size:10px; font-weight:800;
+  display:inline-flex; align-items:center; justify-content:center;
+  text-transform:uppercase;
+}
+.topbar .userchip .uname{
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 
 /* ══════════════════════════════════════════════════════
@@ -1086,7 +1126,9 @@ nav.tabs a.on{
   body{ padding:20px 14px; align-items:flex-start; }
   body.dash{ padding:14px 12px 44px; }
   .topbar{ flex-wrap:wrap; gap:8px; padding:12px 14px; }
-  .topbar .email{ display:none; }
+  /* The avatar alone still identifies who's signed in; the handle is the
+     first thing worth dropping when the bar gets tight. */
+  .topbar .userchip .uname{ display:none; }
   /* A swipeable strip beats squeezing six tabs into the width — each
      stays readable and the active one can be scrolled to. */
   nav.tabs{

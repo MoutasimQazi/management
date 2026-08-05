@@ -108,6 +108,22 @@ document.addEventListener('submit', (e) => {
   form.addEventListener('reset', release);
 }, true);
 
+/* The bar showed the full address truncated mid-domain, which cost ~150px
+   and told you nothing. Show initial + handle; full address on hover. */
+function renderUserChip(el, email){
+  const addr = email || '';
+  const handle = addr.split('@')[0] || 'signed in';
+  el.title = addr;
+  el.innerHTML = '';
+  const av = document.createElement('span');
+  av.className = 'uavatar';
+  av.textContent = (handle[0] || '?');
+  const nm = document.createElement('span');
+  nm.className = 'uname';
+  nm.textContent = handle;
+  el.appendChild(av); el.appendChild(nm);
+}
+
 function readSession(){
   for (const store of [localStorage, sessionStorage]) {
     try {
@@ -158,7 +174,7 @@ function showApp(){
   document.body.classList.add('dash');
   pmSignedOut.classList.remove('active');
   appView.classList.add('active');
-  whoEmail.textContent = session.email || 'signed in';
+  renderUserChip(whoEmail, session.email);
   route();
 }
 signOutBtn.addEventListener('click', () => {

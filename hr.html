@@ -33,19 +33,22 @@
       <a class="logochip" id="homeLogo" href="#/openings" title="Openings">
         <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
       </a>
+      <!-- Left of the divider: HR's own pages. Right of it: jumps to another
+           section, admin-only — HR staff have no other section to reach. -->
       <nav class="tabs">
         <a href="#/openings"  data-nav="openings">Openings</a>
         <a href="#/leave"     data-nav="leave">Leave</a>
         <a href="#/employees" data-nav="employees">Employees</a>
         <a href="#/staff" data-nav="staff" id="staffNavLink" hidden>Staff</a>
-        <a href="index.html#/dashboard" class="nav-admin" hidden>Dashboard</a>
-        <a href="projects.html" class="nav-admin" hidden>Projects</a>
-        <a href="marketing.html" class="nav-admin" hidden>Marketing</a>
+        <span class="nav-sep nav-admin" hidden></span>
+        <a href="index.html#/dashboard" class="nav-jump nav-admin" hidden>Dashboard</a>
+        <a href="projects.html" class="nav-jump nav-admin" hidden>Projects</a>
+        <a href="marketing.html" class="nav-jump nav-admin" hidden>Marketing</a>
       </nav>
 
       <span class="spacer"></span>
       <span class="role-badge" id="roleBadge">HR</span>
-      <span class="email" id="whoEmail"></span>
+      <span class="userchip" id="whoEmail"></span>
       <button type="button" class="linkbtn" id="signOut">Sign out</button>
     </header>
 
