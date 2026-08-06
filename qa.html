@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20">
-  <link rel="stylesheet" href="projects.css?v=20">
+  <link rel="stylesheet" href="style.css?v=21">
+  <link rel="stylesheet" href="projects.css?v=21">
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=20"></script>
+  <script src="theme.js?v=21"></script>
 </head>
 
 <body>
@@ -88,6 +88,7 @@
         <div class="field"><label>Title</label><input id="bugTitle" required placeholder="What is broken?" /></div>
         <div class="field"><label>Steps to reproduce <span class="opt">— optional</span></label><textarea id="bugSteps" placeholder="1. Go to…&#10;2. Click…&#10;Expected: …  Actual: …"></textarea></div>
         <div class="field"><label>Screenshot or recording <span class="opt">— optional, paste a link</span></label><input id="bugLink" type="url" placeholder="https://drive.google.com/… or a Loom link" /></div>
+        <div class="field"><label>Assign to <span class="opt">— optional, a developer, QA or designer</span></label><select id="bugAssignee"></select></div>
         <div class="actions">
           <button type="submit">Report bug</button>
           <button type="button" class="secondary" id="bugCancelBtn">Cancel</button>
@@ -147,7 +148,7 @@
 
   </div>
 
-  <script src="ui.js?v=20"></script>
-  <script src="qa.js?v=20"></script>
+  <script src="ui.js?v=21"></script>
+  <script src="qa.js?v=21"></script>
 </body>
 </html>

@@ -22,9 +22,13 @@ if (!$check->fetch()) denyNotYours();
 $severities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 $severity = in_array($b['severity'] ?? '', $severities, true) ? $b['severity'] : 'MEDIUM';
 
+// A developer, or QA / design / a business analyst — see auth.php.
+[$assignedEmployee, $assignedManager] = resolveBugAssignee($pdo, $b);
+
 $stmt = $pdo->prepare(
-    "INSERT INTO bugs (project_id, task_id, case_id, title, steps, link, severity, reported_by, assigned_to)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO bugs (project_id, task_id, case_id, title, steps, link, severity,
+                       reported_by, assigned_to, assigned_manager_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 );
 $stmt->execute([
     $projectId,
@@ -35,6 +39,7 @@ $stmt->execute([
     trim($b['link'] ?? '') !== '' ? trim($b['link']) : null,
     $severity,
     $user['id'],
-    !empty($b['assigned_to']) ? (int)$b['assigned_to'] : null,
+    $assignedEmployee,
+    $assignedManager,
 ]);
 echo json_encode(['success' => true, 'bug_id' => (int)$pdo->lastInsertId()]);

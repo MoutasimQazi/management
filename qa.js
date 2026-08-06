@@ -19,6 +19,7 @@ const PM_CASES_LIST_URL     = PM_API_BASE + "pm-testcases-list.php";
 const PM_CASES_CREATE_URL   = PM_API_BASE + "pm-testcases-create.php";
 const PM_CASES_DELETE_URL   = PM_API_BASE + "pm-testcases-delete.php";
 const PM_RUNS_CREATE_URL    = PM_API_BASE + "pm-testruns-create.php";
+const PM_BUG_ASSIGNEES_URL  = PM_API_BASE + "pm-bug-assignees-list.php";
 
 /* ── DOM references ─────────────────────────────────── */
 const pmSignedOut = document.getElementById('pmSignedOut');
@@ -34,6 +35,28 @@ let isAdmin  = false;
 let myProjects = [];
 let allBugs    = [];
 let allCases   = [];
+let allAssignees = [];   // developers + QA + designers + BAs, for the bug picker
+
+/* An assignee is a (kind, id) pair because developers live in `employees`
+   and everyone else in `managers` — the two can share an id. A <select>
+   holds one string, so the pair is packed into one and unpacked on the
+   way back out. */
+function assigneeValue(kind, id){
+  return (kind && id) ? kind + ':' + id : '';
+}
+function assigneeOptions(selectedKind, selectedId){
+  const sel = assigneeValue(selectedKind, selectedId);
+  return '<option value="">Nobody yet</option>' +
+    allAssignees.map(a => {
+      const v = assigneeValue(a.kind, a.id);
+      return '<option value="' + v + '"' + (v === sel ? ' selected' : '') + '>' +
+        esc(a.name) + ' — ' + esc(a.role) + '</option>';
+    }).join('');
+}
+function assigneeBody(value){
+  const [kind, id] = String(value || '').split(':');
+  return { assignee_kind: kind || '', assignee_id: id || '' };
+}
 
 /* ── Helpers ─────────────────────────────────────────── */
 function esc(s){
@@ -213,8 +236,27 @@ window.addEventListener('hashchange', route);
 
 /* Project pickers are populated once — a QA account's assigned set only
    changes when an admin edits it, not while they're working. */
+/* Fetched once and remembered as a promise, because two things need it:
+   the form's picker, filled as soon as it lands, and every row's picker,
+   which is drawn by a separate request that could easily finish first
+   and leave the list empty. Anyone who needs the names awaits this. */
+let assigneesReady = null;
+function loadAssignees(){
+  if (assigneesReady) return assigneesReady;
+  const fill = html => {
+    const sel = document.getElementById('bugAssignee');
+    if (sel) sel.innerHTML = html;
+  };
+  assigneesReady = api(PM_BUG_ASSIGNEES_URL)
+    .then(rows => { allAssignees = rows; fill(assigneeOptions()); })
+    // Not being able to name someone must not stop a bug being filed.
+    .catch(() => { fill('<option value="">Could not load the list</option>'); });
+  return assigneesReady;
+}
+
 async function loadProjects(){
   try {
+    loadAssignees();
     myProjects = await api(PM_QA_PROJECTS_URL);
     const opts = myProjects.length
       ? myProjects.map(p => '<option value="' + p.project_id + '">' + esc(p.project_name) + '</option>').join('')
@@ -237,7 +279,8 @@ async function renderBugs(){
   const listEl = document.getElementById('bugsList');
   listEl.innerHTML = '<div class="empty">Loading…</div>';
   try {
-    allBugs = await api(PM_BUGS_LIST_URL);
+    // Both, or the row pickers draw before the names exist.
+    [allBugs] = await Promise.all([api(PM_BUGS_LIST_URL), loadAssignees()]);
     drawBugs();
   } catch (err) {
     listEl.innerHTML = '<div class="empty">Could not load bugs (' + esc(err.message) + ').</div>';
@@ -265,7 +308,8 @@ function drawBugs(){
   const STATUSES = ['OPEN','IN_PROGRESS','FIXED','VERIFIED','CLOSED','REOPENED'];
   listEl.innerHTML =
     '<div class="table-wrap"><table class="data-table"><thead><tr>' +
-      '<th>Bug</th><th>Project</th><th>Severity</th><th>Status</th><th>Reported</th><th></th>' +
+      '<th>Bug</th><th>Project</th><th>Severity</th><th>Status</th>' +
+      '<th>Assigned to</th><th>Reported</th><th></th>' +
     '</tr></thead><tbody>' +
     rows.map(b => {
       const opts = STATUSES.filter(s => s !== b.status)
@@ -278,6 +322,13 @@ function drawBugs(){
         '<td>' + esc(b.project_name || '—') + '</td>' +
         '<td>' + sevBadge(b.severity) + '</td>' +
         '<td>' + badge(b.status) + '</td>' +
+        /* A developer, QA, a designer or a BA — the list does not care
+           which table they came from, so neither does this cell. */
+        '<td>' +
+          '<select class="status-select" data-bug-assign="' + b.bug_id + '" aria-label="Assign this bug">' +
+            assigneeOptions(b.assignee_kind, b.assignee_id) +
+          '</select>' +
+        '</td>' +
         '<td class="nowrap"><div class="tsub">' + esc(b.reported_by_name || '') + '</div>' +
           '<div class="tsub">' + esc(fmtDate(b.created_at)) + '</div></td>' +
         '<td class="actions-cell">' +
@@ -287,6 +338,27 @@ function drawBugs(){
         '</td></tr>';
     }).join('') +
     '</tbody></table></div>';
+
+  listEl.querySelectorAll('[data-bug-assign]').forEach(sel => {
+    const was = sel.value;
+    sel.addEventListener('change', async () => {
+      sel.disabled = true;
+      try {
+        await api(PM_BUGS_UPDATE_URL, { method: 'POST', body: Object.assign(
+          { bug_id: Number(sel.dataset.bugAssign) },
+          assigneeBody(sel.value)
+        )});
+        const opt = sel.options[sel.selectedIndex];
+        toast(sel.value ? 'Assigned to ' + opt.textContent.split(' — ')[0] + '.'
+                        : 'Assignee cleared.', 'ok');
+        renderBugs();
+      } catch (err) {
+        toast('Could not assign: ' + err.message, 'err');
+        sel.value = was;          // put the old name back, not a blank
+        sel.disabled = false;
+      }
+    });
+  });
 
   listEl.querySelectorAll('[data-bug-status]').forEach(sel => {
     sel.addEventListener('change', async () => {
@@ -340,7 +412,8 @@ document.getElementById('newBugForm').addEventListener('submit', async (e) => {
       project_id: Number(project_id), title,
       steps: document.getElementById('bugSteps').value.trim(),
       link: document.getElementById('bugLink').value.trim(),
-      severity: document.getElementById('bugSeverity').value
+      severity: document.getElementById('bugSeverity').value,
+      ...assigneeBody(document.getElementById('bugAssignee').value)
     }});
     e.target.reset();
     e.target.classList.remove('open');

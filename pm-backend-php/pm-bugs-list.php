@@ -7,17 +7,29 @@ $user = requireRole($pdo, $USERS, ['ADMIN', 'QA', 'MANAGER', 'MARKETING']);
 
 [$scope, $params] = projectScope($user, 'b.project_id');
 
+/* The assignee is a developer or a staff account — two columns, at most
+   one set (migration 008). Collapsed to one name and one kind here, so
+   the page renders "who has it" without knowing which table they sit in
+   and the assignee picker can preselect the right entry. */
 $sql = "SELECT b.bug_id, b.project_id, b.task_id, b.case_id, b.title, b.steps, b.link,
-               b.severity, b.status, b.reported_by, b.assigned_to,
+               b.severity, b.status, b.reported_by,
+               b.assigned_to, b.assigned_manager_id,
                b.created_at, b.updated_at,
                p.project_name, t.task_name, c.title AS case_title,
-               m.full_name AS reported_by_name, e.name AS assigned_to_name
+               m.full_name AS reported_by_name,
+               COALESCE(e.name, am.full_name) AS assigned_to_name,
+               CASE WHEN b.assigned_to IS NOT NULL THEN 'EMPLOYEE'
+                    WHEN b.assigned_manager_id IS NOT NULL THEN 'STAFF'
+               END AS assignee_kind,
+               COALESCE(b.assigned_to, b.assigned_manager_id) AS assignee_id,
+               am.role AS assignee_role
         FROM bugs b
         JOIN projects p ON p.project_id = b.project_id
         LEFT JOIN tasks t ON t.task_id = b.task_id
         LEFT JOIN test_cases c ON c.case_id = b.case_id
         LEFT JOIN managers m ON m.manager_id = b.reported_by
         LEFT JOIN employees e ON e.employee_id = b.assigned_to
+        LEFT JOIN managers am ON am.manager_id = b.assigned_manager_id
         WHERE $scope";
 
 if (!empty($_GET['project_id'])) {

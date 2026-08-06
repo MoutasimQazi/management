@@ -120,6 +120,61 @@ function requireRole(PDO $pdo, array $USERS, array $allowedRoles): array {
     return $user;
 }
 
+/* Who a bug is on. A developer is an `employees` row and QA, design and
+ * the business analysts are `managers` rows, so the assignee is two
+ * nullable columns of which at most one is ever set (migration 008).
+ *
+ * Takes the request body, returns [employeeId, managerId] ready to write
+ * — always both, so the caller assigns them together and cannot leave a
+ * stale value behind in the column it did not think about.
+ *
+ * Accepts { assignee_kind: 'EMPLOYEE'|'STAFF', assignee_id } and, for
+ * anything still sending the original shape, a bare { assigned_to }
+ * meaning an employee. Sending an empty assignee_id clears both.
+ *
+ * Halts the request if the target does not exist or is not active —
+ * silently dropping an assignment would look like it worked.
+ */
+function resolveBugAssignee(PDO $pdo, array $b): array {
+    if (!array_key_exists('assignee_kind', $b) && array_key_exists('assigned_to', $b)) {
+        $b['assignee_kind'] = 'EMPLOYEE';
+        $b['assignee_id']   = $b['assigned_to'];
+    }
+
+    $kind = strtoupper(trim((string)($b['assignee_kind'] ?? '')));
+    $id   = $b['assignee_id'] ?? '';
+    if ($kind === '' || $id === '' || $id === null) return [null, null];
+
+    if ($kind === 'EMPLOYEE') {
+        $q = $pdo->prepare("SELECT employee_id FROM employees WHERE employee_id = ? AND status = 'ACTIVE'");
+        $q->execute([(int)$id]);
+        if (!$q->fetch()) {
+            http_response_code(400);
+            echo json_encode(['error' => 'That developer is not on the active roster.']);
+            exit;
+        }
+        return [(int)$id, null];
+    }
+
+    if ($kind === 'STAFF') {
+        $q = $pdo->prepare(
+            "SELECT manager_id FROM managers
+             WHERE manager_id = ? AND is_active = 1 AND role IN ('QA','DESIGNER','MANAGER')"
+        );
+        $q->execute([(int)$id]);
+        if (!$q->fetch()) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Bugs can only go to an active QA, designer or business analyst.']);
+            exit;
+        }
+        return [null, (int)$id];
+    }
+
+    http_response_code(400);
+    echo json_encode(['error' => 'Unknown assignee kind: ' . $kind]);
+    exit;
+}
+
 // Shared 403 for ownership checks that fail — same message everywhere.
 function denyNotYours() {
     http_response_code(403);

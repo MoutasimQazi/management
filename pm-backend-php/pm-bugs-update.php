@@ -6,7 +6,10 @@ $b = body();
 
 $bugId = (int)($b['bug_id'] ?? 0);
 [$scope, $params] = projectScope($user, 'project_id');
-$check = $pdo->prepare("SELECT bug_id, title, steps, link, severity, status, assigned_to FROM bugs WHERE bug_id = ? AND $scope");
+$check = $pdo->prepare(
+    "SELECT bug_id, title, steps, link, severity, status, assigned_to, assigned_manager_id
+     FROM bugs WHERE bug_id = ? AND $scope"
+);
 $check->execute(array_merge([$bugId], $params));
 $existing = $check->fetch();
 if (!$existing) denyNotYours();
@@ -18,8 +21,23 @@ $statuses   = ['OPEN', 'IN_PROGRESS', 'FIXED', 'VERIFIED', 'CLOSED', 'REOPENED']
 $severity = in_array($b['severity'] ?? '', $severities, true) ? $b['severity'] : $existing['severity'];
 $status   = in_array($b['status'] ?? '', $statuses, true)   ? $b['status']   : $existing['status'];
 
+/* Reassignment is only attempted when the request says something about
+   it. A status-only move — the dropdown on each row — must leave whoever
+   holds the bug exactly where they are. When it is attempted, both
+   columns are written together, so moving a bug from a developer to a
+   designer cannot leave the old developer behind in the other column. */
+$touchesAssignee = array_key_exists('assignee_kind', $b) || array_key_exists('assigned_to', $b);
+if ($touchesAssignee) {
+    [$assignedEmployee, $assignedManager] = resolveBugAssignee($pdo, $b);
+} else {
+    $assignedEmployee = $existing['assigned_to'];
+    $assignedManager  = $existing['assigned_manager_id'];
+}
+
 $stmt = $pdo->prepare(
-    "UPDATE bugs SET title = ?, steps = ?, link = ?, severity = ?, status = ?, assigned_to = ? WHERE bug_id = ?"
+    "UPDATE bugs SET title = ?, steps = ?, link = ?, severity = ?, status = ?,
+                     assigned_to = ?, assigned_manager_id = ?
+     WHERE bug_id = ?"
 );
 $stmt->execute([
     array_key_exists('title', $b) && trim($b['title']) !== '' ? trim($b['title']) : $existing['title'],
@@ -30,9 +48,8 @@ $stmt->execute([
         : $existing['link'],
     $severity,
     $status,
-    array_key_exists('assigned_to', $b)
-        ? (!empty($b['assigned_to']) ? (int)$b['assigned_to'] : null)
-        : $existing['assigned_to'],
+    $assignedEmployee,
+    $assignedManager,
     $bugId,
 ]);
 echo json_encode(['success' => true]);
