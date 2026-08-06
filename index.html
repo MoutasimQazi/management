@@ -11,13 +11,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=18">
-  <link rel="stylesheet" href="projects.css?v=18">
+  <link rel="stylesheet" href="style.css?v=19">
+  <link rel="stylesheet" href="projects.css?v=19">
 
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=18"></script>
+  <script src="theme.js?v=19"></script>
 </head>
 
 <body>
@@ -180,7 +180,8 @@
 
   </div>
 
-  <script src="fireflies.js?v=18"></script>
+  <script src="fireflies.js?v=19"></script>
+  <script src="ui.js?v=19"></script>
   <script>
     /* ════════════════════════════════════════════════════
        1. Config
@@ -431,79 +432,20 @@
        tasks on it, and the QA and designer assigned — and, more usefully,
        where a project has nobody in a role at all.
 
-       The whole thing is one request; pm-team-overview.php does the
+       The rendering is in ui.js, because the Projects page shows the same
+       panel and two copies would drift. pm-team-overview.php does the
        grouping, because counting belongs next to the tables. */
-    function teamGapsFor(p, modules){
-      const gaps = [];
-      if (!p.manager_name) gaps.push('BA');
-      if (!p.developers.length) gaps.push('Dev');
-      // Only a role this database can actually staff counts as missing —
-      // a workspace without migration 006 is not "missing designers".
-      if (modules.qa && !p.qa.length) gaps.push('QA');
-      if (modules.design && !p.designers.length) gaps.push('Design');
-      return gaps;
-    }
-
-    function crewLine(label, names, isGap){
-      return '<span class="crewgroup' + (isGap ? ' gap' : '') + '">' +
-        '<b>' + label + '</b>' +
-        (names.length ? esc(names.join(', ')) : 'nobody yet') + '</span>';
-    }
-
-    function teamRow(p, modules){
-      const devs = p.developers.map(d => d.name + ' (' + d.open_tasks + ')');
-      const gaps = teamGapsFor(p, modules);
-      return '<div class="task-row">' +
-        '<div class="tinfo">' +
-          '<div class="ttitle">' + esc(p.project_name) +
-            (gaps.length ? '<span class="gapflag">no ' + esc(gaps.join(', ')) + '</span>' : '') +
-          '</div>' +
-          '<div class="tmeta">' +
-            '<span>' + (p.manager_name ? esc(p.manager_name) + ' · BA' : 'No business analyst') + '</span>' +
-            (p.client_name ? '<span>' + esc(p.client_name) + '</span>' : '') +
-            '<span>' + p.open_tasks + ' open task' + (p.open_tasks === 1 ? '' : 's') + '</span>' +
-          '</div>' +
-          '<div class="crew">' +
-            crewLine('Dev', devs, !devs.length) +
-            (modules.qa ? crewLine('QA', p.qa, !p.qa.length) : '') +
-            (modules.design ? crewLine('Design', p.designers, !p.designers.length) : '') +
-          '</div>' +
-        '</div>' +
-        '<div class="tactions"><span class="status-badge ' +
-          esc(String(p.status || '').toLowerCase()) + '">' +
-          esc(String(p.status || '').replace(/_/g, ' ')) + '</span></div>' +
-      '</div>';
-    }
-
-    async function loadTeamOverview(){
+    function loadTeamOverview(){
       const session = readSession();
       if (!session) return;
-      const panel  = document.getElementById('teamPanel');
-      const listEl = document.getElementById('teamList');
-      panel.style.display = '';
-      listEl.innerHTML = '<div class="empty">Loading…</div>';
-      try {
-        const res = await fetch(PM_TEAM_OVERVIEW_URL, {
-          headers: { 'Authorization': 'Bearer ' + session.token }
-        });
-        if (!res.ok) throw new Error('status ' + res.status);
-        const data     = await res.json();
-        const projects = Array.isArray(data.projects) ? data.projects : [];
-        const modules  = data.modules || {};
-
-        if (!projects.length) { panel.style.display = 'none'; return; }
-
-        document.getElementById('teamCount').textContent = String(projects.length);
-        const gaps = projects.filter(p => teamGapsFor(p, modules).length).length;
-        document.getElementById('teamGaps').textContent = gaps
-          ? gaps + ' project' + (gaps === 1 ? '' : 's') + ' missing a role'
-          : 'Every project is covered';
-
-        listEl.innerHTML = projects.map(p => teamRow(p, modules)).join('');
-      } catch (err) {
-        listEl.innerHTML = '<div class="empty">Could not load the team view (' +
-          esc(err.message) + ').</div>';
-      }
+      renderTeamOverview({
+        url:   PM_TEAM_OVERVIEW_URL,
+        token: session.token,
+        panel: 'teamPanel',
+        list:  'teamList',
+        count: 'teamCount',
+        gaps:  'teamGaps'
+      });
     }
 
     // Small authed-fetch helper for the leave endpoints below.

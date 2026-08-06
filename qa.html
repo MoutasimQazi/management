@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=18">
-  <link rel="stylesheet" href="projects.css?v=18">
+  <link rel="stylesheet" href="style.css?v=19">
+  <link rel="stylesheet" href="projects.css?v=19">
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=18"></script>
+  <script src="theme.js?v=19"></script>
 </head>
 
 <body>
@@ -87,6 +87,7 @@
         </div>
         <div class="field"><label>Title</label><input id="bugTitle" required placeholder="What is broken?" /></div>
         <div class="field"><label>Steps to reproduce <span class="opt">— optional</span></label><textarea id="bugSteps" placeholder="1. Go to…&#10;2. Click…&#10;Expected: …  Actual: …"></textarea></div>
+        <div class="field"><label>Screenshot or recording <span class="opt">— optional, paste a link</span></label><input id="bugLink" type="url" placeholder="https://drive.google.com/… or a Loom link" /></div>
         <div class="actions">
           <button type="submit">Report bug</button>
           <button type="button" class="secondary" id="bugCancelBtn">Cancel</button>
@@ -128,6 +129,7 @@
         </div>
         <div class="field"><label>Steps <span class="opt">— optional</span></label><textarea id="caseSteps" placeholder="1. …&#10;2. …"></textarea></div>
         <div class="field"><label>Expected result <span class="opt">— optional</span></label><input id="caseExpected" placeholder="What should happen" /></div>
+        <div class="field"><label>Spec or reference <span class="opt">— optional, paste a link</span></label><input id="caseLink" type="url" placeholder="https://… the doc this case came from" /></div>
         <div class="actions">
           <button type="submit">Create test case</button>
           <button type="button" class="secondary" id="caseCancelBtn">Cancel</button>
@@ -145,7 +147,7 @@
 
   </div>
 
-  <script src="ui.js?v=18"></script>
-  <script src="qa.js?v=18"></script>
+  <script src="ui.js?v=19"></script>
+  <script src="qa.js?v=19"></script>
 </body>
 </html>

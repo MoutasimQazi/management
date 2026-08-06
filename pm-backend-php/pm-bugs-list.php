@@ -7,7 +7,7 @@ $user = requireRole($pdo, $USERS, ['ADMIN', 'QA', 'MANAGER', 'MARKETING']);
 
 [$scope, $params] = projectScope($user, 'b.project_id');
 
-$sql = "SELECT b.bug_id, b.project_id, b.task_id, b.case_id, b.title, b.steps,
+$sql = "SELECT b.bug_id, b.project_id, b.task_id, b.case_id, b.title, b.steps, b.link,
                b.severity, b.status, b.reported_by, b.assigned_to,
                b.created_at, b.updated_at,
                p.project_name, t.task_name, c.title AS case_title,

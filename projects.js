@@ -31,6 +31,7 @@ const PM_EMPLOYEES_LIST_URL   = PM_API_BASE + "pm-employees-list.php";
    belongs to HR and admins, on HR › People. A BA can add someone to the
    roster and correct their details, but not take them out of the system. */
 const PM_PROJECTS_LIST_URL    = PM_API_BASE + "pm-projects-list.php";
+const PM_TEAM_OVERVIEW_URL    = PM_API_BASE + "pm-team-overview.php";
 const PM_PROJECTS_CREATE_URL  = PM_API_BASE + "pm-projects-create.php";
 const PM_PROJECTS_UPDATE_URL  = PM_API_BASE + "pm-projects-update.php";
 const PM_PROJECTS_DELETE_URL  = PM_API_BASE + "pm-projects-delete.php";
@@ -357,6 +358,22 @@ function populateEmployeeSelects(){
 async function renderProjects(){
   const grid = document.getElementById('projectsGrid');
   grid.innerHTML = '<div class="empty">Loading…</div>';
+
+  /* Admins get the allocation panel above their own list — the same one
+     the Overview carries, rendered by ui.js so the two cannot drift. A
+     business analyst sees only the projects they own, so the whole
+     company's staffing is not theirs to see and the endpoint refuses it. */
+  if (isAdmin) {
+    renderTeamOverview({
+      url:   PM_TEAM_OVERVIEW_URL,
+      token: session.token,
+      panel: 'teamPanel',
+      list:  'teamList',
+      count: 'teamCount',
+      gaps:  'teamGaps'
+    });
+  }
+
   try {
     await Promise.all([loadEmployees(), loadProjects()]);
     grid.innerHTML = allProjects.length ? projectsTable(allProjects)

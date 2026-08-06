@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=18">
-  <link rel="stylesheet" href="projects.css?v=18">
+  <link rel="stylesheet" href="style.css?v=19">
+  <link rel="stylesheet" href="projects.css?v=19">
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=18"></script>
+  <script src="theme.js?v=19"></script>
 </head>
 
 <body>
@@ -119,6 +119,19 @@
         </div>
       </form>
 
+      <!-- Admin only: the same panel the Overview carries. A business
+           analyst sees their own projects below; this is the whole
+           company's allocation, so it is not theirs to see. -->
+      <div id="teamPanel" style="display:none; margin-bottom:24px">
+        <div class="panel-head">
+          <h2>Who is on what</h2>
+          <span class="count" id="teamCount">0</span>
+          <span class="spacer"></span>
+          <span class="hint" id="teamGaps"></span>
+        </div>
+        <div id="teamList"></div>
+      </div>
+
       <div class="panel-head"><h2>All projects</h2></div>
       <div id="projectsGrid"></div>
     </section>
@@ -175,7 +188,7 @@
 
   </div>
 
-  <script src="ui.js?v=18"></script>
-  <script src="projects.js?v=18"></script>
+  <script src="ui.js?v=19"></script>
+  <script src="projects.js?v=19"></script>
 </body>
 </html>

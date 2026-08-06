@@ -23,8 +23,8 @@ $severities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 $severity = in_array($b['severity'] ?? '', $severities, true) ? $b['severity'] : 'MEDIUM';
 
 $stmt = $pdo->prepare(
-    "INSERT INTO bugs (project_id, task_id, case_id, title, steps, severity, reported_by, assigned_to)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO bugs (project_id, task_id, case_id, title, steps, link, severity, reported_by, assigned_to)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
 );
 $stmt->execute([
     $projectId,
@@ -32,6 +32,7 @@ $stmt->execute([
     !empty($b['case_id']) ? (int)$b['case_id'] : null,
     trim($b['title']),
     $b['steps'] ?? null,
+    trim($b['link'] ?? '') !== '' ? trim($b['link']) : null,
     $severity,
     $user['id'],
     !empty($b['assigned_to']) ? (int)$b['assigned_to'] : null,

@@ -55,6 +55,18 @@ function badge(status){
   return '<span class="status-badge ' + esc(String(status).toLowerCase()) + '">' +
     esc(statusLabel(status)) + '</span>';
 }
+/* The stored URL points at where the evidence actually lives — a
+   screenshot, a screen recording, the spec a case came from. Nothing is
+   uploaded here, so nothing has to be kept in step with Drive or Loom.
+   safeUrl (ui.js) refuses anything that is not http(s): an escaped
+   "javascript:…" is still a live javascript: URL. */
+function evidenceLink(link, label){
+  const url = safeUrl(link);
+  if (!url) return '';
+  return '<div class="tsub"><a class="evidence" href="' + esc(url) +
+    '" target="_blank" rel="noopener">' + esc(label) + ' ↗</a></div>';
+}
+
 function sevBadge(s){
   if (!s) return '';
   return '<span class="status-badge prio-' + esc(String(s).toLowerCase()) + '">' +
@@ -261,7 +273,8 @@ function drawBugs(){
       return '<tr>' +
         '<td><div class="ttitle">' + esc(b.title) + '</div>' +
           (b.steps ? '<div class="tsub">' + esc(b.steps) + '</div>' : '') +
-          (b.case_title ? '<div class="tsub">From test: ' + esc(b.case_title) + '</div>' : '') + '</td>' +
+          (b.case_title ? '<div class="tsub">From test: ' + esc(b.case_title) + '</div>' : '') +
+          evidenceLink(b.link, 'Screenshot / recording') + '</td>' +
         '<td>' + esc(b.project_name || '—') + '</td>' +
         '<td>' + sevBadge(b.severity) + '</td>' +
         '<td>' + badge(b.status) + '</td>' +
@@ -326,6 +339,7 @@ document.getElementById('newBugForm').addEventListener('submit', async (e) => {
     await api(PM_BUGS_CREATE_URL, { method: 'POST', body: {
       project_id: Number(project_id), title,
       steps: document.getElementById('bugSteps').value.trim(),
+      link: document.getElementById('bugLink').value.trim(),
       severity: document.getElementById('bugSeverity').value
     }});
     e.target.reset();
@@ -375,7 +389,8 @@ function drawCases(){
     rows.map(c =>
       '<tr>' +
         '<td><div class="ttitle">' + esc(c.title) + '</div>' +
-          (c.expected ? '<div class="tsub">Expected: ' + esc(c.expected) + '</div>' : '') + '</td>' +
+          (c.expected ? '<div class="tsub">Expected: ' + esc(c.expected) + '</div>' : '') +
+          evidenceLink(c.link, 'Spec / reference') + '</td>' +
         '<td>' + esc(c.project_name || '—') + '</td>' +
         '<td class="nowrap">' + (c.last_result
             ? badge(c.last_result) + '<div class="tsub">' + esc(fmtDate(c.last_run_at)) + '</div>'
@@ -464,7 +479,8 @@ document.getElementById('newCaseForm').addEventListener('submit', async (e) => {
     await api(PM_CASES_CREATE_URL, { method: 'POST', body: {
       project_id: Number(project_id), title,
       steps: document.getElementById('caseSteps').value.trim(),
-      expected: document.getElementById('caseExpected').value.trim()
+      expected: document.getElementById('caseExpected').value.trim(),
+      link: document.getElementById('caseLink').value.trim()
     }});
     e.target.reset();
     e.target.classList.remove('open');

@@ -7,7 +7,7 @@ $user = requireRole($pdo, $USERS, ['ADMIN', 'QA', 'MANAGER', 'MARKETING']);
 
 // Each case carries its latest run, so the list doubles as a status board
 // without a second request per row.
-$sql = "SELECT c.case_id, c.project_id, c.title, c.steps, c.expected,
+$sql = "SELECT c.case_id, c.project_id, c.title, c.steps, c.expected, c.link,
                c.created_by, c.created_at, c.updated_at,
                p.project_name, m.full_name AS created_by_name,
                r.result AS last_result, r.run_at AS last_run_at, r.notes AS last_notes,

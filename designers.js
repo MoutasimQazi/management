@@ -376,7 +376,11 @@ function designRow(d){
         '<span>' + esc(d.project_name) + '</span>' +
         '<span>' + (d.assigned_to_name ? esc(d.assigned_to_name) : 'Unassigned') + '</span>' +
         dueNote(d.due_date) +
-        (d.link ? '<a href="' + esc(d.link) + '" target="_blank" rel="noopener">Open the work ↗</a>' : '') +
+        // safeUrl (ui.js): an escaped "javascript:…" is still a live
+        // javascript: URL, so only http(s) is rendered as a link at all.
+        (safeUrl(d.link)
+          ? '<a href="' + esc(safeUrl(d.link)) + '" target="_blank" rel="noopener">Open the work ↗</a>'
+          : '') +
       '</div>' +
       (d.brief ? '<div class="tdesc">' + esc(d.brief) + '</div>' : '') +
     '</div>' +

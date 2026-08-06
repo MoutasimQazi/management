@@ -611,3 +611,13 @@ select.status-select:focus{
   letter-spacing:.04em; text-transform:uppercase;
   white-space:nowrap;
 }
+
+/* Evidence link on a bug or test case — the screenshot, the recording,
+   the spec. Sits in the .tsub line under the title, so it has to read as
+   a link without shouting over the title above it. */
+a.evidence{
+  color:var(--brand);
+  font-weight:600;
+  text-decoration:none;
+}
+a.evidence:hover{ color:var(--brand-dark); text-decoration:underline; }

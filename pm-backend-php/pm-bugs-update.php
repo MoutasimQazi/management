@@ -6,7 +6,7 @@ $b = body();
 
 $bugId = (int)($b['bug_id'] ?? 0);
 [$scope, $params] = projectScope($user, 'project_id');
-$check = $pdo->prepare("SELECT bug_id, title, steps, severity, status, assigned_to FROM bugs WHERE bug_id = ? AND $scope");
+$check = $pdo->prepare("SELECT bug_id, title, steps, link, severity, status, assigned_to FROM bugs WHERE bug_id = ? AND $scope");
 $check->execute(array_merge([$bugId], $params));
 $existing = $check->fetch();
 if (!$existing) denyNotYours();
@@ -19,11 +19,15 @@ $severity = in_array($b['severity'] ?? '', $severities, true) ? $b['severity'] :
 $status   = in_array($b['status'] ?? '', $statuses, true)   ? $b['status']   : $existing['status'];
 
 $stmt = $pdo->prepare(
-    "UPDATE bugs SET title = ?, steps = ?, severity = ?, status = ?, assigned_to = ? WHERE bug_id = ?"
+    "UPDATE bugs SET title = ?, steps = ?, link = ?, severity = ?, status = ?, assigned_to = ? WHERE bug_id = ?"
 );
 $stmt->execute([
     array_key_exists('title', $b) && trim($b['title']) !== '' ? trim($b['title']) : $existing['title'],
     array_key_exists('steps', $b) ? $b['steps'] : $existing['steps'],
+    // Sending "" clears the link; omitting the key leaves it alone.
+    array_key_exists('link', $b)
+        ? (trim((string)$b['link']) !== '' ? trim($b['link']) : null)
+        : $existing['link'],
     $severity,
     $status,
     array_key_exists('assigned_to', $b)

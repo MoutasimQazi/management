@@ -21,6 +21,21 @@
    style.css under "Dialogs".
    ════════════════════════════════════════════════════ */
 
+/* ── Links to somewhere else ──────────────────────────
+   Bugs, test cases and design tasks all store a URL pointing at where the
+   real thing lives — a screenshot, a recording, a Figma file. The value
+   comes from a user and goes straight into an href, so it cannot be
+   trusted: escaping it stops it breaking out of the attribute but leaves
+   "javascript:…" perfectly intact, which would then run on click for
+   whoever opens the list next.
+
+   Only http(s) survives. Anything else returns '' and the caller renders
+   no link at all. */
+function safeUrl(v){
+  const url = String(v == null ? '' : v).trim();
+  return /^https?:\/\//i.test(url) ? url : '';
+}
+
 /* One host reused for every dialog — building and tearing down the
    backdrop each time made the blur flicker between two dialogs in a row. */
 function dialogHost(){
@@ -159,6 +174,101 @@ function confirmDialog(opts){
     confirmLabel: o.confirmLabel || (o.danger ? 'Delete' : 'Confirm'),
     cancelLabel: o.cancelLabel
   });
+}
+
+/* ════════════════════════════════════════════════════
+   "Who is on what"
+   ────────────────────────────────────────────────────
+   Every project with the people on it. Shown to admins
+   on both the Overview and the Projects page — which is
+   why it lives here and not in either of them.
+
+   Its own escaper: the pages that use this each define
+   their own esc(), and a second top-level function of
+   that name here would quietly replace or be replaced by
+   one of them depending on script order.
+   ════════════════════════════════════════════════════ */
+function uiEsc(s){
+  return String(s == null ? '' : s)
+    .replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+}
+
+function teamGapsFor(p, modules){
+  const gaps = [];
+  if (!p.manager_name) gaps.push('BA');
+  if (!p.developers.length) gaps.push('Dev');
+  // Only a role this database can actually staff counts as missing — a
+  // workspace without migration 006 is not "missing designers".
+  if (modules.qa && !p.qa.length) gaps.push('QA');
+  if (modules.design && !p.designers.length) gaps.push('Design');
+  return gaps;
+}
+
+function teamCrewLine(label, names, isGap){
+  return '<span class="crewgroup' + (isGap ? ' gap' : '') + '">' +
+    '<b>' + label + '</b>' +
+    (names.length ? uiEsc(names.join(', ')) : 'nobody yet') + '</span>';
+}
+
+function teamRow(p, modules){
+  const devs = p.developers.map(d => d.name + ' (' + d.open_tasks + ')');
+  const gaps = teamGapsFor(p, modules);
+  return '<div class="task-row">' +
+    '<div class="tinfo">' +
+      '<div class="ttitle">' + uiEsc(p.project_name) +
+        (gaps.length ? '<span class="gapflag">no ' + uiEsc(gaps.join(', ')) + '</span>' : '') +
+      '</div>' +
+      '<div class="tmeta">' +
+        '<span>' + (p.manager_name ? uiEsc(p.manager_name) + ' · BA' : 'No business analyst') + '</span>' +
+        (p.client_name ? '<span>' + uiEsc(p.client_name) + '</span>' : '') +
+        '<span>' + p.open_tasks + ' open task' + (p.open_tasks === 1 ? '' : 's') + '</span>' +
+      '</div>' +
+      '<div class="crew">' +
+        teamCrewLine('Dev', devs, !devs.length) +
+        (modules.qa ? teamCrewLine('QA', p.qa, !p.qa.length) : '') +
+        (modules.design ? teamCrewLine('Design', p.designers, !p.designers.length) : '') +
+      '</div>' +
+    '</div>' +
+    '<div class="tactions"><span class="status-badge ' +
+      uiEsc(String(p.status || '').toLowerCase()) + '">' +
+      uiEsc(String(p.status || '').replace(/_/g, ' ')) + '</span></div>' +
+  '</div>';
+}
+
+/* opts: { url, token, panel, list, count, gaps } — the last four are
+   element ids, so a page only has to supply its own markup. */
+async function renderTeamOverview(opts){
+  const panel = document.getElementById(opts.panel);
+  const list  = document.getElementById(opts.list);
+  if (!panel || !list) return;
+
+  panel.style.display = '';
+  list.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const res = await fetch(opts.url, { headers: { 'Authorization': 'Bearer ' + opts.token } });
+    if (!res.ok) throw new Error('status ' + res.status);
+    const data     = await res.json();
+    const projects = Array.isArray(data.projects) ? data.projects : [];
+    const modules  = data.modules || {};
+
+    if (!projects.length) { panel.style.display = 'none'; return; }
+
+    const countEl = opts.count && document.getElementById(opts.count);
+    if (countEl) countEl.textContent = String(projects.length);
+
+    const gapsEl = opts.gaps && document.getElementById(opts.gaps);
+    if (gapsEl) {
+      const n = projects.filter(p => teamGapsFor(p, modules).length).length;
+      gapsEl.textContent = n
+        ? n + ' project' + (n === 1 ? '' : 's') + ' missing a role'
+        : 'Every project is covered';
+    }
+
+    list.innerHTML = projects.map(p => teamRow(p, modules)).join('');
+  } catch (err) {
+    list.innerHTML = '<div class="empty">Could not load the team view (' +
+      uiEsc(err.message) + ').</div>';
+  }
 }
 
 /* Ask for a line of text. Resolves the trimmed string, or null if
