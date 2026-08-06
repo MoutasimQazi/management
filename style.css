@@ -74,6 +74,12 @@
   --scroll-thumb:#d5cec5;
   --scroll-thumb-hover:#bdb4a9;
 
+  /* The chevron on a <select>. A background-image cannot pick up
+     currentColor, so the stroke is baked in and the whole URL is the
+     token — one per theme, plus one in brand for the focused state. */
+  --select-caret:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.75 6 6.25 11 1.75' fill='none' stroke='%238b827a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --select-caret-active:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.75 6 6.25 11 1.75' fill='none' stroke='%23f4501e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+
   --focus-ring:0 0 0 3px rgba(244,80,30,.15);
 }
 
@@ -138,6 +144,10 @@
      findable when you look for it and quiet when you don't. */
   --scroll-thumb:#3a3a44;
   --scroll-thumb-hover:#4d4d59;
+
+  /* Same chevron, lifted to stay visible on a dark control. */
+  --select-caret:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.75 6 6.25 11 1.75' fill='none' stroke='%2393969f' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --select-caret-active:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.75 6 6.25 11 1.75' fill='none' stroke='%23ff6a3d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   /* No plate at all in dark mode. The topbar and signed-out card get the
      light version of the mark (see theme.js), so the logo sits directly on
      the background exactly as it does in the light theme — a plate here is
@@ -464,6 +474,64 @@ input:focus{
   background:var(--field-bg);
   border-color:var(--brand);
   box-shadow:var(--focus-ring);
+}
+
+/* ── Selects ──────────────────────────────────────────
+   Every other control here was styled and <select> was not, so it fell
+   through to whatever the operating system draws: a grey slab with a
+   Windows-95 arrow, ignoring the border radius, the font and the theme,
+   and sitting a couple of pixels off from the input beside it.
+
+   appearance:none takes the native control away — including its arrow —
+   so the caret below is drawn as a background image. It is a token
+   rather than a literal because it changes colour with the theme and
+   again on focus, and an SVG in a background-image cannot inherit
+   currentColor.
+
+   The list that drops open is still drawn by the operating system and
+   cannot be styled. color-scheme, set on :root, is what makes it come up
+   dark in the dark theme instead of a white sheet. */
+select{
+  width:100%;
+  padding:12px 38px 12px 14px;   /* room on the right for the caret */
+  background-color:var(--surface-2);
+  background-image:var(--select-caret);
+  background-repeat:no-repeat;
+  background-position:right 13px center;
+  color:var(--ink);
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  font-family:inherit;
+  font-size:14px;
+  line-height:1.2;
+  cursor:pointer;
+  appearance:none;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+  transition:border-color .15s, box-shadow .15s, background-color .15s;
+}
+select:hover{ border-color:var(--line-3); }
+select:focus{
+  outline:none;
+  background-color:var(--field-bg);
+  background-image:var(--select-caret-active);
+  border-color:var(--brand);
+  box-shadow:var(--focus-ring);
+}
+select:disabled{
+  background-color:var(--disabled-bg);
+  color:var(--disabled-fg);
+  cursor:not-allowed;
+  opacity:1;                     /* Safari fades disabled selects to mush */
+}
+/* Chrome on Windows draws the option list from these; without them the
+   dark theme gets white rows under a dark control. */
+select option{ background:var(--surface); color:var(--ink); }
+/* A list box is not a dropdown — no caret, and no room reserved for one. */
+select[multiple], select[size]:not([size="1"]){
+  background-image:none;
+  padding-right:14px;
+  cursor:default;
 }
 
 /* input with a leading icon (login form) */
@@ -927,8 +995,14 @@ nav.subnav [hidden]{ display:none !important; }
   padding:9px 14px;
   font-size:12.5px;
   border-radius:100px;
-  background:var(--surface);
+  /* background-color, not the shorthand: a <select> carrying this class
+     also carries a caret as its background-image, and the shorthand
+     would reset it to none. */
+  background-color:var(--surface);
 }
+/* A filter is a select wearing .searchbox, so it needs the room for its
+   caret that the pill padding above does not leave. */
+select.searchbox{ padding-right:34px; background-position:right 12px center; }
 /* Inside a panel header the search field shares the row with a filter and
    sometimes a button. A rigid 230px forced an early wrap and left a ragged
    header; letting it give and take keeps everything on one line far longer. */

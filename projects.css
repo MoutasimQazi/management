@@ -28,10 +28,11 @@
 .task-row.edit-row input,
 .task-row.edit-row select{
   width:100%; padding:9px 11px; font-size:13px;
-  background:var(--field-bg); color:var(--ink);
+  background-color:var(--field-bg); color:var(--ink);
   border:1px solid var(--line); border-radius:var(--radius-sm);
   font-family:inherit;
 }
+.task-row.edit-row select{ padding-right:32px; background-position:right 10px center; }
 /* the field wrapper (.row) inside an edit-in-place row was missing a grid
    definition, so its fields fell back to stacking full-width one per line
    instead of laying out side by side — this is what actually lays them out
@@ -193,7 +194,10 @@
 .inline-form .row .field{ display:grid; gap:6px; }
 .inline-form label{ font-size:11.5px; font-weight:700; color:var(--ink-2); }
 .inline-form select{
-  width:100%; padding:11px 13px; background:var(--field-bg); color:var(--ink);
+  /* Right padding clears the caret drawn by the base rule in style.css;
+     background-color rather than the shorthand, which would erase it. */
+  width:100%; padding:11px 36px 11px 13px;
+  background-color:var(--field-bg); color:var(--ink);
   border:1px solid var(--line); border-radius:var(--radius-sm);
   font-family:inherit; font-size:13.5px;
 }
@@ -232,8 +236,10 @@
 /* Not scoped to .task-row — the same control is used inside data tables,
    where there is no .task-row ancestor to hang the styling off. */
 select.status-select{
-  width:auto; padding:7px 10px; font-size:11.5px; font-weight:700;
-  border-radius:100px; background:var(--surface);
+  width:auto; padding:7px 26px 7px 12px; font-size:11.5px; font-weight:700;
+  border-radius:100px;
+  background-color:var(--surface);
+  background-position:right 9px center;
   color:var(--ink-2); font-family:inherit;
   border:1px solid var(--line);
 }
@@ -445,10 +451,11 @@ select.status-select:focus{
 .data-table .edit-row-cell input,
 .data-table .edit-row-cell select{
   width:100%; padding:9px 11px; font-size:13px;
-  background:var(--field-bg); color:var(--ink);
+  background-color:var(--field-bg); color:var(--ink);
   border:1px solid var(--line); border-radius:var(--radius-sm);
   font-family:inherit;
 }
+.data-table .edit-row-cell select{ padding-right:32px; background-position:right 10px center; }
 
 /* compact person chip used on the HR/Employee leave lists */
 .leave-row{
