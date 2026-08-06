@@ -205,8 +205,48 @@ function showApp(){
   roleBadge.textContent = isAdmin ? 'Admin' : 'Designer';
   roleBadge.className = 'role-badge' + (isAdmin ? '' : ' manager');
   document.querySelectorAll('.nav-admin').forEach(a => { a.hidden = !isAdmin; });
+  applyRoleView();
   loadProjects();
   route();
+}
+
+/* What this page means depends on who is looking at it.
+
+   A designer is looking at their own work: the board opens on what is
+   assigned to them, and this is the only place they can file leave.
+
+   An admin is not a designer. The backend will not let a design task be
+   assigned to one, so "Assigned to me" is permanently empty and "Take
+   this on" is refused every time — both were on screen doing nothing but
+   producing an error. An admin is here to oversee, so the board opens on
+   everyone's work and the possessives come off the headings.
+
+   Leave goes altogether: the Overview already carries it for staff, with
+   the approvals half this page has no room for. Two places to request
+   leave, one of which cannot approve any, is worse than one. */
+function applyRoleView(){
+  if (!isAdmin) return;
+
+  const retitle = (sel, html, sub) => {
+    const sec = document.querySelector(sel);
+    sec.querySelector('h1').innerHTML = html;
+    sec.querySelector('.sub').textContent = sub;
+  };
+  retitle('#page-work', 'Design <em>work</em>',
+    'Every design task across every project. Unfinished work first, nearest deadline at the top.');
+  retitle('#page-projects', 'Design <em>progress</em>',
+    'Every project, and how far the design work on each has got.');
+  retitle('#page-questions', 'Project <em>questions</em>',
+    'Every question raised across every project, and what came back.');
+
+  document.querySelector('[data-nav="leave"]').hidden = true;
+  const leavePage = document.getElementById('page-leave');
+  if (leavePage) leavePage.remove();
+
+  const scope = document.getElementById('designScopeFilter');
+  const mine  = scope.querySelector('[value="mine"]');
+  if (mine) mine.remove();
+  scope.value = 'all';
 }
 signOutBtn.addEventListener('click', () => {
   clearSession();
@@ -218,6 +258,8 @@ function route(){
   if (!readSession()) { showSignedOut(); return; }
   let page = (location.hash || '#/work').replace(/^#\//, '') || 'work';
   if (!['work','projects','questions','leave'].includes(page)) page = 'work';
+  // An admin has no Leave page here — a stale bookmark lands on the board.
+  if (page === 'leave' && isAdmin) page = 'work';
 
   pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
   navLinks.forEach(a => a.classList.toggle('on', a.dataset.nav === page));
@@ -243,10 +285,12 @@ async function loadProjects(){
     allDesigners = designers;
 
     const sel = document.getElementById('dProject');
+    // An admin sees every project, so an empty list means none exist —
+    // not that nobody has assigned them any.
     sel.innerHTML = myProjects.length
       ? '<option value="">Select a project…</option>' +
         myProjects.map(p => '<option value="' + p.project_id + '">' + esc(p.project_name) + '</option>').join('')
-      : '<option value="">No projects assigned to you yet</option>';
+      : '<option value="">' + (isAdmin ? 'No projects exist yet' : 'No projects assigned to you yet') + '</option>';
 
     document.getElementById('dAssignee').innerHTML =
       '<option value="">Nobody yet</option>' +
@@ -308,10 +352,11 @@ function drawDesigns(){
       unassigned: 'Nothing is waiting to be picked up.',
       all:        'No design tasks yet.'
     }[scope] || 'No design tasks yet.';
-    listEl.innerHTML = '<div class="empty">' + scopeNote +
-      (myProjects.length ? ' Use “+ New design task” above.'
-                         : ' No projects are assigned to you yet — ask an admin.') +
-      '</div>';
+    const next = myProjects.length
+      ? ' Use “+ New design task” above.'
+      : (isAdmin ? ' No projects exist yet to attach design work to.'
+                 : ' No projects are assigned to you yet — ask an admin.');
+    listEl.innerHTML = '<div class="empty">' + scopeNote + next + '</div>';
     return;
   }
   if (!rows.length) {
@@ -341,7 +386,9 @@ function designRow(d){
         STATUSES.map(s => '<option value="' + s + '"' + (d.status === s ? ' selected' : '') + '>' +
           esc(statusLabel(s)) + '</option>').join('') +
       '</select>' +
-      '<button type="button" class="icon-btn" data-design-take="' + d.design_id + '">Take</button>' +
+      // Only a designer can be an assignee, so only a designer is offered
+      // the one-click way to become one.
+      (isAdmin ? '' : '<button type="button" class="icon-btn" data-design-take="' + d.design_id + '">Take</button>') +
       '<button type="button" class="icon-btn danger" data-design-del="' + d.design_id + '">Delete</button>' +
     '</div>' +
   '</div>';
@@ -454,7 +501,9 @@ async function renderProjects(){
     document.getElementById('projectCount').textContent = String(myProjects.length);
     listEl.innerHTML = myProjects.length
       ? myProjects.map(projectRow).join('')
-      : '<div class="empty">No projects are assigned to you yet — ask an admin to add you to one.</div>';
+      : '<div class="empty">' + (isAdmin
+          ? 'No projects exist yet.'
+          : 'No projects are assigned to you yet — ask an admin to add you to one.') + '</div>';
   } catch (err) {
     statsEl.innerHTML = '';
     listEl.innerHTML = '<div class="empty">Could not load projects (' + esc(err.message) + ').</div>';
