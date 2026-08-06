@@ -292,7 +292,12 @@ function drawBugs(){
   });
   listEl.querySelectorAll('[data-bug-delete]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!confirm('Delete this bug? This cannot be undone.')) return;
+      if (!await confirmDialog({
+        title: 'Delete this bug?',
+        body: 'This cannot be undone.',
+        confirmLabel: 'Delete bug',
+        danger: true
+      })) return;
       btn.disabled = true;
       try {
         await api(PM_BUGS_DELETE_URL, { method: 'POST', body: { bug_id: Number(btn.dataset.bugDelete) } });
@@ -396,10 +401,21 @@ function drawCases(){
       const caseId = Number(sel.dataset.runCase);
       // A failure almost always means a bug — offer to open one now rather
       // than making the tester retype the whole thing on the Bugs page.
+      /* This used to be a confirm() followed by a prompt() — two browser
+         popups in a row to answer one question. One dialog asks it, and
+         cancelling it records the failure without opening a bug. */
       let raise = false, notes = '';
       if (result === 'FAIL') {
-        raise = confirm('Marked as failed. Open a bug for this test case as well?');
-        if (raise) notes = prompt('What went wrong? (optional)') || '';
+        const answer = await promptDialog({
+          title: 'Open a bug for this failure?',
+          body: 'The result is recorded either way. Opening a bug also puts it on the Bugs board.',
+          label: 'What went wrong?',
+          placeholder: 'Optional — what you saw, and what you expected.',
+          multiline: true,
+          confirmLabel: 'Record and open a bug',
+          cancelLabel: 'Just record the failure'
+        });
+        if (answer !== null) { raise = true; notes = answer; }
       }
       sel.disabled = true;
       try {
@@ -415,7 +431,12 @@ function drawCases(){
   });
   listEl.querySelectorAll('[data-case-delete]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!confirm('Delete this test case? Its recorded results go too.')) return;
+      if (!await confirmDialog({
+        title: 'Delete this test case?',
+        body: 'Every result recorded against it goes too. Bugs raised from it are kept, but lose the link back.',
+        confirmLabel: 'Delete test case',
+        danger: true
+      })) return;
       btn.disabled = true;
       try {
         await api(PM_CASES_DELETE_URL, { method: 'POST', body: { case_id: Number(btn.dataset.caseDelete) } });

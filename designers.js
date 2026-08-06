@@ -383,7 +383,12 @@ function wireDesignRows(root){
     btn.addEventListener('click', async () => {
       const id = Number(btn.dataset.designDel);
       const row = allDesigns.find(d => Number(d.design_id) === id);
-      if (!confirm('Delete “' + (row ? row.title : 'this task') + '”?\n\nThis cannot be undone.')) return;
+      if (!await confirmDialog({
+        title: 'Delete “' + (row ? row.title : 'this task') + '”?',
+        body: 'The design task and its brief are removed. This cannot be undone.',
+        confirmLabel: 'Delete task',
+        danger: true
+      })) return;
       btn.disabled = true;
       try {
         await api(PM_DESIGN_DELETE_URL, { method:'POST', body:{ design_id:id } });

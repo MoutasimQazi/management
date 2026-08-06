@@ -570,15 +570,20 @@ function wirePeopleRows(root){
          other side. Worth a confirmation; a staff-to-staff change is not. */
       const gainsLogin = original === 'EMPLOYEE' && role !== 'EMPLOYEE';
       const losesLogin = original !== 'EMPLOYEE' && role === 'EMPLOYEE';
-      if (gainsLogin && !confirm(
-            'Make ' + name + ' a ' + roleLabel(role) + '?\n\n' +
-            'They get a staff login and come off the developer roster, so no ' +
-            'new tasks can be assigned to them. Their existing tasks, leave ' +
-            'and questions are kept.')) { revert(); return; }
-      if (losesLogin && !confirm(
-            'Move ' + name + ' to the developer roster?\n\n' +
-            'Their staff login stops working and they can be assigned tasks ' +
-            'instead. Everything they reported or approved is kept.')) { revert(); return; }
+      if (gainsLogin && !await confirmDialog({
+            title: 'Make ' + name + ' a ' + roleLabel(role) + '?',
+            body: 'They get a staff login and come off the developer roster, so no ' +
+                  'new tasks can be assigned to them. Their existing tasks, leave ' +
+                  'and questions are kept.',
+            confirmLabel: 'Give them a login'
+          })) { revert(); return; }
+      if (losesLogin && !await confirmDialog({
+            title: 'Move ' + name + ' to the developer roster?',
+            body: 'Their staff login stops working and they can be assigned tasks ' +
+                  'instead. Everything they reported or approved is kept.',
+            confirmLabel: 'Move to roster',
+            danger: true
+          })) { revert(); return; }
 
       sel.disabled = true;
       try {
@@ -620,7 +625,12 @@ function wirePeopleRows(root){
     btn.addEventListener('click', async () => {
       const id = Number(btn.dataset.empDelete);
       const person = allPeople.find(p => p.kind === 'EMPLOYEE' && p.id === id);
-      if (!confirm('Delete ' + (person ? person.name : 'this person') + '? This cannot be undone.')) return;
+      if (!await confirmDialog({
+        title: 'Delete ' + (person ? person.name : 'this person') + '?',
+        body: 'They come off the roster entirely. This cannot be undone.',
+        confirmLabel: 'Delete person',
+        danger: true
+      })) return;
       btn.disabled = true;
       try {
         await api(PM_EMPLOYEES_DELETE_URL, { method: 'POST', body: { employee_id: id } });

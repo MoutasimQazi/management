@@ -277,7 +277,12 @@ function wireCampaignRows(root){
   root.querySelectorAll('[data-camp-delete]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = Number(btn.dataset.campDelete);
-      if (!confirm('Delete this campaign? This cannot be undone.')) return;
+      if (!await confirmDialog({
+        title: 'Delete this campaign?',
+        body: 'This cannot be undone.',
+        confirmLabel: 'Delete campaign',
+        danger: true
+      })) return;
       btn.disabled = true;
       try {
         await api(PM_CAMPAIGNS_DELETE_URL, { method: 'POST', body: { campaign_id: id } });
@@ -495,7 +500,12 @@ async function renderProjectDetail(projectId){
       }
     });
     document.getElementById('deleteProjectBtn').addEventListener('click', async () => {
-      if (!confirm('Delete "' + project.project_name + '"? This permanently deletes every task and question under it. This cannot be undone.')) return;
+      if (!await confirmDialog({
+        title: 'Delete “' + project.project_name + '”?',
+        body: 'Every task and question under this project is permanently deleted with it. This cannot be undone.',
+        confirmLabel: 'Delete project',
+        danger: true
+      })) return;
       try {
         await api(PM_PROJECTS_DELETE_URL, { method: 'POST', body: { project_id: projectId } });
         allProjects = [];
@@ -677,7 +687,12 @@ function wireTaskRows(root, onChanged, opts){
   root.querySelectorAll('[data-task-delete]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = Number(btn.dataset.taskDelete);
-      if (!confirm('Delete this task? This also removes its questions. This cannot be undone.')) return;
+      if (!await confirmDialog({
+        title: 'Delete this task?',
+        body: 'Its questions are removed with it. This cannot be undone.',
+        confirmLabel: 'Delete task',
+        danger: true
+      })) return;
       btn.disabled = true;
       try {
         await api(PM_TASKS_DELETE_URL, { method: 'POST', body: { task_id: id } });
