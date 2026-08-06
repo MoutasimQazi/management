@@ -560,3 +560,54 @@ select.status-select:focus{
   transition:width .3s ease;
 }
 .pctlabel{ font-size:11.5px; font-weight:700; color:var(--muted); }
+
+/* ══════════════════════════════════════════════════════
+   "Who is on what" (admin Overview)
+   ──────────────────────────────────────────────────────
+   One .task-row per project, carrying the crew under the
+   usual title/meta block.
+   ══════════════════════════════════════════════════════ */
+.crew{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:9px;
+}
+.crewgroup{
+  display:inline-flex;
+  align-items:baseline;
+  gap:6px;
+  padding:4px 11px;
+  border-radius:100px;
+  background:var(--surface-2);
+  border:1px solid var(--line);
+  font-size:12px;
+  color:var(--ink-2);
+}
+.crewgroup b{
+  font-size:9.5px; font-weight:800;
+  letter-spacing:.1em; text-transform:uppercase;
+  color:var(--muted);
+}
+/* Nobody in this role on this project. Warm, not alarming — an unstaffed
+   role is usually a decision, and only sometimes an oversight. */
+.crewgroup.gap{
+  background:var(--warn-soft);
+  border-color:var(--warn-line);
+  color:var(--warn);
+}
+.crewgroup.gap b{ color:var(--warn); }
+
+/* The same fact repeated on the title line, so a scan down the column
+   finds the short-staffed projects without reading every chip. */
+.gapflag{
+  margin-left:9px;
+  padding:2px 9px;
+  border-radius:100px;
+  background:var(--warn-soft);
+  border:1px solid var(--warn-line);
+  color:var(--warn);
+  font-size:10px; font-weight:800;
+  letter-spacing:.04em; text-transform:uppercase;
+  white-space:nowrap;
+}

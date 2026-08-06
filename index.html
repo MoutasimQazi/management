@@ -11,13 +11,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=17">
-  <link rel="stylesheet" href="projects.css?v=17">
+  <link rel="stylesheet" href="style.css?v=18">
+  <link rel="stylesheet" href="projects.css?v=18">
 
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=17"></script>
+  <script src="theme.js?v=18"></script>
 </head>
 
 <body>
@@ -79,6 +79,19 @@
         <div class="sect actionitems today">
           <ul id="pmAttentionList"></ul>
         </div>
+      </div>
+
+      <!-- Admin only: every project with the people on it. The tiles above
+           count the work; this says who is carrying it, and where a
+           project has nobody in a role. -->
+      <div id="teamPanel" style="display:none; margin-bottom:24px">
+        <div class="panel-head">
+          <h2>Who is on what</h2>
+          <span class="count" id="teamCount">0</span>
+          <span class="spacer"></span>
+          <span class="hint" id="teamGaps"></span>
+        </div>
+        <div id="teamList"></div>
       </div>
 
       <!-- Pending leave requests addressed to me (admin sees all pending).
@@ -167,7 +180,7 @@
 
   </div>
 
-  <script src="fireflies.js?v=17"></script>
+  <script src="fireflies.js?v=18"></script>
   <script>
     /* ════════════════════════════════════════════════════
        1. Config
@@ -192,6 +205,7 @@
     const PM_OPENINGS_LIST_URL   = PM_API_BASE + "pm-openings-list.php";
     const PM_CANDIDATES_LIST_URL = PM_API_BASE + "pm-candidates-list.php";
     const PM_CAMPAIGNS_LIST_URL  = PM_API_BASE + "pm-campaigns-list.php";
+    const PM_TEAM_OVERVIEW_URL   = PM_API_BASE + "pm-team-overview.php";
 
     /* ════════════════════════════════════════════════════
        2. DOM references
@@ -254,7 +268,7 @@
       loadApprovals();
       loadApprovers();
       loadMyLeave();
-      if (session.role === 'ADMIN') loadHrMktSummary();
+      if (isAdmin) { loadTeamOverview(); loadHrMktSummary(); }
     }
 
     /* ════════════════════════════════════════════════════
@@ -408,6 +422,87 @@
       } catch (err) {
         pmStatsEl.innerHTML = '<div class="empty">Could not load project data (' + esc(err.message) + ').</div>';
         pmAttentionPanel.style.display = 'none';
+      }
+    }
+
+    /* ── Who is on what (admin only) ────────────────────
+       The tiles above count the work. This says who is carrying it: every
+       project with its business analyst, the developers holding open
+       tasks on it, and the QA and designer assigned — and, more usefully,
+       where a project has nobody in a role at all.
+
+       The whole thing is one request; pm-team-overview.php does the
+       grouping, because counting belongs next to the tables. */
+    function teamGapsFor(p, modules){
+      const gaps = [];
+      if (!p.manager_name) gaps.push('BA');
+      if (!p.developers.length) gaps.push('Dev');
+      // Only a role this database can actually staff counts as missing —
+      // a workspace without migration 006 is not "missing designers".
+      if (modules.qa && !p.qa.length) gaps.push('QA');
+      if (modules.design && !p.designers.length) gaps.push('Design');
+      return gaps;
+    }
+
+    function crewLine(label, names, isGap){
+      return '<span class="crewgroup' + (isGap ? ' gap' : '') + '">' +
+        '<b>' + label + '</b>' +
+        (names.length ? esc(names.join(', ')) : 'nobody yet') + '</span>';
+    }
+
+    function teamRow(p, modules){
+      const devs = p.developers.map(d => d.name + ' (' + d.open_tasks + ')');
+      const gaps = teamGapsFor(p, modules);
+      return '<div class="task-row">' +
+        '<div class="tinfo">' +
+          '<div class="ttitle">' + esc(p.project_name) +
+            (gaps.length ? '<span class="gapflag">no ' + esc(gaps.join(', ')) + '</span>' : '') +
+          '</div>' +
+          '<div class="tmeta">' +
+            '<span>' + (p.manager_name ? esc(p.manager_name) + ' · BA' : 'No business analyst') + '</span>' +
+            (p.client_name ? '<span>' + esc(p.client_name) + '</span>' : '') +
+            '<span>' + p.open_tasks + ' open task' + (p.open_tasks === 1 ? '' : 's') + '</span>' +
+          '</div>' +
+          '<div class="crew">' +
+            crewLine('Dev', devs, !devs.length) +
+            (modules.qa ? crewLine('QA', p.qa, !p.qa.length) : '') +
+            (modules.design ? crewLine('Design', p.designers, !p.designers.length) : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="tactions"><span class="status-badge ' +
+          esc(String(p.status || '').toLowerCase()) + '">' +
+          esc(String(p.status || '').replace(/_/g, ' ')) + '</span></div>' +
+      '</div>';
+    }
+
+    async function loadTeamOverview(){
+      const session = readSession();
+      if (!session) return;
+      const panel  = document.getElementById('teamPanel');
+      const listEl = document.getElementById('teamList');
+      panel.style.display = '';
+      listEl.innerHTML = '<div class="empty">Loading…</div>';
+      try {
+        const res = await fetch(PM_TEAM_OVERVIEW_URL, {
+          headers: { 'Authorization': 'Bearer ' + session.token }
+        });
+        if (!res.ok) throw new Error('status ' + res.status);
+        const data     = await res.json();
+        const projects = Array.isArray(data.projects) ? data.projects : [];
+        const modules  = data.modules || {};
+
+        if (!projects.length) { panel.style.display = 'none'; return; }
+
+        document.getElementById('teamCount').textContent = String(projects.length);
+        const gaps = projects.filter(p => teamGapsFor(p, modules).length).length;
+        document.getElementById('teamGaps').textContent = gaps
+          ? gaps + ' project' + (gaps === 1 ? '' : 's') + ' missing a role'
+          : 'Every project is covered';
+
+        listEl.innerHTML = projects.map(p => teamRow(p, modules)).join('');
+      } catch (err) {
+        listEl.innerHTML = '<div class="empty">Could not load the team view (' +
+          esc(err.message) + ').</div>';
       }
     }
 
