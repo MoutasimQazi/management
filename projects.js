@@ -24,9 +24,9 @@ const SESSION_KEY = "fireflies.session";
 // this same site — no CORS to worry about.
 const PM_API_BASE = "https://management.moveneticsdigital.com/pm-backend-php/";
 
+/* Read-only here. The roster is created and corrected in HR › People;
+   this page only needs the names to fill its assignee menus. */
 const PM_EMPLOYEES_LIST_URL   = PM_API_BASE + "pm-employees-list.php";
-const PM_EMPLOYEES_CREATE_URL = PM_API_BASE + "pm-employees-create.php";
-const PM_EMPLOYEES_UPDATE_URL = PM_API_BASE + "pm-employees-update.php";
 /* No delete here on purpose. Removing a person — and with it their login —
    belongs to HR and admins, on HR › People. A BA can add someone to the
    roster and correct their details, but not take them out of the system. */
@@ -231,7 +231,7 @@ function showApp(){
 }
 signOutBtn.addEventListener('click', () => {
   clearSession();
-  location.href = 'index.html';
+  location.href = 'login.html?m=out';
 });
 
 /* ── Router ──────────────────────────────────────────── */
@@ -334,98 +334,15 @@ async function renderDashboard(){
 }
 
 /* ════════════════════════════════════════════════════
-   Developers (supporting panel on the Projects page)
+   Developers
+   ────────────────────────────────────────────────────
+   This page used to carry a "Manage developers" panel —
+   the roster with an add form and inline editing. It
+   was a second door to something HR › People already
+   owns, which meant two screens could disagree about
+   the same record. The roster is still loaded here,
+   but only to fill the assignee menus.
    ════════════════════════════════════════════════════ */
-function renderEmployeesPanel(){
-  const listEl = document.getElementById('employeesList');
-  listEl.innerHTML = allEmployees.length
-    ? allEmployees.map(employeeRow).join('')
-    : '<div class="empty">No developers yet — add one below.</div>';
-  wireEmployeeRows(listEl);
-}
-
-function employeeRow(e){
-  return '<div class="task-row" data-emp-row="' + e.employee_id + '">' +
-    '<div class="tinfo"><div class="ttitle">' + esc(e.name) + '</div>' +
-    '<div class="tmeta">' +
-      (e.designation ? '<span>' + esc(e.designation) + '</span>' : '') +
-      (e.department ? '<span>' + esc(e.department) + '</span>' : '') +
-      (!e.designation && !e.department ? '<span>No details</span>' : '') +
-    '</div></div>' +
-    '<div class="tactions">' +
-      '<button type="button" class="icon-btn" data-emp-edit="' + e.employee_id + '">Edit</button>' +
-    '</div></div>';
-}
-
-function employeeEditForm(e){
-  return '<div class="task-row edit-row" data-emp-row="' + e.employee_id + '">' +
-    '<div class="row" style="flex:1">' +
-      '<div class="field"><input value="' + esc(e.name) + '" data-emp-field="name" placeholder="Name" /></div>' +
-      '<div class="field"><input value="' + esc(e.designation || '') + '" data-emp-field="designation" placeholder="Designation" /></div>' +
-      '<div class="field" style="grid-column:1/-1"><input value="' + esc(e.department || '') + '" data-emp-field="department" placeholder="Department" /></div>' +
-    '</div>' +
-    '<div class="tactions">' +
-      '<button type="button" class="icon-btn" data-emp-save="' + e.employee_id + '">Save</button>' +
-      '<button type="button" class="icon-btn" data-emp-cancel="' + e.employee_id + '">Cancel</button>' +
-    '</div></div>';
-}
-
-function wireEmployeeRows(root){
-  root.querySelectorAll('[data-emp-edit]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = Number(btn.dataset.empEdit);
-      const emp = allEmployees.find(e => e.employee_id === id);
-      const rowEl = root.querySelector('[data-emp-row="' + id + '"]');
-      rowEl.outerHTML = employeeEditForm(emp);
-      wireEmployeeRows(root);
-    });
-  });
-  root.querySelectorAll('[data-emp-cancel]').forEach(btn => {
-    btn.addEventListener('click', () => renderEmployeesPanel());
-  });
-  root.querySelectorAll('[data-emp-save]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = Number(btn.dataset.empSave);
-      const rowEl = root.querySelector('[data-emp-row="' + id + '"]');
-      const name = rowEl.querySelector('[data-emp-field="name"]').value.trim();
-      const designation = rowEl.querySelector('[data-emp-field="designation"]').value.trim();
-      const department = rowEl.querySelector('[data-emp-field="department"]').value.trim();
-      if (!name) return;
-      btn.disabled = true;
-      try {
-        await api(PM_EMPLOYEES_UPDATE_URL, { method: 'POST', body: { employee_id: id, name, designation, department } });
-        await loadEmployees();
-        renderEmployeesPanel();
-        populateEmployeeSelects();
-      } catch (err) {
-        toast('Could not save developer: ' + err.message, 'err');
-        btn.disabled = false;
-      }
-    });
-  });
-}
-
-document.getElementById('employeesPanelToggle').addEventListener('click', () => {
-  document.getElementById('employeesPanel').classList.toggle('open');
-});
-
-document.getElementById('empAddForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = document.getElementById('empName').value.trim();
-  const department = document.getElementById('empDepartment').value.trim();
-  const designation = document.getElementById('empDesignation').value.trim();
-  if (!name) return;
-  try {
-    await api(PM_EMPLOYEES_CREATE_URL, { method: 'POST', body: { name, department, designation } });
-    document.getElementById('empAddForm').reset();
-    await loadEmployees();
-    renderEmployeesPanel();
-    populateEmployeeSelects();
-  } catch (err) {
-    toast('Could not add developer: ' + err.message, 'err');
-  }
-});
-
 function populateEmployeeSelects(){
   document.querySelectorAll('select[data-role="employee-select"]').forEach(sel => {
     sel.innerHTML = '<option value="">Select developer…</option>' +
@@ -442,7 +359,6 @@ async function renderProjects(){
   grid.innerHTML = '<div class="empty">Loading…</div>';
   try {
     await Promise.all([loadEmployees(), loadProjects()]);
-    renderEmployeesPanel();
     grid.innerHTML = allProjects.length ? projectsTable(allProjects)
       : '<div class="empty">No projects yet. Create your first one above.</div>';
     wireProjectRowClicks(grid);

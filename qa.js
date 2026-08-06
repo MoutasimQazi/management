@@ -181,7 +181,7 @@ function showApp(){
 }
 signOutBtn.addEventListener('click', () => {
   clearSession();
-  location.href = 'index.html';
+  location.href = 'login.html?m=out';
 });
 
 /* ── Router ──────────────────────────────────────────── */

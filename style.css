@@ -71,6 +71,9 @@
   --info-line:#d8e0fb;
   --secret-fg:#7a5a1e;
 
+  --scroll-thumb:#d5cec5;
+  --scroll-thumb-hover:#bdb4a9;
+
   --focus-ring:0 0 0 3px rgba(244,80,30,.15);
 }
 
@@ -130,6 +133,11 @@
      which is invisible against a dark table — it has to go darker
      still, and harder, to show up at all. */
   --scroll-shadow:rgba(0,0,0,.6);
+
+  /* A lift off the page rather than a stripe down it: the bar should be
+     findable when you look for it and quiet when you don't. */
+  --scroll-thumb:#3a3a44;
+  --scroll-thumb-hover:#4d4d59;
   /* No plate at all in dark mode. The topbar and signed-out card get the
      light version of the mark (see theme.js), so the logo sits directly on
      the background exactly as it does in the light theme — a plate here is
@@ -189,6 +197,40 @@
 html, body{ margin:0; min-height:100%; }
 /* Keeps anything scrolled-to clear of the sticky topbar. */
 html{ scroll-padding-top:80px; }
+
+/* ── Scrollbars ───────────────────────────────────────
+   The default bar is a grey slab that belongs to the OS, not to the
+   page, and on the dark theme it stayed light — a bright stripe down
+   the side of a dark screen. This one is built from the same tokens as
+   everything else, so it follows the theme like the rest of the UI.
+
+   Two syntaxes, deliberately: Firefox only supports the standard
+   `scrollbar-*` properties, WebKit and Blink only the ::-webkit-*
+   pseudo-elements, and neither is going to grow the other any time
+   soon. The rules apply to every scroll container on the page, not just
+   the document, so table wrappers and panes match too.
+
+   Two exceptions keep their `scrollbar-width:none` further down: the
+   section and sub-nav strips scroll horizontally on narrow screens and
+   are meant to look like plain text, not like a scrolling region. */
+*{
+  scrollbar-width:thin;
+  scrollbar-color:var(--scroll-thumb) transparent;
+}
+::-webkit-scrollbar{ width:11px; height:11px; }
+::-webkit-scrollbar-track{ background:transparent; }
+::-webkit-scrollbar-thumb{
+  background:var(--scroll-thumb);
+  border-radius:100px;
+  /* Transparent border with background-clip is the only way to inset a
+     WebKit thumb — there is no padding on this pseudo-element. */
+  border:3px solid transparent;
+  background-clip:content-box;
+}
+::-webkit-scrollbar-thumb:hover{ background:var(--scroll-thumb-hover); background-clip:content-box; }
+::-webkit-scrollbar-thumb:active{ background:var(--brand); background-clip:content-box; }
+/* Where the bars meet in the bottom-right of a two-axis scroller. */
+::-webkit-scrollbar-corner{ background:transparent; }
 
 /* Links and buttons had no visible keyboard focus at all — this only
    shows for keyboard users, so it costs the mouse experience nothing. */

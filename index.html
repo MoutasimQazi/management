@@ -11,79 +11,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=11">
-  <link rel="stylesheet" href="projects.css?v=11">
+  <link rel="stylesheet" href="style.css?v=12">
+  <link rel="stylesheet" href="projects.css?v=12">
 
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=11"></script>
+  <script src="theme.js?v=12"></script>
 </head>
 
 <body>
-
-  <!-- ══ Login (own page, shown when signed out) ═════════ -->
-  <div id="loginView" class="view">
-    <main class="shell">
-
-      <aside class="side">
-        <span class="logochip">
-          <img src="logo.png"
-               alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
-        </span>
-
-        <span class="pill"><span class="bug"></span>Internal workspace</span>
-
-        <h2 class="tagline">Movenetics Digital<br><span>all in one place.</span></h2>
-        <p class="blurb">The internal workspace for the Movenetics Digital team — every meeting captured, every project tracked, all under one sign-in.</p>
-
-        <ul class="features">
-          <li><span class="tick">✓</span>Meeting notes captured automatically, every call</li>
-          <li><span class="tick">✓</span>Projects, tasks &amp; questions tracked in one place</li>
-          <li><span class="tick">✓</span>One login for the whole Movenetics Digital team</li>
-        </ul>
-
-        <div class="foot">Movenetics Digital · Internal workspace</div>
-      </aside>
-
-      <div class="pane">
-        <h1>Sign <em>in</em></h1>
-        <p class="sub">Restricted to the Movenetics Digital team — sign in to reach your meetings, action items, and projects.</p>
-
-        <form id="loginForm">
-          <div class="field">
-            <label for="email">Email</label>
-            <div class="field-icon">
-              <span class="fi-icon" aria-hidden="true">✉</span>
-              <input id="email" name="email" type="email" autocomplete="username"
-                     placeholder="you@moveneticsdigital.com" required />
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="password">Password</label>
-            <div class="field-icon">
-              <span class="fi-icon" aria-hidden="true">🔒</span>
-              <input id="password" name="password" type="password" autocomplete="current-password"
-                     placeholder="••••••••••" required />
-              <button type="button" class="pw-toggle" id="pwToggle" aria-label="Show password" tabindex="-1">👁</button>
-            </div>
-          </div>
-
-          <label class="check" for="remember">
-            <input id="remember" name="remember" type="checkbox" checked />
-            <span>Keep me signed in on this browser</span>
-          </label>
-
-          <button id="loginBtn" type="submit"><span class="btn-spinner"></span><span class="btn-label">Sign in</span></button>
-        </form>
-
-        <div id="loginStatus" class="status" role="status"></div>
-        <p class="help-link">Need access or a password reset? <a href="mailto:moutasim.qazi@moveneticsdigital.com?subject=Fireflies%20dispatch%20access">Email support</a>.</p>
-      </div>
-
-    </main>
-  </div>
 
   <!-- ══ Signed-in app (multi-page) ══════════════════════ -->
   <div id="appView" class="view dashwrap nosub">
@@ -229,14 +166,17 @@
 
   </div>
 
-  <script src="fireflies.js?v=11"></script>
+  <script src="fireflies.js?v=12"></script>
   <script>
     /* ════════════════════════════════════════════════════
        1. Config
        ────────────────────────────────────────────────────
-       Sign-in and the Overview dashboard live here. The
-       endpoints, session handling and Fireflies parsing are
-       shared with the Meetings section, so they come from
+       The Overview dashboard, and only that. Signing in is
+       login.html / login.js now — this page assumes a
+       session and sends you there if there isn't one.
+
+       Endpoints, session handling and Fireflies parsing are
+       shared with the other sections, so they come from
        fireflies.js — loaded just above this script.
        ════════════════════════════════════════════════════ */
     // Project Management summary (read-only here — full module lives in
@@ -252,17 +192,10 @@
     const PM_CANDIDATES_LIST_URL = PM_API_BASE + "pm-candidates-list.php";
     const PM_CAMPAIGNS_LIST_URL  = PM_API_BASE + "pm-campaigns-list.php";
 
-    const SUPPORT_LINK = 'Need access or a password reset? Email <a href="mailto:' +
-      SUPPORT_EMAIL + '?subject=Fireflies%20dispatch%20access">' + SUPPORT_EMAIL + '</a>.';
-
     /* ════════════════════════════════════════════════════
        2. DOM references
        ════════════════════════════════════════════════════ */
-    const loginView   = document.getElementById('loginView');
     const appView     = document.getElementById('appView');
-    const loginForm   = document.getElementById('loginForm');
-    const loginBtn    = document.getElementById('loginBtn');
-    const loginStatus = document.getElementById('loginStatus');
     const whoEmail    = document.getElementById('whoEmail');
     const signOutBtn  = document.getElementById('signOut');
     const recentEl    = document.getElementById('recentMeetings');
@@ -287,27 +220,26 @@
     const TODAY_PREVIEW = 4;   // items shown before "Show all"
 
     /* ════════════════════════════════════════════════════
-       3. Auth views
+       3. Auth
        ────────────────────────────────────────────────────
        Overview is one page, so there is no router here —
-       the dashboard section is simply always active.
+       the dashboard section is simply always active. There
+       is no signed-out view either: the sign-in form is its
+       own page now, and this one is only ever reached with
+       a session in hand.
        ════════════════════════════════════════════════════ */
-    function showLogin(msg){
-      document.body.classList.remove('dash');
-      appView.classList.remove('active');
-      loginView.classList.add('active');
-      setStatus(loginStatus, msg ? 'err' : '', msg || '');
-      document.getElementById('password').value = '';
-      document.getElementById('email').focus();
+    function goToLogin(reason){
+      clearSession();
+      location.replace('login.html' + (reason ? '?m=' + reason : ''));
     }
 
-    // What a 401 from openRecording (fireflies.js) does on this page. The
-    // recent-meetings table renders the same recording chips as Meetings.
-    onSessionExpired = () => showLogin('Your session expired. Please sign in again.');
+    // What a 401 anywhere on this page does — including openRecording in
+    // fireflies.js, since the recent-meetings table renders the same
+    // recording chips as Meetings does.
+    onSessionExpired = () => goToLogin('expired');
 
     function showApp(session){
       document.body.classList.add('dash');
-      loginView.classList.remove('active');
       appView.classList.add('active');
       renderUserChip(whoEmail, session.email);
       const isAdmin = String(session.role || '').toUpperCase() === 'ADMIN';
@@ -325,95 +257,13 @@
     }
 
     /* ════════════════════════════════════════════════════
-       4. Login / sign-out
+       4. Sign out
        ════════════════════════════════════════════════════ */
-    document.getElementById('pwToggle').addEventListener('click', () => {
-      const pw = document.getElementById('password');
-      const showing = pw.type === 'text';
-      pw.type = showing ? 'password' : 'text';
-      document.getElementById('pwToggle').textContent = showing ? '👁' : '🙈';
-      document.getElementById('pwToggle').classList.toggle('showing', !showing);
-    });
 
-    // Tries one login endpoint; returns {ok:false} on a plain auth
-    // rejection (401/403) so the caller can fall through to the next
-    // endpoint, but throws on anything else (real outage, bad response).
-    async function attemptLogin(url, email, password){
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      if (res.status === 401 || res.status === 403) return { ok: false };
-      if (!res.ok) throw new Error('Login endpoint responded with ' + res.status + '.');
-      const data  = await res.json().catch(() => ({}));
-      const token = data.token || data.jwt || data.access_token;
-      if (!token) throw new Error('Login succeeded but no token came back.');
-      return { ok: true, data, token };
-    }
-
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email    = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      const remember = document.getElementById('remember').checked;
-
-      loginBtn.disabled = true;
-      loginBtn.classList.add('busy');
-      loginBtn.querySelector('.btn-label').textContent = 'Signing in…';
-      setStatus(loginStatus, 'busy', 'Checking your credentials…');
-
-      try {
-        // The 6 original managers authenticate through n8n exactly as
-        // before. HR/Marketing/Employee accounts don't exist in n8n's
-        // credential list, so a 401/403 there falls through to the
-        // DB-backed PHP login instead.
-        let result = await attemptLogin(LOGIN_URL, email, password);
-        if (!result.ok) result = await attemptLogin(PM_LOGIN_URL, email, password);
-        if (!result.ok) throw new Error('That email and password combination was rejected. ' + SUPPORT_LINK);
-
-        const { data, token } = result;
-        const session = { email: data.email || email, token, role: data.role || 'MANAGER' };
-        writeSession(session, remember);
-        loginForm.reset();
-
-        const home = roleHome(session.role);
-        if (home) { location.href = home; return; }
-
-        location.hash = '#/dashboard';
-        showApp(session);
-      } catch (err) {
-        setStatus(loginStatus, 'err', err.message);
-        const shell = document.querySelector('.shell');
-        shell.classList.remove('shake');
-        void shell.offsetWidth; // restart the animation if it fires twice in a row
-        shell.classList.add('shake');
-      } finally {
-        loginBtn.disabled = false;
-        loginBtn.classList.remove('busy');
-        loginBtn.querySelector('.btn-label').textContent = 'Sign in';
-      }
-    });
-
-    signOutBtn.addEventListener('click', () => {
-      clearSession();
-      allMeetings = [];
-      recentEl.innerHTML = '';
-      todayItemsCache = [];
-      todayExpanded = false;
-      todayPanel.style.display = 'none';
-      todayList.innerHTML = '';
-      pmStatsEl.innerHTML = '';
-      pmAttentionPanel.style.display = 'none';
-      pmAttentionList.innerHTML = '';
-      leaveList.innerHTML = '';
-      myLeaveList.innerHTML = '';
-      approvalsPanel.style.display = 'none';
-      approvalsList.innerHTML = '';
-      document.getElementById('hrMktPanel').style.display = 'none';
-      showLogin('Signed out.');
-      setStatus(loginStatus, '', '');
-    });
+    /* Signing out used to blank every panel by hand, because the dashboard
+       stayed on screen underneath the login form. It doesn't any more —
+       the page is replaced outright, which clears the lot. */
+    signOutBtn.addEventListener('click', () => goToLogin('out'));
 
     /* ════════════════════════════════════════════════════
        5. Fireflies summary (read-only — the full Meetings
@@ -429,11 +279,7 @@
         allMeetings = await fetchMeetings(session.token);
         renderAll();
       } catch (err) {
-        if (err.unauthorized) {
-          clearSession();
-          showLogin('Your session expired. Please sign in again.');
-          return;
-        }
+        if (err.unauthorized) { goToLogin('expired'); return; }
         allMeetings = [];
         renderAll();
         recentEl.innerHTML = '<div class="empty">Couldn\'t load meetings (' + esc(err.message) + ').</div>';
@@ -769,11 +615,12 @@
        7. Boot
        ════════════════════════════════════════════════════ */
     const existing = readSession();
-    if (existing) {
-      const home = roleHome(existing.role);
-      if (home) location.href = home; else showApp(existing);
+    if (!existing) {
+      goToLogin();                        // no session — this page has no signed-out state
     } else {
-      showLogin();
+      const home = roleHome(existing.role);
+      if (home) location.replace(home);   // HR / Marketing / QA / Employee have their own
+      else showApp(existing);
     }
   </script>
 </body>

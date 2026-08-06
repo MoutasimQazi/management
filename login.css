@@ -1,0 +1,189 @@
+/* ════════════════════════════════════════════════════
+   Sign-in page
+   ────────────────────────────────────────────────────
+   Loaded only by login.html, on top of style.css. The
+   two-panel card, the type scale and the form controls
+   all come from there and are shared with the rest of
+   the workspace; what lives here is the polish that
+   would be dead weight on every signed-in page —
+   ambient light, entrance motion, the drift on the
+   brand panel.
+
+   Everything is scoped to #loginView so that nothing
+   in this file can reach a page that never loads it.
+   ════════════════════════════════════════════════════ */
+
+:root{
+  --login-glow-a:rgba(244,80,30,.14);
+  --login-glow-b:rgba(255,150,90,.11);
+  --login-vignette:rgba(26,22,19,.05);
+}
+:root[data-theme="dark"]{
+  --login-glow-a:rgba(244,80,30,.20);
+  --login-glow-b:rgba(120,45,15,.26);
+  --login-vignette:rgba(0,0,0,.28);
+}
+
+/* ── The room the card sits in ────────────────────────
+   The shared body wash is tuned for pages full of content. This one page
+   is a single card on an empty field, so it can carry a stronger, more
+   directional light without fighting anything. */
+body{
+  min-height:100vh;
+  min-height:100dvh;
+  background:
+    radial-gradient(900px 680px at 6% -14%, var(--login-glow-a), transparent 60%),
+    radial-gradient(760px 620px at 106% 112%, var(--login-glow-b), transparent 58%),
+    radial-gradient(1200px 900px at 50% 50%, transparent 55%, var(--login-vignette) 100%),
+    var(--bg);
+  background-attachment:fixed;
+}
+
+/* ── The card ─────────────────────────────────────────
+   Wider than the shared default, with a deeper shadow: at this size the
+   card is the entire page, so it can afford the room and needs to sit
+   further off the background than a panel in a list would. */
+#loginView .shell{
+  max-width:980px;
+  grid-template-columns:minmax(0, 400px) 1fr;
+  box-shadow:
+    0 2px 6px rgba(26,22,19,.04),
+    0 34px 76px -24px rgba(26,22,19,.30);
+  animation:shell-in .55s cubic-bezier(.2,.7,.3,1) both;
+}
+@keyframes shell-in{
+  from{ opacity:0; transform:translateY(16px) scale(.985); }
+  to  { opacity:1; transform:none; }
+}
+/* The failed-sign-in shake has to outrank the entrance animation, or the
+   card would slide in again instead of shaking. Same selector weight as
+   the rule above, declared after it. */
+#loginView .shell.shake{
+  animation:shake .5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+/* ── Brand panel ──────────────────────────────────────
+   Three layers over the gradient that style.css paints: a dot grid for
+   texture, a slow-drifting highlight for life, and the ring that was
+   already there. The content is lifted above all of it. */
+#loginView .side > *{ position:relative; z-index:1; }
+
+#loginView .side::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background-image:radial-gradient(rgba(255,255,255,.20) 1px, transparent 1.2px);
+  background-size:20px 20px;
+  -webkit-mask-image:linear-gradient(to bottom right, #000 0%, transparent 72%);
+          mask-image:linear-gradient(to bottom right, #000 0%, transparent 72%);
+  pointer-events:none;
+}
+
+#loginView .side .aurora{
+  position:absolute;
+  z-index:0;
+  left:-140px; top:-150px;
+  width:430px; height:430px;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(255,255,255,.34), transparent 66%);
+  pointer-events:none;
+  animation:aurora 16s ease-in-out infinite;
+}
+@keyframes aurora{
+  0%, 100%{ transform:translate3d(0, 0, 0) scale(1); opacity:.7; }
+  50%     { transform:translate3d(46px, 36px, 0) scale(1.16); opacity:1; }
+}
+
+/* ── Form panel ───────────────────────────────────── */
+#loginView .pane{ padding:46px 46px 40px; }
+
+#loginView .eyebrow{
+  display:inline-block;
+  margin:0 0 14px;
+  padding:5px 11px;
+  border-radius:100px;
+  background:var(--brand-soft);
+  color:var(--brand);
+  font-size:9.5px;
+  font-weight:800;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+}
+
+#loginView .pane .sub{ margin-bottom:26px; }
+
+/* A field is the thing you are actually here to fill in — worth a little
+   more height than a filter box buried in a toolbar. */
+#loginView input[type="email"],
+#loginView input[type="password"]{
+  padding-top:13px;
+  padding-bottom:13px;
+  font-size:14.5px;
+}
+
+/* "Keep me signed in" reads as a stray line of text next to two framed
+   fields; giving it the same frame settles the column. */
+#loginView .check{
+  margin-top:3px;
+  padding:11px 13px;
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  background:var(--surface-2);
+  font-size:12.5px;
+  transition:border-color .15s, background .15s;
+}
+#loginView .check:hover{ border-color:var(--line-3); }
+
+/* A light sweeps across the button on hover. Purely decorative, so it is
+   pointer-transparent and sits under the label rather than over it. */
+#loginView #loginBtn{
+  position:relative;
+  overflow:hidden;
+  margin-top:10px;
+  padding:14px;
+  font-size:14.5px;
+}
+#loginView #loginBtn > *{ position:relative; z-index:1; }
+#loginView #loginBtn::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(105deg, transparent 32%, rgba(255,255,255,.32) 50%, transparent 68%);
+  transform:translateX(-130%);
+  transition:transform .65s ease;
+  pointer-events:none;
+}
+#loginView #loginBtn:hover:not(:disabled)::after{ transform:translateX(130%); }
+
+#loginView #loginStatus:not(.status){ margin:0; }
+#loginView .status{ margin-top:16px; }
+
+#loginView .help-link{
+  margin-top:22px;
+  padding-top:18px;
+  border-top:1px solid var(--line);
+}
+
+/* ── Narrow screens ───────────────────────────────────
+   style.css collapses the card to one column at 820px, but its rules are
+   a class deep and everything above is an id deep, so the overrides have
+   to be restated here or the desktop width would win on a phone. */
+@media (max-width:820px){
+  #loginView .shell{
+    max-width:520px;
+    grid-template-columns:1fr;
+  }
+  #loginView .side .aurora{ display:none; }
+  #loginView .pane{ padding:32px 26px 32px; }
+}
+@media (max-width:430px){
+  #loginView .pane{ padding:26px 20px 26px; }
+  #loginView .shell{ border-radius:var(--radius-md); }
+}
+
+/* Motion here is decoration, all of it. */
+@media (prefers-reduced-motion:reduce){
+  #loginView .shell,
+  #loginView .side .aurora{ animation:none; }
+  #loginView #loginBtn::after{ display:none; }
+}

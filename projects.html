@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=11">
-  <link rel="stylesheet" href="projects.css?v=11">
+  <link rel="stylesheet" href="style.css?v=12">
+  <link rel="stylesheet" href="projects.css?v=12">
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=11"></script>
+  <script src="theme.js?v=12"></script>
 </head>
 
 <body>
@@ -29,7 +29,7 @@
       </span>
       <h1>Sign <em>in</em></h1>
       <p>Project Management uses the same sign-in as Fireflies Dispatch. Sign in there first, then come back to this tab.</p>
-      <a class="btn-sm" href="index.html">Go to sign in →</a>
+      <a class="btn-sm" href="login.html">Go to sign in →</a>
     </div>
   </div>
 
@@ -118,21 +118,6 @@
         </div>
       </form>
 
-      <div class="panel-head">
-        <h2>Developers</h2>
-        <button type="button" class="refresh" id="employeesPanelToggle">Manage developers</button>
-      </div>
-      <div id="employeesPanel" class="inline-form" style="margin-bottom:20px">
-        <p class="hint" style="margin:0 0 12px">Add people to the roster and correct their details here. Removing someone, or taking away their login, is done by HR or an admin from HR › People.</p>
-        <div id="employeesList"></div>
-        <form id="empAddForm" class="row" style="align-items:end">
-          <div class="field"><label>Name</label><input id="empName" required placeholder="Developer name" /></div>
-          <div class="field"><label>Designation <span class="opt">— optional</span></label><input id="empDesignation" placeholder="e.g. Designer" /></div>
-          <div class="field" style="grid-column:1/-1"><label>Department <span class="opt">— optional</span></label><input id="empDepartment" placeholder="e.g. Marketing" /></div>
-          <div class="actions" style="grid-column:1/-1"><button type="submit">Add developer</button></div>
-        </form>
-      </div>
-
       <div class="panel-head"><h2>All projects</h2></div>
       <div id="projectsGrid"></div>
     </section>
@@ -189,6 +174,6 @@
 
   </div>
 
-  <script src="projects.js?v=11"></script>
+  <script src="projects.js?v=12"></script>
 </body>
 </html>

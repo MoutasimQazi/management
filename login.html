@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="movenetics.ico" sizes="any">
+  <link rel="icon" href="movenetics.png" type="image/png">
+  <link rel="apple-touch-icon" href="movenetics.png">
+  <title>Movenetics Digital · Sign in</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- projects.css is not loaded here on purpose: nothing on this page
+       uses it, and the sign-in screen is the one page every visitor
+       fetches cold, with no session and no warm cache. -->
+  <link rel="stylesheet" href="style.css?v=12">
+  <link rel="stylesheet" href="login.css?v=12">
+
+  <!-- Sets data-theme before the first paint — must stay in <head>
+       and must not be deferred, or dark mode flashes white. -->
+  <script src="theme.js?v=12"></script>
+</head>
+
+<body>
+
+  <!-- ══ Sign in ═════════════════════════════════════════
+       This is the whole page. It used to be a hidden <div> inside
+       index.html that the dashboard toggled against itself; it now
+       stands alone, so index.html is only ever the signed-in Overview
+       and this is only ever the signed-out door. -->
+  <div id="loginView" class="view active">
+    <main class="shell">
+
+      <aside class="side">
+        <!-- Slow-drifting highlight behind the panel content. -->
+        <span class="aurora" aria-hidden="true"></span>
+
+        <span class="logochip">
+          <img src="logo.png"
+               alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
+        </span>
+
+        <span class="pill"><span class="bug"></span>Internal workspace</span>
+
+        <h2 class="tagline">Movenetics Digital<br><span>all in one place.</span></h2>
+        <p class="blurb">The internal workspace for the Movenetics Digital team — every meeting captured, every project tracked, all under one sign-in.</p>
+
+        <ul class="features">
+          <li><span class="tick">✓</span>Meeting notes captured automatically, every call</li>
+          <li><span class="tick">✓</span>Projects, tasks &amp; questions tracked in one place</li>
+          <li><span class="tick">✓</span>One login for the whole Movenetics Digital team</li>
+        </ul>
+
+        <div class="foot">Movenetics Digital · Internal workspace</div>
+      </aside>
+
+      <div class="pane">
+        <span class="eyebrow">Welcome back</span>
+        <h1>Sign <em>in</em></h1>
+        <p class="sub">Restricted to the Movenetics Digital team — sign in to reach your meetings, action items, and projects.</p>
+
+        <form id="loginForm">
+          <div class="field">
+            <label for="email">Email</label>
+            <div class="field-icon">
+              <span class="fi-icon" aria-hidden="true">✉</span>
+              <input id="email" name="email" type="email" autocomplete="username"
+                     placeholder="you@moveneticsdigital.com" required />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <div class="field-icon">
+              <span class="fi-icon" aria-hidden="true">🔒</span>
+              <input id="password" name="password" type="password" autocomplete="current-password"
+                     placeholder="••••••••••" required />
+              <button type="button" class="pw-toggle" id="pwToggle" aria-label="Show password" tabindex="-1">👁</button>
+            </div>
+          </div>
+
+          <label class="check" for="remember">
+            <input id="remember" name="remember" type="checkbox" checked />
+            <span>Keep me signed in on this browser</span>
+          </label>
+
+          <button id="loginBtn" type="submit"><span class="btn-spinner"></span><span class="btn-label">Sign in</span></button>
+        </form>
+
+        <div id="loginStatus" class="status" role="status"></div>
+        <p class="help-link">Need access or a password reset? <a href="mailto:moutasim.qazi@moveneticsdigital.com?subject=Fireflies%20dispatch%20access">Email support</a>.</p>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="fireflies.js?v=12"></script>
+  <script src="login.js?v=12"></script>
+</body>
+</html>

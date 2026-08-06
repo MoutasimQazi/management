@@ -1,10 +1,10 @@
 /* ════════════════════════════════════════════════════
    Shared workspace + Fireflies helpers
    ────────────────────────────────────────────────────
-   Loaded by index.html (Overview) and meetings.html
-   (Meetings). Both need the same session handling and
-   the same Fireflies parsing, so it lives here once
-   instead of being copied into each page.
+   Loaded by login.html (sign-in), index.html (Overview)
+   and meetings.html (Meetings). They need the same
+   session handling and the same Fireflies parsing, so
+   it lives here once instead of being copied into each.
 
    Classic script, no module: every top-level binding
    below is a global the including page can use. Load
@@ -408,10 +408,10 @@ function wireMeetingRowClicks(root){
    message toasting away on a tab nobody was looking at. Going in place
    costs a Back press and removes all of that. */
 
-/* Each page shows "signed out" its own way — index.html swaps back to its
-   login card, meetings.html to its "sign in over there" panel — so a page
-   overrides this. The default reload lands on index.html's login. */
-let onSessionExpired = function(){ location.href = 'index.html'; };
+/* Most pages show "signed out" their own way — meetings.html has its own
+   panel, for one — so a page can override this. The default sends you to
+   the sign-in page with a note saying why you ended up back there. */
+let onSessionExpired = function(){ clearSession(); location.href = 'login.html?m=expired'; };
 
 async function openRecording(meetId, trigger){
   if (!meetId) return;
