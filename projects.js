@@ -287,6 +287,23 @@ async function renderDashboard(){
   statsEl.innerHTML = '<div class="empty">Loading…</div>';
   qPanel.innerHTML = '';
 
+  /* Admins get the allocation panel here, on the view this section lands
+     on — the same one the Overview carries, rendered by ui.js so the two
+     cannot drift. It is deliberately not on #/projects: that route is
+     reached by clicking a sub-nav item that is already highlighted while
+     the dashboard is showing, so a panel there is one click away from
+     someone with no reason to click. */
+  if (isAdmin) {
+    renderTeamOverview({
+      url:   PM_TEAM_OVERVIEW_URL,
+      token: session.token,
+      panel: 'teamPanel',
+      list:  'teamList',
+      count: 'teamCount',
+      gaps:  'teamGaps'
+    });
+  }
+
   try {
     // Each call fails independently so one bad call doesn't blank the whole page.
     const [projectsR, tasksR, questionsR] = await Promise.allSettled([
@@ -358,21 +375,6 @@ function populateEmployeeSelects(){
 async function renderProjects(){
   const grid = document.getElementById('projectsGrid');
   grid.innerHTML = '<div class="empty">Loading…</div>';
-
-  /* Admins get the allocation panel above their own list — the same one
-     the Overview carries, rendered by ui.js so the two cannot drift. A
-     business analyst sees only the projects they own, so the whole
-     company's staffing is not theirs to see and the endpoint refuses it. */
-  if (isAdmin) {
-    renderTeamOverview({
-      url:   PM_TEAM_OVERVIEW_URL,
-      token: session.token,
-      panel: 'teamPanel',
-      list:  'teamList',
-      count: 'teamCount',
-      gaps:  'teamGaps'
-    });
-  }
 
   try {
     await Promise.all([loadEmployees(), loadProjects()]);
