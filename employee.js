@@ -11,6 +11,8 @@ const PM_API_BASE = "https://management.moveneticsdigital.com/pm-backend-php/";
 
 const PM_TASKS_LIST_URL       = PM_API_BASE + "pm-tasks-list.php";
 const PM_TASKS_STATUS_URL     = PM_API_BASE + "pm-tasks-status.php";
+const PM_BUGS_LIST_URL        = PM_API_BASE + "pm-bugs-list.php";
+const PM_BUGS_UPDATE_URL      = PM_API_BASE + "pm-bugs-update.php";
 const PM_QUESTIONS_LIST_URL   = PM_API_BASE + "pm-questions-list.php";
 const PM_QUESTIONS_CREATE_URL = PM_API_BASE + "pm-questions-create.php";
 const PM_LEAVE_LIST_URL       = PM_API_BASE + "pm-leave-list.php";
@@ -193,12 +195,13 @@ function route(){
   if (!readSession()) { showSignedOut(); return; }
   const hash  = location.hash || '#/tasks';
   let page    = hash.replace(/^#\//, '') || 'tasks';
-  if (!['tasks','questions','leave'].includes(page)) page = 'tasks';
+  if (!['tasks','bugs','questions','leave'].includes(page)) page = 'tasks';
 
   pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
   navLinks.forEach(a => a.classList.toggle('on', a.dataset.nav === page));
 
   if (page === 'tasks')     renderTasks();
+  if (page === 'bugs')      renderBugs();
   if (page === 'questions') renderQuestions();
   if (page === 'leave')     renderLeave();
   window.scrollTo(0, 0);
@@ -279,6 +282,76 @@ function wireTaskRows(root){
       } catch (err) {
         toast('Could not update progress: ' + err.message, 'err');
         btn.disabled = false;
+      }
+    });
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   Bugs assigned to me
+   ────────────────────────────────────────────────────
+   A developer sees only the defects on their own desk —
+   the backend scopes to assigned_to, since a developer
+   has no project-level access anywhere in this system.
+
+   Status is the only thing they can change. The title,
+   the severity and who holds it belong to whoever
+   raised it; being handed a defect is not authority
+   over the report of it.
+   ════════════════════════════════════════════════════ */
+const BUG_STATUSES = ['OPEN','IN_PROGRESS','FIXED','VERIFIED','CLOSED','REOPENED'];
+
+async function renderBugs(){
+  const listEl = document.getElementById('bugsList');
+  listEl.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const bugs = await api(PM_BUGS_LIST_URL);
+    document.getElementById('bugCount').textContent = String(bugs.length);
+    listEl.innerHTML = bugs.length
+      ? '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+          '<th>Bug</th><th>Project</th><th>Severity</th><th>Status</th><th>Raised by</th><th></th>' +
+        '</tr></thead><tbody>' + bugs.map(bugRow).join('') + '</tbody></table></div>'
+      : '<div class="empty">Nothing assigned to you. Bugs show up here when QA or a business analyst puts one on your desk.</div>';
+    wireBugRows(listEl);
+  } catch (err) {
+    listEl.innerHTML = '<div class="empty">Could not load bugs (' + esc(err.message) + ').</div>';
+  }
+}
+
+function bugRow(b){
+  const opts = BUG_STATUSES.filter(s => s !== b.status)
+    .map(s => '<option value="' + s + '">' + statusLabel(s) + '</option>').join('');
+  return '<tr>' +
+    '<td><div class="ttitle">' + esc(b.title) + '</div>' +
+      (b.steps ? '<div class="tsub">' + esc(b.steps) + '</div>' : '') +
+      // safeUrl (ui.js) — an escaped "javascript:…" is still live.
+      (safeUrl(b.link)
+        ? '<div class="tsub"><a class="evidence" href="' + esc(safeUrl(b.link)) +
+          '" target="_blank" rel="noopener">Screenshot / recording ↗</a></div>'
+        : '') + '</td>' +
+    '<td>' + esc(b.project_name || '—') + '</td>' +
+    '<td>' + prioBadge(b.severity) + '</td>' +
+    '<td>' + badge(b.status) + '</td>' +
+    '<td class="nowrap"><div class="tsub">' + esc(b.reported_by_name || '') + '</div>' +
+      '<div class="tsub">' + esc(fmtDate(b.created_at)) + '</div></td>' +
+    '<td class="actions-cell">' +
+      '<select class="status-select" data-bug-status="' + b.bug_id + '">' +
+        '<option value="">Move to…</option>' + opts + '</select>' +
+    '</td></tr>';
+}
+
+function wireBugRows(root){
+  root.querySelectorAll('[data-bug-status]').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      if (!sel.value) return;
+      sel.disabled = true;
+      try {
+        await api(PM_BUGS_UPDATE_URL, { method: 'POST',
+          body: { bug_id: Number(sel.dataset.bugStatus), status: sel.value } });
+        renderBugs();
+      } catch (err) {
+        toast('Could not update the bug: ' + err.message, 'err');
+        sel.disabled = false; sel.value = '';
       }
     });
   });

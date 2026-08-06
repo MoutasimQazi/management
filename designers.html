@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=21">
-  <link rel="stylesheet" href="projects.css?v=21">
+  <link rel="stylesheet" href="style.css?v=22">
+  <link rel="stylesheet" href="projects.css?v=22">
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=21"></script>
+  <script src="theme.js?v=22"></script>
 </head>
 
 <body>
@@ -60,6 +60,7 @@
     <!-- Tier 2: pages within Design. -->
     <nav class="subnav">
       <a href="#/work"      data-nav="work">My work</a>
+      <a href="#/bugs"      data-nav="bugs">Bugs</a>
       <a href="#/projects"  data-nav="projects">Projects</a>
       <a href="#/questions" data-nav="questions">Questions</a>
       <a href="#/leave"     data-nav="leave">Leave</a>
@@ -121,6 +122,21 @@
         </select>
       </div>
       <div id="designList"></div>
+    </section>
+
+    <!-- ── Page: Bugs ──────────────────────────────────── -->
+    <section id="page-bugs" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>My <em>bugs</em></h1>
+          <p class="sub">Visual and interaction defects QA has put on your desk. Move the status as you work through them.</p>
+        </div>
+      </div>
+      <div class="panel-head">
+        <h2>Assigned to me</h2>
+        <span class="count" id="bugCount">0</span>
+      </div>
+      <div id="bugsList"></div>
     </section>
 
     <!-- ── Page: Projects ──────────────────────────────── -->
@@ -193,7 +209,7 @@
 
   </div>
 
-  <script src="ui.js?v=21"></script>
-  <script src="designers.js?v=21"></script>
+  <script src="ui.js?v=22"></script>
+  <script src="designers.js?v=22"></script>
 </body>
 </html>

@@ -1,10 +1,38 @@
 <?php
 require 'config.php';
 require 'auth.php';
-$user = requireRole($pdo, $USERS, ['ADMIN', 'QA', 'MANAGER', 'MARKETING']);
+$user = requireUser($pdo, $USERS);
 $b = body();
 
 $bugId = (int)($b['bug_id'] ?? 0);
+
+$statuses = ['OPEN', 'IN_PROGRESS', 'FIXED', 'VERIFIED', 'CLOSED', 'REOPENED'];
+
+/* A developer can move a bug that is on their desk, and nothing else.
+   Not the title, not the severity, and not who it belongs to — being
+   handed a defect is not authority over the report of it. Handled here
+   and returned early, so the staff path below stays the staff path. */
+if ($user['user_type'] === 'EMPLOYEE') {
+    $own = $pdo->prepare("SELECT bug_id FROM bugs WHERE bug_id = ? AND assigned_to = ?");
+    $own->execute([$bugId, $user['id']]);
+    if (!$own->fetch()) denyNotYours();
+
+    $status = strtoupper(trim((string)($b['status'] ?? '')));
+    if (!in_array($status, $statuses, true)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Unknown status: ' . $status]);
+        exit;
+    }
+    $pdo->prepare("UPDATE bugs SET status = ? WHERE bug_id = ?")->execute([$status, $bugId]);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+if (!in_array($user['role'], ['ADMIN', 'QA', 'MANAGER', 'MARKETING', 'DESIGNER'], true)) {
+    http_response_code(403);
+    echo json_encode(['error' => 'This action is not available to your account.']);
+    exit;
+}
 [$scope, $params] = projectScope($user, 'project_id');
 $check = $pdo->prepare(
     "SELECT bug_id, title, steps, link, severity, status, assigned_to, assigned_manager_id
@@ -15,9 +43,9 @@ $existing = $check->fetch();
 if (!$existing) denyNotYours();
 
 // Status-only moves are the common case (the dropdown on each row), so
-// every other field falls back to what's already stored.
+// every other field falls back to what's already stored. $statuses is
+// declared above, where the developer path also needs it.
 $severities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
-$statuses   = ['OPEN', 'IN_PROGRESS', 'FIXED', 'VERIFIED', 'CLOSED', 'REOPENED'];
 $severity = in_array($b['severity'] ?? '', $severities, true) ? $b['severity'] : $existing['severity'];
 $status   = in_array($b['status'] ?? '', $statuses, true)   ? $b['status']   : $existing['status'];
 

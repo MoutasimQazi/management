@@ -23,6 +23,8 @@ const PM_DESIGN_LIST_URL      = PM_API_BASE + "pm-designtasks-list.php";
 const PM_DESIGN_CREATE_URL    = PM_API_BASE + "pm-designtasks-create.php";
 const PM_DESIGN_UPDATE_URL    = PM_API_BASE + "pm-designtasks-update.php";
 const PM_DESIGN_DELETE_URL    = PM_API_BASE + "pm-designtasks-delete.php";
+const PM_BUGS_LIST_URL        = PM_API_BASE + "pm-bugs-list.php";
+const PM_BUGS_UPDATE_URL      = PM_API_BASE + "pm-bugs-update.php";
 const PM_TASKS_LIST_URL       = PM_API_BASE + "pm-tasks-list.php";
 const PM_QUESTIONS_LIST_URL   = PM_API_BASE + "pm-questions-list.php";
 const PM_QUESTIONS_CREATE_URL = PM_API_BASE + "pm-questions-create.php";
@@ -239,9 +241,14 @@ function applyRoleView(){
   retitle('#page-questions', 'Project <em>questions</em>',
     'Every question raised across every project, and what came back.');
 
-  document.querySelector('[data-nav="leave"]').hidden = true;
-  const leavePage = document.getElementById('page-leave');
-  if (leavePage) leavePage.remove();
+  /* Both of these are "what is on my desk" pages, and an admin has no
+     desk here: no design task and no bug can be assigned to one. Leave
+     is on the Overview for them, and every bug is on the QA board. */
+  ['leave', 'bugs'].forEach(nav => {
+    document.querySelector('[data-nav="' + nav + '"]').hidden = true;
+    const page = document.getElementById('page-' + nav);
+    if (page) page.remove();
+  });
 
   const scope = document.getElementById('designScopeFilter');
   const mine  = scope.querySelector('[value="mine"]');
@@ -257,14 +264,16 @@ signOutBtn.addEventListener('click', () => {
 function route(){
   if (!readSession()) { showSignedOut(); return; }
   let page = (location.hash || '#/work').replace(/^#\//, '') || 'work';
-  if (!['work','projects','questions','leave'].includes(page)) page = 'work';
-  // An admin has no Leave page here — a stale bookmark lands on the board.
-  if (page === 'leave' && isAdmin) page = 'work';
+  if (!['work','bugs','projects','questions','leave'].includes(page)) page = 'work';
+  // An admin has neither of these pages here — see applyRoleView. A stale
+  // bookmark lands on the board rather than a section that was removed.
+  if ((page === 'leave' || page === 'bugs') && isAdmin) page = 'work';
 
   pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
   navLinks.forEach(a => a.classList.toggle('on', a.dataset.nav === page));
 
   if (page === 'work')      renderDesigns();
+  if (page === 'bugs')      renderBugs();
   if (page === 'projects')  renderProjects();
   if (page === 'questions') renderQuestions();
   if (page === 'leave')     renderLeave();
@@ -479,6 +488,73 @@ document.getElementById('newDesignForm').addEventListener('submit', async (e) =>
     toast('Could not create the design task: ' + err.message, 'err');
   }
 });
+
+/* ════════════════════════════════════════════════════
+   Bugs assigned to me
+   ────────────────────────────────────────────────────
+   ?mine=1 rather than the whole project's bug list: a
+   designer can reach every bug on their projects, but
+   this page is about what is on their own desk. The
+   server resolves "me" from the token, as everywhere
+   else here — the session carries no numeric id.
+   ════════════════════════════════════════════════════ */
+const BUG_STATUSES = ['OPEN','IN_PROGRESS','FIXED','VERIFIED','CLOSED','REOPENED'];
+
+async function renderBugs(){
+  const listEl = document.getElementById('bugsList');
+  listEl.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const bugs = await api(PM_BUGS_LIST_URL + '?mine=1');
+    document.getElementById('bugCount').textContent = String(bugs.length);
+    listEl.innerHTML = bugs.length
+      ? '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+          '<th>Bug</th><th>Project</th><th>Severity</th><th>Status</th><th>Raised by</th><th></th>' +
+        '</tr></thead><tbody>' + bugs.map(bugRow).join('') + '</tbody></table></div>'
+      : '<div class="empty">Nothing assigned to you. Bugs show up here when QA puts one on your desk.</div>';
+    wireBugRows(listEl);
+  } catch (err) {
+    listEl.innerHTML = '<div class="empty">Could not load bugs (' + esc(err.message) + ').</div>';
+  }
+}
+
+function bugRow(b){
+  const opts = BUG_STATUSES.filter(s => s !== b.status)
+    .map(s => '<option value="' + s + '">' + esc(statusLabel(s)) + '</option>').join('');
+  return '<tr>' +
+    '<td><div class="ttitle">' + esc(b.title) + '</div>' +
+      (b.steps ? '<div class="tsub">' + esc(b.steps) + '</div>' : '') +
+      (safeUrl(b.link)
+        ? '<div class="tsub"><a class="evidence" href="' + esc(safeUrl(b.link)) +
+          '" target="_blank" rel="noopener">Screenshot / recording ↗</a></div>'
+        : '') + '</td>' +
+    '<td>' + esc(b.project_name || '—') + '</td>' +
+    '<td><span class="status-badge prio-' + esc(String(b.severity || '').toLowerCase()) + '">' +
+      esc(statusLabel(b.severity)) + '</span></td>' +
+    '<td>' + badge(b.status) + '</td>' +
+    '<td class="nowrap"><div class="tsub">' + esc(b.reported_by_name || '') + '</div>' +
+      '<div class="tsub">' + esc(fmtDate(b.created_at)) + '</div></td>' +
+    '<td class="actions-cell">' +
+      '<select class="status-select" data-bug-status="' + b.bug_id + '">' +
+        '<option value="">Move to…</option>' + opts + '</select>' +
+    '</td></tr>';
+}
+
+function wireBugRows(root){
+  root.querySelectorAll('[data-bug-status]').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      if (!sel.value) return;
+      sel.disabled = true;
+      try {
+        await api(PM_BUGS_UPDATE_URL, { method:'POST',
+          body:{ bug_id: Number(sel.dataset.bugStatus), status: sel.value } });
+        renderBugs();
+      } catch (err) {
+        toast('Could not update the bug: ' + err.message, 'err');
+        sel.disabled = false; sel.value = '';
+      }
+    });
+  });
+}
 
 /* ════════════════════════════════════════════════════
    Projects — where the design work on each has got to

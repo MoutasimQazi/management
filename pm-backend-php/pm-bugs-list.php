@@ -1,11 +1,30 @@
 <?php
 require 'config.php';
 require 'auth.php';
-// Managers need to see defects raised against their own projects, so this
-// isn't QA-only — projectScope() handles who sees what.
-$user = requireRole($pdo, $USERS, ['ADMIN', 'QA', 'MANAGER', 'MARKETING']);
+/* Not QA-only. Managers see defects on their own projects, designers on
+   theirs, and — since a bug can now be assigned to a developer — the
+   developer holding one has to be able to see it. Being assigned work you
+   cannot see is worse than not being assigned it. */
+$user = requireUser($pdo, $USERS);
 
-[$scope, $params] = projectScope($user, 'b.project_id');
+if ($user['user_type'] === 'EMPLOYEE') {
+    // A developer sees the bugs on their desk and nothing else: they have
+    // no project-level access anywhere in this system.
+    $scope  = 'b.assigned_to = ?';
+    $params = [$user['id']];
+} else {
+    if (!in_array($user['role'], ['ADMIN', 'QA', 'MANAGER', 'MARKETING', 'DESIGNER'], true)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'This section is not available to your account.']);
+        exit;
+    }
+    [$scope, $params] = projectScope($user, 'b.project_id');
+    // "Only the ones on my desk", for a staff member's own board.
+    if (!empty($_GET['mine'])) {
+        $scope .= ' AND b.assigned_manager_id = ?';
+        $params[] = $user['id'];
+    }
+}
 
 /* The assignee is a developer or a staff account — two columns, at most
    one set (migration 008). Collapsed to one name and one kind here, so
