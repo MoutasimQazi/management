@@ -758,8 +758,8 @@ nav.subnav [hidden]{ display:none !important; }
   filter:none; box-shadow:none;
   transform:none;
 }
-/* On the sign-in page there is no topbar to sit in, so it goes under the
-   form as a plain text button instead of a floating circle. */
+/* Text version, for a slot that asks for it with data-theme-slot="inline"
+   — a wider space where a lone circle would read as a stray dot. */
 .theme-toggle.inline{
   width:auto; height:auto;
   border:none; background:none;

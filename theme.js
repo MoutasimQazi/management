@@ -118,10 +118,16 @@
       var signOut = bar.querySelector('#signOut');
       bar.insertBefore(makeButton(false), signOut || null);
     }
-    // Sign-in page: under the form, next to the support link.
-    var help = document.querySelector('#loginView .help-link');
-    if (help && !help.parentNode.querySelector('.theme-toggle')) {
-      help.parentNode.insertBefore(makeButton(true), help.nextSibling);
+    /* A page with no topbar says where the button goes by putting an empty
+       element with data-theme-slot wherever it wants it — the sign-in page
+       uses one beside its heading. This replaced a hard-coded selector for
+       that page: the mount point belongs in the page's own markup, next to
+       the layout that has to accommodate it, not in a list here.
+       data-theme-slot="inline" asks for the text version instead. */
+    var slots = document.querySelectorAll('[data-theme-slot]');
+    for (var j = 0; j < slots.length; j++) {
+      if (slots[j].querySelector('.theme-toggle')) continue;
+      slots[j].appendChild(makeButton(slots[j].getAttribute('data-theme-slot') === 'inline'));
     }
     apply();
   }

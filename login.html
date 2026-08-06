@@ -14,12 +14,12 @@
   <!-- projects.css is not loaded here on purpose: nothing on this page
        uses it, and the sign-in screen is the one page every visitor
        fetches cold, with no session and no warm cache. -->
-  <link rel="stylesheet" href="style.css?v=12">
-  <link rel="stylesheet" href="login.css?v=12">
+  <link rel="stylesheet" href="style.css?v=13">
+  <link rel="stylesheet" href="login.css?v=13">
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=12"></script>
+  <script src="theme.js?v=13"></script>
 </head>
 
 <body>
@@ -56,7 +56,13 @@
       </aside>
 
       <div class="pane">
-        <span class="eyebrow">Welcome back</span>
+        <!-- The eyebrow and the theme switch share a line above the
+             heading: the switch is a setting, not part of the form, so it
+             sits clear of the fields rather than at the end of them. -->
+        <div class="pane-top">
+          <span class="eyebrow">Welcome back</span>
+          <span class="theme-slot" data-theme-slot></span>
+        </div>
         <h1>Sign <em>in</em></h1>
         <p class="sub">Restricted to the Movenetics Digital team — sign in to reach your meetings, action items, and projects.</p>
 
@@ -95,7 +101,7 @@
     </main>
   </div>
 
-  <script src="fireflies.js?v=12"></script>
-  <script src="login.js?v=12"></script>
+  <script src="fireflies.js?v=13"></script>
+  <script src="login.js?v=13"></script>
 </body>
 </html>
