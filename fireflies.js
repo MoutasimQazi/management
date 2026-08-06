@@ -399,7 +399,14 @@ function wireMeetingRowClicks(root){
    asking the backend for a fresh URL at click time. The list row and the
    detail hero both render a plain <a> carrying data-recording="<Meet Id>"
    and no href; the delegated handlers at the bottom do the rest, on every
-   page that loads this file. */
+   page that loads this file.
+
+   This navigates the current tab rather than opening a new one. Opening a
+   tab meant opening it blank up front — before the await, or the pop-up
+   blocker eats it — which put an about:blank in front of the user for the
+   length of the round-trip, took the focus with it, and left any error
+   message toasting away on a tab nobody was looking at. Going in place
+   costs a Back press and removes all of that. */
 
 /* Each page shows "signed out" its own way — index.html swaps back to its
    login card, meetings.html to its "sign in over there" panel — so a page
@@ -413,11 +420,12 @@ async function openRecording(meetId, trigger){
   const session = readSession();
   if (!session) { clearSession(); onSessionExpired(); return; }
 
-  /* Opened BEFORE the first await, while the click is still the current
-     user gesture. A window.open() after an await is blocked as a pop-up. */
-  let tab = window.open('', '_blank');
-
-  if (trigger) { trigger.classList.add('is-busy'); trigger.setAttribute('aria-busy', 'true'); }
+  const label = trigger ? trigger.innerHTML : '';
+  if (trigger) {
+    trigger.classList.add('is-busy');
+    trigger.setAttribute('aria-busy', 'true');
+    trigger.innerHTML = '⏳ Getting link…';
+  }
 
   try {
     const res = await fetch(LINK_URL, {
@@ -432,7 +440,6 @@ async function openRecording(meetId, trigger){
     // Same as loadMeetings: an expired token signs you out rather than
     // showing an error you can do nothing about.
     if (res.status === 401 || res.status === 403) {
-      if (tab) { tab.close(); tab = null; }
       clearSession();
       onSessionExpired();
       return;
@@ -442,18 +449,15 @@ async function openRecording(meetId, trigger){
     const url = recordingUrlFrom(await res.text());
     if (!url) throw new Error('Fireflies has no recording for this meeting');
 
-    if (tab) {
-      try { tab.opener = null; } catch (_) {}   // best-effort rel="noopener"
-      tab.location = url;
-    } else {
-      const w = window.open(url, '_blank');     // blank tab was blocked; try again
-      if (!w) toast('Your browser blocked the recording tab. Allow pop-ups for this site, then try again.', 'err');
-    }
+    location.href = url;
   } catch (err) {
-    if (tab) tab.close();                 // never leave an orphaned blank tab
     toast("Couldn't open the recording: " + err.message, 'err');
   } finally {
-    if (trigger) { trigger.classList.remove('is-busy'); trigger.removeAttribute('aria-busy'); }
+    if (trigger) {
+      trigger.classList.remove('is-busy');
+      trigger.removeAttribute('aria-busy');
+      trigger.innerHTML = label;
+    }
   }
 }
 
