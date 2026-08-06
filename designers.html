@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="movenetics.ico" sizes="any">
+  <link rel="icon" href="movenetics.png" type="image/png">
+  <link rel="apple-touch-icon" href="movenetics.png">
+  <title>Movenetics Digital · Design</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="projects.css?v=14">
+
+  <!-- Sets data-theme before the first paint — must stay in <head>
+       and must not be deferred, or dark mode flashes white. -->
+  <script src="theme.js?v=14"></script>
+</head>
+
+<body>
+
+  <!-- ══ Signed-out state (no login form here — session is shared) ══ -->
+  <div id="pmSignedOut" class="view active">
+    <div class="pm-signedout">
+      <span class="logochip" style="margin-bottom:18px; display:inline-flex">
+        <img src="logo.png" alt="Movenetics Digital" style="height:30px" onerror="this.parentElement.style.display='none'" />
+      </span>
+      <h1>Sign <em>in</em></h1>
+      <p>This page uses the same sign-in as the rest of the workspace. Sign in there first, then come back to this tab.</p>
+      <a class="btn-sm" href="login.html">Go to sign in →</a>
+    </div>
+  </div>
+
+  <!-- ══ Signed-in app ══════════════════════════════════ -->
+  <div id="appView" class="view dashwrap">
+
+    <header class="topbar">
+      <a class="logochip" id="homeLogo" href="#/work" title="My design work">
+        <img src="logo.png" alt="Movenetics Digital" onerror="this.parentElement.style.display='none'" />
+      </a>
+      <!-- Tier 1: which section. Other sections are admin-only. -->
+      <nav class="sections">
+        <a href="index.html#/dashboard" class="nav-admin" hidden>Overview</a>
+        <a href="meetings.html" class="nav-admin" hidden>Meetings</a>
+        <a href="projects.html" class="nav-admin" hidden>Projects</a>
+        <a href="hr.html" class="nav-admin" hidden>HR</a>
+        <a href="marketing.html" class="nav-admin" hidden>Marketing</a>
+        <a href="qa.html" class="nav-admin" hidden>QA</a>
+        <a href="designers.html" class="on">Design</a>
+      </nav>
+
+      <span class="spacer"></span>
+      <span class="role-badge manager" id="roleBadge">Designer</span>
+      <span class="userchip" id="whoEmail"></span>
+      <button type="button" class="linkbtn" id="signOut">Sign out</button>
+    </header>
+
+    <!-- Tier 2: pages within Design. -->
+    <nav class="subnav">
+      <a href="#/work"      data-nav="work">My work</a>
+      <a href="#/projects"  data-nav="projects">Projects</a>
+      <a href="#/questions" data-nav="questions">Questions</a>
+      <a href="#/leave"     data-nav="leave">Leave</a>
+    </nav>
+
+    <!-- ── Page: My work ───────────────────────────────── -->
+    <section id="page-work" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>My <em>design work</em></h1>
+          <p class="sub">Every screen, flow and asset assigned to you. Unfinished work first, nearest deadline at the top.</p>
+        </div>
+        <button type="button" class="btn-sm" id="newDesignToggle" style="border:none">+ New design task</button>
+      </div>
+
+      <form id="newDesignForm" class="inline-form">
+        <div class="row">
+          <div class="field"><label>Project</label><select id="dProject" required></select></div>
+          <div class="field"><label>Kind</label>
+            <select id="dKind">
+              <option value="UI" selected>UI</option>
+              <option value="UX">UX</option>
+              <option value="BRANDING">Branding</option>
+              <option value="ILLUSTRATION">Illustration</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>Title</label><input id="dTitle" required placeholder="e.g. Checkout screen — mobile" /></div>
+        <div class="field"><label>Brief <span class="opt">— optional</span></label><textarea id="dBrief" placeholder="What is needed, and anything that constrains it."></textarea></div>
+        <div class="row">
+          <div class="field"><label>Assign to <span class="opt">— optional</span></label><select id="dAssignee"></select></div>
+          <div class="field"><label>Due date <span class="opt">— optional</span></label><input id="dDue" type="date" /></div>
+        </div>
+        <div class="field"><label>Link to the work <span class="opt">— optional</span></label><input id="dLink" type="url" placeholder="https://figma.com/…" /></div>
+        <div class="actions">
+          <button type="submit">Create design task</button>
+          <button type="button" class="secondary" id="designCancelBtn">Cancel</button>
+        </div>
+      </form>
+
+      <div class="panel-head">
+        <h2>Design tasks</h2>
+        <span class="count" id="designCount">0</span>
+        <span class="spacer"></span>
+        <input type="search" id="designSearch" class="searchbox" placeholder="Search title, project…" />
+        <select id="designScopeFilter" class="searchbox filter-select">
+          <option value="mine" selected>Assigned to me</option>
+          <option value="all">Everyone's</option>
+          <option value="unassigned">Unassigned</option>
+        </select>
+        <select id="designStatusFilter" class="searchbox filter-select">
+          <option value="">All statuses</option>
+          <option value="TODO">To do</option>
+          <option value="IN_PROGRESS">In progress</option>
+          <option value="IN_REVIEW">In review</option>
+          <option value="CHANGES">Changes requested</option>
+          <option value="APPROVED">Approved</option>
+        </select>
+      </div>
+      <div id="designList"></div>
+    </section>
+
+    <!-- ── Page: Projects ──────────────────────────────── -->
+    <section id="page-projects" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>My <em>projects</em></h1>
+          <p class="sub">The projects you're designing for, with where the design work on each has got to.</p>
+        </div>
+      </div>
+
+      <div class="stats" id="designStats"></div>
+
+      <div class="panel-head">
+        <h2>Projects</h2>
+        <span class="count" id="projectCount">0</span>
+      </div>
+      <div id="projectList"></div>
+    </section>
+
+    <!-- ── Page: Questions ─────────────────────────────── -->
+    <section id="page-questions" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>My <em>questions</em></h1>
+          <p class="sub">Ask about anything on the projects you're assigned to, and see what came back.</p>
+        </div>
+      </div>
+
+      <form id="newQuestionForm" class="inline-form open">
+        <div class="field"><label>About</label><select id="qTaskSelect" required></select></div>
+        <div class="field"><label>Question</label><textarea id="qText" required placeholder="What do you need to know?"></textarea></div>
+        <div class="actions"><button type="submit">Send question</button></div>
+      </form>
+
+      <div class="panel-head">
+        <h2>Questions</h2>
+        <span class="count" id="questionCount">0</span>
+      </div>
+      <div id="questionsList"></div>
+    </section>
+
+    <!-- ── Page: Leave ─────────────────────────────────── -->
+    <section id="page-leave" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>My <em>leave</em></h1>
+          <p class="sub">Request time off and see who else is out.</p>
+        </div>
+      </div>
+
+      <form id="newLeaveForm" class="inline-form open">
+        <div class="row">
+          <div class="field"><label>From</label><input id="leaveStart" type="date" required /></div>
+          <div class="field"><label>To <span class="opt">— leave as-is for a single day</span></label><input id="leaveEnd" type="date" required /></div>
+        </div>
+        <div class="field"><label>Send to</label><div id="leaveApprovers" class="check-group"></div></div>
+        <div class="field"><label>Reason <span class="opt">— optional</span></label><input id="leaveReason" placeholder="e.g. Family trip" /></div>
+        <div class="actions"><button type="submit">Request leave</button></div>
+      </form>
+
+      <div class="panel-head"><h2>My requests</h2><span class="count" id="myLeaveCount">0</span></div>
+      <div id="myLeaveList"></div>
+
+      <div class="panel-head"><h2>Team on leave</h2><span class="count" id="teamLeaveCount">0</span></div>
+      <div id="teamLeaveList"></div>
+    </section>
+
+  </div>
+
+  <script src="designers.js?v=14"></script>
+</body>
+</html>

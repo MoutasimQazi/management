@@ -7,7 +7,7 @@ $b = body();
 /* One entry point for adding anyone. Role decides which table the row
  * lands in: EMPLOYEE goes to the roster, everything else creates a staff
  * login. HR can add employees; only ADMIN can mint staff logins. */
-$STAFF_ROLES = ['ADMIN', 'MANAGER', 'HR', 'MARKETING', 'QA'];
+$STAFF_ROLES = ['ADMIN', 'MANAGER', 'HR', 'MARKETING', 'QA', 'DESIGNER'];
 $role  = strtoupper(trim($b['role'] ?? 'EMPLOYEE'));
 $name  = trim($b['name'] ?? '');
 $email = trim($b['email'] ?? '');

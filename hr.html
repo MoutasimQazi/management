@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=13">
-  <link rel="stylesheet" href="projects.css?v=13">
+  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="projects.css?v=14">
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=13"></script>
+  <script src="theme.js?v=14"></script>
 </head>
 
 <body>
@@ -49,6 +49,7 @@
         <a href="hr.html" class="on">HR</a>
         <a href="marketing.html" class="nav-admin" hidden>Marketing</a>
         <a href="qa.html" class="nav-admin" hidden>QA</a>
+        <a href="designers.html" class="nav-admin" hidden>Design</a>
       </nav>
 
       <span class="spacer"></span>
@@ -63,6 +64,7 @@
       <a href="#/leave"    data-nav="leave">Leave</a>
       <a href="#/people"   data-nav="people">People</a>
       <a href="#/qa" data-nav="qa" id="qaNavLink" hidden>QA access</a>
+      <a href="#/design" data-nav="design" id="designNavLink" hidden>Design access</a>
     </nav>
 
     <!-- ── Page: Openings (list) ───────────────────────── -->
@@ -132,6 +134,7 @@
           <option value="">All roles</option>
           <option value="EMPLOYEE">Developer</option>
           <option value="MANAGER">Business Analyst</option>
+          <option value="DESIGNER">Designer</option>
           <option value="QA">QA</option>
           <option value="HR">HR</option>
           <option value="MARKETING">Marketing</option>
@@ -149,6 +152,7 @@
             <select id="personRole">
               <option value="EMPLOYEE" selected>Developer</option>
               <option value="MANAGER">Business Analyst</option>
+              <option value="DESIGNER">Designer / UI-UX</option>
               <option value="QA">QA / Tester</option>
               <option value="HR">HR</option>
               <option value="MARKETING">Marketing</option>
@@ -181,9 +185,20 @@
       <div id="qaAccessList"></div>
     </section>
 
+    <!-- ── Page: Design project access (ADMIN only) ────── -->
+    <section id="page-design" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>Design <em>access</em></h1>
+          <p class="sub">Designer accounts only see the projects you tick here — their design tasks are scoped to them.</p>
+        </div>
+      </div>
+      <div id="designAccessList"></div>
+    </section>
+
 
   </div>
 
-  <script src="hr.js?v=13"></script>
+  <script src="hr.js?v=14"></script>
 </body>
 </html>

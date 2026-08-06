@@ -128,11 +128,13 @@ function denyNotYours() {
 }
 
 /* Which projects a caller may see, as a [sqlFragment, params] pair to
- * append to a WHERE clause. Centralised because QA, manager and admin
- * visibility differ and every QA endpoint must apply the same rule:
- *   ADMIN    everything
- *   QA       only projects assigned to them via qa_assignments
- *   other    projects they own
+ * append to a WHERE clause. Centralised because QA, designer, manager and
+ * admin visibility differ and every scoped endpoint must apply the same
+ * rule:
+ *   ADMIN     everything
+ *   QA        only projects assigned to them via qa_assignments
+ *   DESIGNER  only projects assigned to them via design_assignments
+ *   other     projects they own
  * $col is the qualified project_id column in the caller's query.
  */
 function projectScope(array $user, string $col): array {
@@ -141,6 +143,9 @@ function projectScope(array $user, string $col): array {
     }
     if ($user['role'] === 'QA') {
         return ["$col IN (SELECT project_id FROM qa_assignments WHERE qa_id = ?)", [$user['id']]];
+    }
+    if ($user['role'] === 'DESIGNER') {
+        return ["$col IN (SELECT project_id FROM design_assignments WHERE designer_id = ?)", [$user['id']]];
     }
     return ["$col IN (SELECT project_id FROM projects WHERE manager_id = ?)", [$user['id']]];
 }

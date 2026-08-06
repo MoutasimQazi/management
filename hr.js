@@ -28,6 +28,8 @@ const PM_PEOPLE_CREATE_URL    = PM_API_BASE + "pm-people-create.php";
 const PM_PROJECTS_LIST_URL    = PM_API_BASE + "pm-projects-list.php";
 const PM_QA_ASSIGNMENTS_URL   = PM_API_BASE + "pm-qa-assignments-list.php";
 const PM_QA_ASSIGN_URL        = PM_API_BASE + "pm-qa-assign.php";
+const PM_DESIGN_ASSIGNMENTS_URL = PM_API_BASE + "pm-design-assignments-list.php";
+const PM_DESIGN_ASSIGN_URL      = PM_API_BASE + "pm-design-assign.php";
 
 /* ── DOM references ─────────────────────────────────── */
 const pmSignedOut = document.getElementById('pmSignedOut');
@@ -209,6 +211,7 @@ function showApp(){
   renderUserChip(whoEmail, session.email);
   roleBadge.textContent = isAdmin ? 'Admin' : 'HR';
   document.getElementById('qaNavLink').hidden = !isAdmin;
+  document.getElementById('designNavLink').hidden = !isAdmin;
   document.querySelectorAll('.nav-admin').forEach(a => { a.hidden = !isAdmin; });
   route();
 }
@@ -224,8 +227,8 @@ function route(){
   const hash  = location.hash || '#/openings';
   const parts = hash.replace(/^#\//, '').split('/');
   let page    = parts[0] || 'openings';
-  if (!['openings','opening','leave','people','qa'].includes(page)) page = 'openings';
-  if (page === 'qa' && !isAdmin) page = 'openings';
+  if (!['openings','opening','leave','people','qa','design'].includes(page)) page = 'openings';
+  if ((page === 'qa' || page === 'design') && !isAdmin) page = 'openings';
 
   pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
   const navTarget = page === 'opening' ? 'openings' : page;
@@ -235,7 +238,8 @@ function route(){
   if (page === 'opening')   renderOpeningDetail(Number(parts[1]));
   if (page === 'leave')     renderLeave();
   if (page === 'people')    renderPeople();
-  if (page === 'qa')        renderQaAccess();
+  if (page === 'qa')        renderAccess('qa');
+  if (page === 'design')    renderAccess('design');
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);
@@ -513,7 +517,7 @@ function drawPeople(){
    a staff role moves a person between two tables, which the backend does
    by deactivating the old row and creating the new one — so it works in
    both directions, but it mints (or ends) a login and is confirmed first. */
-const ALL_ROLES = ['EMPLOYEE', 'MANAGER', 'QA', 'HR', 'MARKETING', 'ADMIN'];
+const ALL_ROLES = ['EMPLOYEE', 'MANAGER', 'DESIGNER', 'QA', 'HR', 'MARKETING', 'ADMIN'];
 
 function personRow(p){
   const login = p.has_login == 1
@@ -700,48 +704,74 @@ document.getElementById('personAddForm').addEventListener('submit', async (e) =>
 });
 
 /* ════════════════════════════════════════════════════
-   QA access — which projects each QA account can see
+   Project access — which projects a scoped account sees
+   ────────────────────────────────────────────────────
+   QA and Design are the same screen with different
+   nouns: an admin ticks the projects an account may
+   reach, and the whole set is saved at once. Written
+   once and parameterised rather than copied, so the two
+   cannot drift apart.
    ════════════════════════════════════════════════════ */
-async function renderQaAccess(){
-  const el = document.getElementById('qaAccessList');
+const ACCESS_KINDS = {
+  qa: {
+    el:      'qaAccessList',
+    listUrl: PM_QA_ASSIGNMENTS_URL,
+    saveUrl: PM_QA_ASSIGN_URL,
+    idKey:   'qa_id',
+    role:    'QA',
+    sees:    'bugs and test cases'
+  },
+  design: {
+    el:      'designAccessList',
+    listUrl: PM_DESIGN_ASSIGNMENTS_URL,
+    saveUrl: PM_DESIGN_ASSIGN_URL,
+    idKey:   'designer_id',
+    role:    'Designer',
+    sees:    'design tasks'
+  }
+};
+
+async function renderAccess(kind){
+  const cfg = ACCESS_KINDS[kind];
+  const el  = document.getElementById(cfg.el);
   if (!isAdmin) { el.innerHTML = '<div class="empty">Admins only.</div>'; return; }
   el.innerHTML = '<div class="empty">Loading…</div>';
   try {
-    const [qas, projects] = await Promise.all([
-      api(PM_QA_ASSIGNMENTS_URL),
+    const [accounts, projects] = await Promise.all([
+      api(cfg.listUrl),
       api(PM_PROJECTS_LIST_URL)
     ]);
-    if (!qas.length) {
-      el.innerHTML = '<div class="empty">No QA accounts yet. Add one from ' +
-        '<a class="xref" href="#/people">People</a> with the QA role.</div>';
+    if (!accounts.length) {
+      el.innerHTML = '<div class="empty">No ' + esc(cfg.role) + ' accounts yet. Add one from ' +
+        '<a class="xref" href="#/people">People</a> with the ' + esc(cfg.role) + ' role.</div>';
       return;
     }
     if (!projects.length) {
       el.innerHTML = '<div class="empty">No projects exist yet to assign.</div>';
       return;
     }
-    el.innerHTML = qas.map(q =>
-      '<div class="sect" style="margin-bottom:14px" data-qa-card="' + q.qa_id + '">' +
-        '<h4>' + esc(q.full_name) + '</h4>' +
+    el.innerHTML = accounts.map(a =>
+      '<div class="sect" style="margin-bottom:14px" data-access-card="' + a[cfg.idKey] + '">' +
+        '<h4>' + esc(a.full_name) + '</h4>' +
         '<div class="check-group" style="margin-bottom:12px">' +
           projects.map(p =>
             '<label class="check"><input type="checkbox" value="' + p.project_id + '"' +
-            (q.project_ids.includes(p.project_id) ? ' checked' : '') + ' data-qa-proj />' +
+            (a.project_ids.includes(p.project_id) ? ' checked' : '') + ' data-access-proj />' +
             '<span>' + esc(p.project_name) + '</span></label>').join('') +
         '</div>' +
-        '<button type="button" class="icon-btn" data-qa-save="' + q.qa_id + '">Save access</button>' +
+        '<button type="button" class="icon-btn" data-access-save="' + a[cfg.idKey] + '">Save access</button>' +
       '</div>').join('');
 
-    el.querySelectorAll('[data-qa-save]').forEach(btn => {
+    el.querySelectorAll('[data-access-save]').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const qaId = Number(btn.dataset.qaSave);
-        const card = el.querySelector('[data-qa-card="' + qaId + '"]');
-        const ids = [...card.querySelectorAll('[data-qa-proj]:checked')].map(c => Number(c.value));
+        const id   = Number(btn.dataset.accessSave);
+        const card = el.querySelector('[data-access-card="' + id + '"]');
+        const ids  = [...card.querySelectorAll('[data-access-proj]:checked')].map(c => Number(c.value));
         btn.disabled = true;
         try {
-          await api(PM_QA_ASSIGN_URL, { method: 'POST', body: { qa_id: qaId, project_ids: ids } });
+          await api(cfg.saveUrl, { method: 'POST', body: { [cfg.idKey]: id, project_ids: ids } });
           toast(ids.length ? 'Access saved — ' + ids.length + ' project(s).'
-                           : 'Access cleared — this QA account now sees nothing.', 'ok');
+                           : 'Access cleared — this account now sees no ' + cfg.sees + '.', 'ok');
         } catch (err) {
           toast('Could not save access: ' + err.message, 'err');
         }
@@ -749,7 +779,7 @@ async function renderQaAccess(){
       });
     });
   } catch (err) {
-    el.innerHTML = '<div class="empty">Could not load QA access (' + esc(err.message) + ').</div>';
+    el.innerHTML = '<div class="empty">Could not load access (' + esc(err.message) + ').</div>';
   }
 }
 

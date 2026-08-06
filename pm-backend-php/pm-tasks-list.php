@@ -15,8 +15,12 @@ if ($user['user_type'] === 'EMPLOYEE') {
     $sql = $base . "WHERE t.employee_id = ?";
     $params = [$user['id']];
 } else {
-    $sql = $base . "WHERE (? = 'ADMIN' OR p.manager_id = ?)";
-    $params = [$user['role'], $user['id']];
+    // Same rule as everywhere else: the projects this account can reach.
+    // Identical to the old owner comparison for MANAGER and ADMIN, and it
+    // stops QA and designers getting an empty list on projects that were
+    // explicitly assigned to them.
+    [$scope, $params] = projectScope($user, 'p.project_id');
+    $sql = $base . "WHERE $scope";
 }
 
 if (!empty($_GET['project_id'])) {

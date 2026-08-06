@@ -79,7 +79,7 @@ function setStatus(el, kind, msg){
    "Business Analyst" does not fit beside the name and Sign out. */
 const ROLE_LABELS = {
   ADMIN:'Admin', MANAGER:'Business Analyst', HR:'HR',
-  MARKETING:'Marketing', QA:'QA', EMPLOYEE:'Developer'
+  MARKETING:'Marketing', QA:'QA', DESIGNER:'Designer', EMPLOYEE:'Developer'
 };
 const ROLE_BADGES = { MANAGER:'BA' };
 
@@ -100,6 +100,7 @@ function roleHome(role){
   if (r === 'HR') return 'hr.html';
   if (r === 'MARKETING') return 'marketing.html';
   if (r === 'QA') return 'qa.html';
+  if (r === 'DESIGNER') return 'designers.html';
   if (r === 'EMPLOYEE') return 'employee.html';
   return null;
 }

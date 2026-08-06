@@ -4,7 +4,7 @@ require 'auth.php';
 $user = requireRole($pdo, $USERS, ['ADMIN']);
 $b = body();
 
-$ROLES = ['ADMIN', 'MANAGER', 'HR', 'MARKETING', 'QA'];
+$ROLES = ['ADMIN', 'MANAGER', 'HR', 'MARKETING', 'QA', 'DESIGNER'];
 $role = strtoupper(trim($b['role'] ?? ''));
 $managerId = (int)($b['manager_id'] ?? 0);
 

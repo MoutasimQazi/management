@@ -17,10 +17,13 @@ if ($user['user_type'] === 'EMPLOYEE') {
     $sql = $base . "WHERE q.employee_id = ?";
     $params = [$user['id']];
 } else {
-    // A manager sees every question raised on their own projects
-    // (by themselves or by an employee working under them); ADMIN sees all.
-    $sql = $base . "WHERE (? = 'ADMIN' OR p.manager_id = ?)";
-    $params = [$user['role'], $user['id']];
+    /* Staff see every question raised on the projects they can reach —
+       for a manager that is the projects they own, which is what this
+       did before; ADMIN still sees all. Going through projectScope also
+       gives QA and designers their assigned projects, which the old
+       manager_id comparison silently denied them. */
+    [$scope, $params] = projectScope($user, 'p.project_id');
+    $sql = $base . "WHERE $scope";
 }
 $sql .= " ORDER BY q.created_at DESC";
 

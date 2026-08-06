@@ -4,7 +4,7 @@ require 'auth.php';
 requireRole($pdo, $USERS, ['ADMIN']);
 $b = body();
 
-$roles = ['ADMIN', 'MANAGER', 'HR', 'MARKETING'];
+$roles = ['ADMIN', 'MANAGER', 'HR', 'MARKETING', 'QA', 'DESIGNER'];
 $role = in_array($b['role'] ?? '', $roles, true) ? $b['role'] : 'MANAGER';
 $fullName = trim($b['full_name'] ?? '');
 $email = trim($b['email'] ?? '');
