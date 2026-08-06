@@ -1412,6 +1412,24 @@ nav.subnav [hidden]{ display:none !important; }
 /* A laptop is where the bar is tightest: six section pills, a role badge,
    a name and Sign out. The name goes first — the avatar still identifies
    who is signed in, and the full address is on hover. */
+/* Seven sections do not fit beside the logo, the role badge, the user chip
+   and Sign out on anything short of a wide desktop. The strip scrolls
+   rather than pushing Sign out off the edge — but its scrollbar is hidden,
+   so an overflowing section was simply invisible with nothing to say so,
+   which is exactly what happened to Design when it became the seventh.
+
+   Below this width the strip takes its own full-width row instead, where
+   all seven fit. Above it, they fit inline. Either way nothing is lost. */
+@media (max-width:1240px){
+  .topbar{ flex-wrap:wrap; }
+  nav.sections{
+    order:5;
+    width:100%;
+    gap:3px;
+    margin:0;
+    padding:6px 0 2px;
+  }
+}
 @media (max-width:1100px){
   .topbar{ gap:9px; }
   .topbar .userchip{ max-width:112px; }
@@ -1453,6 +1471,14 @@ nav.subnav [hidden]{ display:none !important; }
   .detail-hero{ padding:22px 20px; }
 }
 @media (max-width:560px){
+  /* Narrow enough that even a full-width strip cannot hold seven, so it
+     goes back to scrolling. The scrollbar is hidden, so the right edge
+     fades instead — otherwise the last section is invisible and there is
+     nothing to suggest swiping. */
+  nav.sections{
+    -webkit-mask-image:linear-gradient(to right, #000 84%, transparent 100%);
+            mask-image:linear-gradient(to right, #000 84%, transparent 100%);
+  }
   .stats{ grid-template-columns:1fr 1fr; }
   .pagehead{ align-items:flex-start; }
   /* The action next to a page title has nowhere to sit once the heading
