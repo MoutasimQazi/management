@@ -12,16 +12,24 @@
    ════════════════════════════════════════════════════ */
 
 /* ── Config ──────────────────────────────────────────
-   LOGIN_URL     POST { email, password }        → { token, email }
-   WEBHOOK_URL   POST Bearer + { meetingLink, title } → sends Fireflies
-   MEETINGS_URL  GET  Bearer                     → that user's sheet rows
+   LOGIN_URL     POST { email, password }              → { token, email }
+   WEBHOOK_URL   POST Bearer + { meetingLink, title }  → sends Fireflies
+   MEETINGS_URL  GET  Bearer                           → that user's sheet rows
+   LINK_URL      POST Bearer + { meetId }              → a fresh recording URL
 
    Sheet columns:
    Meet Id | Meet Name | MeetDate | Meet link | Gist |
-   ShortSummary | Overview | BulletGist | ActionItems | Full Summary */
+   ShortSummary | Overview | BulletGist | ActionItems | Full Summary
+
+   ⚠ "Meet link" is a Fireflies-signed URL that EXPIRES. Treat it as a
+     flag meaning "a recording exists" — never as an href. To open a
+     recording, POST its Meet Id to LINK_URL and use the URL that comes
+     back (openRecording, at the bottom of this file). A link baked into
+     the page at render time is already dead by the time it is clicked. */
 const LOGIN_URL     = "https://n8n.moveneticsdigital.com/webhook/fireflies-login";
 const WEBHOOK_URL   = "https://n8n.moveneticsdigital.com/webhook/firefilescall";
 const MEETINGS_URL  = "https://n8n.moveneticsdigital.com/webhook/fireflies-meetings";
+const LINK_URL      = "https://n8n.moveneticsdigital.com/webhook/fireflies-meeting-link";
 const SESSION_KEY   = "fireflies.session";
 const SUPPORT_EMAIL = "moutasim.qazi@moveneticsdigital.com";
 
@@ -359,8 +367,13 @@ function meetingRow(m, href){
   const name = esc(m['Meet Name'] || 'Untitled meeting');
   const date = esc(fmtDate(m.MeetDate));
   const gist = esc(m.ShortSummary || m.Gist || '');
-  const rec  = m['Meet link']
-    ? '<a class="rec" href="' + esc(m['Meet link']) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">▶ Recording</a>'
+  const id   = m['Meet Id'];
+  /* "Meet link" is read as a boolean — a recording exists — and the id is
+     what actually opens it; without an id there is nothing to look up.
+     Deliberately no href: an anchor without one is not a link, so a click
+     cannot navigate to the expired URL even if the script fails. */
+  const rec  = (m['Meet link'] && id)
+    ? '<a class="rec" role="button" tabindex="0" data-recording="' + esc(id) + '">▶ Recording</a>'
     : '';
   return '<tr class="clickable" data-href="' + esc(href) + '">' +
     '<td><div class="ttitle" data-tr>' + name + '</div></td>' +
@@ -372,6 +385,109 @@ function meetingRow(m, href){
 
 function wireMeetingRowClicks(root){
   root.querySelectorAll('tr[data-href]').forEach(tr => {
-    tr.addEventListener('click', () => { location.href = tr.dataset.href; });
+    tr.addEventListener('click', (e) => {
+      // The recording chip opens a tab of its own. This listener sits on an
+      // ancestor, so it runs first — it has to step aside itself.
+      if (e.target.closest('[data-recording]')) return;
+      location.href = tr.dataset.href;
+    });
   });
 }
+
+/* ── Opening a recording ─────────────────────────────
+   The stored link is signed and short-lived, so a recording is opened by
+   asking the backend for a fresh URL at click time. The list row and the
+   detail hero both render a plain <a> carrying data-recording="<Meet Id>"
+   and no href; the delegated handlers at the bottom do the rest, on every
+   page that loads this file. */
+
+/* Each page shows "signed out" its own way — index.html swaps back to its
+   login card, meetings.html to its "sign in over there" panel — so a page
+   overrides this. The default reload lands on index.html's login. */
+let onSessionExpired = function(){ location.href = 'index.html'; };
+
+async function openRecording(meetId, trigger){
+  if (!meetId) return;
+  if (trigger && trigger.classList.contains('is-busy')) return;   // already in flight
+
+  const session = readSession();
+  if (!session) { clearSession(); onSessionExpired(); return; }
+
+  /* Opened BEFORE the first await, while the click is still the current
+     user gesture. A window.open() after an await is blocked as a pop-up. */
+  let tab = window.open('', '_blank');
+
+  if (trigger) { trigger.classList.add('is-busy'); trigger.setAttribute('aria-busy', 'true'); }
+
+  try {
+    const res = await fetch(LINK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + session.token
+      },
+      body: JSON.stringify({ meetId: String(meetId) })
+    });
+
+    // Same as loadMeetings: an expired token signs you out rather than
+    // showing an error you can do nothing about.
+    if (res.status === 401 || res.status === 403) {
+      if (tab) { tab.close(); tab = null; }
+      clearSession();
+      onSessionExpired();
+      return;
+    }
+    if (!res.ok) throw new Error('the link service responded with ' + res.status);
+
+    const url = recordingUrlFrom(await res.text());
+    if (!url) throw new Error('Fireflies has no recording for this meeting');
+
+    if (tab) {
+      try { tab.opener = null; } catch (_) {}   // best-effort rel="noopener"
+      tab.location = url;
+    } else {
+      const w = window.open(url, '_blank');     // blank tab was blocked; try again
+      if (!w) toast('Your browser blocked the recording tab. Allow pop-ups for this site, then try again.', 'err');
+    }
+  } catch (err) {
+    if (tab) tab.close();                 // never leave an orphaned blank tab
+    toast("Couldn't open the recording: " + err.message, 'err');
+  } finally {
+    if (trigger) { trigger.classList.remove('is-busy'); trigger.removeAttribute('aria-busy'); }
+  }
+}
+
+/* The contract is { url } and nothing else. Reading any other key would
+   defeat the whole point: if the workflow ever passes the meeting row
+   through, "Meet link" is sitting right there — the expired URL this
+   function exists to avoid — and opening it would look like success.
+   Better to fail loudly. The array unwrap is for n8n's habit of
+   responding with all incoming items rather than a bare object. */
+function recordingUrlFrom(body){
+  const str = String(body || '').trim();
+  if (str[0] !== '{' && str[0] !== '[') return '';
+  let o;
+  try { o = JSON.parse(str); } catch (_) { return ''; }
+  if (Array.isArray(o)) o = o[0];
+  const url = String((o && o.url) || '').trim();
+  return /^https?:\/\//i.test(url) ? url : '';   // never a javascript: URL
+}
+
+/* Delegated, on document: the list and the detail view each rebuild their
+   whole innerHTML on every refresh, so per-element handlers would be
+   thrown away along with the markup they were bound to. */
+document.addEventListener('click', (e) => {
+  const t = e.target.closest && e.target.closest('[data-recording]');
+  if (!t) return;
+  e.preventDefault();
+  openRecording(t.dataset.recording, t);
+});
+
+// role="button" + tabindex="0" promise keyboard operation; deliver it.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+  const t = e.target.closest && e.target.closest('[data-recording]');
+  if (!t) return;
+  e.preventDefault();          // Space would otherwise scroll the page
+  openRecording(t.dataset.recording, t);
+});

@@ -41,6 +41,9 @@ function showSignedOut(){
   pmSignedOut.classList.add('active');
 }
 
+// What a 401 from openRecording (fireflies.js) does on this page.
+onSessionExpired = showSignedOut;
+
 function showApp(session){
   document.body.classList.add('dash');
   pmSignedOut.classList.remove('active');
@@ -119,7 +122,7 @@ form.addEventListener('submit', async (e) => {
     }
     if (!res.ok) throw new Error('Webhook responded with ' + res.status);
 
-    setStatus(statusEl, 'ok', 'Fireflies is on the way. It should join in 2–3 minutes and the transcript lands in your notebook after the call.');
+    setStatus(statusEl, 'ok', 'Fireflies is on the way. It should join in 2–3 minutes. You are recorded as a participant of this meeting, so its summary will appear under My meetings after the call — whether or not you join it yourself.');
     form.reset();
   } catch (err) {
     setStatus(statusEl, 'err', "Couldn't reach the webhook: " + err.message + '. Check that the workflow is active and that CORS is allowed on the webhook node.');
@@ -417,8 +420,11 @@ function renderDetail(key){
       '<div class="meta">' +
         (date ? '<span class="chip">' + esc(date) + '</span>' : '') +
         (m['Meet Id'] ? '<span class="chip">ID ' + esc(m['Meet Id']) + '</span>' : '') +
-        (m['Meet link']
-          ? '<a class="chip" href="' + esc(m['Meet link']) + '" target="_blank" rel="noopener">▶ Open recording</a>'
+        // No href — the stored link has expired; openRecording fetches a
+        // fresh one on click. See the ⚠ note in fireflies.js.
+        (m['Meet link'] && m['Meet Id']
+          ? '<a class="chip" role="button" tabindex="0" data-recording="' +
+            esc(m['Meet Id']) + '">▶ Open recording</a>'
           : '') +
       '</div>' +
     '</div>';

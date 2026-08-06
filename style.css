@@ -995,6 +995,24 @@ nav.subnav [hidden]{ display:none !important; }
 }
 .meeting a.rec:hover{ color:var(--brand-dark); text-decoration:underline; }
 
+/* ── Recording triggers ──────────────────────────────
+   "▶ Recording" and "▶ Open recording" are anchors with no href: the
+   Fireflies URL expires, so a fresh one is fetched on click instead of
+   being baked into the markup. Dropping the href also drops everything
+   the browser gives a link for free, so it comes back by hand here. */
+[data-recording]{
+  cursor:pointer;
+  -webkit-user-select:none;
+  user-select:none;
+}
+[data-recording]:focus-visible{
+  outline:2px solid var(--brand);
+  outline-offset:3px;
+  border-radius:6px;
+}
+/* While the round-trip for the fresh link is in flight. */
+[data-recording].is-busy{ opacity:.5; cursor:progress; }
+
 .empty{
   font-size:13px; color:var(--muted);
   background:var(--empty-bg);
