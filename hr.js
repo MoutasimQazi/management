@@ -448,14 +448,56 @@ async function renderLeave(){
       ? pending.map(leaveRow).join('')
       : '<div class="empty">Nothing pending with an approver right now.</div>';
 
-    document.getElementById('allLeaveCount').textContent = String(all.length);
-    allEl.innerHTML = all.length
-      ? all.map(leaveRow).join('')
-      : '<div class="empty">No leave requests yet.</div>';
+    /* The full history is a record, not a reading list — it grows
+       forever and the answer is almost always in the newest few. Three
+       to start, the rest a click away. */
+    allLeaveRows = all;
+    allLeaveShown = ALL_LEAVE_STEP;
+    drawAllLeave();
   } catch (err) {
     pendingEl.innerHTML = '<div class="empty">Could not load leave (' + esc(err.message) + ').</div>';
   }
 }
+/* "All requests" is paged rather than dumped: the list only grows, and
+   whoever opens this page is looking for something recent. */
+const ALL_LEAVE_STEP = 3;
+let allLeaveRows = [];
+let allLeaveShown = ALL_LEAVE_STEP;
+
+function drawAllLeave(){
+  const el = document.getElementById('allLeaveList');
+  if (!el) return;
+  const total = allLeaveRows.length;
+  document.getElementById('allLeaveCount').textContent = String(total);
+
+  if (!total) {
+    el.innerHTML = '<div class="empty">No leave requests yet.</div>';
+    return;
+  }
+  const shown = allLeaveRows.slice(0, allLeaveShown);
+  const left  = total - shown.length;
+
+  el.innerHTML = shown.map(leaveRow).join('') +
+    (left
+      ? '<button type="button" class="showmore" id="allLeaveMore">Show ' +
+        Math.min(ALL_LEAVE_STEP, left) + ' more (' + left + ' left)</button>'
+      : (total > ALL_LEAVE_STEP
+          ? '<button type="button" class="showmore" id="allLeaveLess">Show fewer</button>'
+          : ''));
+
+  const more = document.getElementById('allLeaveMore');
+  if (more) more.addEventListener('click', () => {
+    allLeaveShown += ALL_LEAVE_STEP;
+    drawAllLeave();
+  });
+  const less = document.getElementById('allLeaveLess');
+  if (less) less.addEventListener('click', () => {
+    allLeaveShown = ALL_LEAVE_STEP;
+    drawAllLeave();
+    el.scrollIntoView({ block: 'nearest' });
+  });
+}
+
 function leaveRow(r){
   return '<div class="leave-row" data-leave-row="' + r.leave_id + '">' +
     '<div class="linfo"><div class="ltitle">' + esc(r.employee_name) + '</div>' +

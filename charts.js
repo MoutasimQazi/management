@@ -78,8 +78,10 @@ function lineChart(host, opts){
     return;
   }
 
-  // R leaves room for the direct labels; B for the week ticks.
-  const W = 640, H = 200, L = 34, R = 104, T = 16, B = 28;
+  /* Taller than it was: at 200 the three lines sat on top of each other
+     and a two-day difference was a hair's width. R leaves room for the
+     direct labels, B for the week ticks. */
+  const W = 640, H = 280, L = 38, R = 112, T = 18, B = 30;
   const maxRaw = Math.max(1, ...series.flatMap(s => s.values));
   // A round ceiling, so the gridline labels are numbers people recognise.
   const step = Math.pow(10, Math.floor(Math.log10(maxRaw))) * (maxRaw / Math.pow(10, Math.floor(Math.log10(maxRaw))) > 5 ? 2 : 1);
@@ -88,7 +90,8 @@ function lineChart(host, opts){
   const x = i => L + (weeks.length === 1 ? 0 : i * (W - L - R) / (weeks.length - 1));
   const y = v => T + (H - T - B) * (1 - v / max);
 
-  const grid = [0, 0.5, 1].map(f => {
+  // Quarters rather than halves — the extra height earns two more lines.
+  const grid = [0, 0.25, 0.5, 0.75, 1].map(f => {
     const v = max * f, yy = y(v);
     return '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy +
              '" stroke="currentColor" stroke-opacity=".12" />' +

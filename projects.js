@@ -1399,23 +1399,30 @@ async function renderProjectTeam(projectId){
     '<span class="crewgroup' + (gap ? ' gap' : '') + '"><b>' + label + '</b>' +
       (names.length ? esc(names.join(', ')) : 'nobody yet') + '</span>';
 
-  const devs = projectTeam.developers.map(d => d.name + ' (' + d.open_tasks + ')');
+  const devs      = projectTeam.developers.map(d => d.name + ' (' + d.open_tasks + ')');
+  const designers = on(projectTeam.designers).map(p => p.name);
+  const qas       = on(projectTeam.qa).map(p => p.name);
+
   el.innerHTML = '<div class="crew">' +
     chips('Dev', devs, !devs.length) +
-    chips('Design', on(projectTeam.designers).map(p => p.name), !on(projectTeam.designers).length) +
-    chips('QA', on(projectTeam.qa).map(p => p.name), !on(projectTeam.qa).length) +
+    chips('Design', designers, !designers.length) +
+    chips('QA', qas, !qas.length) +
   '</div>';
 
   // The pickers, ticked to match what came back.
-  const boxes = (rows, name) => rows.length
+  /* An empty roster gets a sentence with somewhere to go, not an empty
+     bordered box — "no designer accounts yet" is a different problem
+     from "none ticked", and only one of them is fixed on this screen. */
+  const boxes = (rows, name, label) => rows.length
     ? rows.map(p =>
         '<label class="check"><input type="checkbox" value="' + p.id + '"' +
         (p.on_project ? ' checked' : '') + ' data-team="' + name + '" />' +
         '<span>' + esc(p.name) + '</span></label>').join('')
-    : '<span class="hint">No ' + name + ' accounts yet — HR › People can add one.</span>';
+    : '<span class="emptyrole">No ' + esc(label) + ' accounts exist yet. ' +
+      '<a class="xref" href="hr.html#/people">Add one in HR › People →</a></span>';
 
-  document.getElementById('teamDesigners').innerHTML = boxes(projectTeam.designers, 'designer');
-  document.getElementById('teamQa').innerHTML        = boxes(projectTeam.qa, 'qa');
+  document.getElementById('teamDesigners').innerHTML = boxes(projectTeam.designers, 'designer', 'designer');
+  document.getElementById('teamQa').innerHTML        = boxes(projectTeam.qa, 'qa', 'QA');
 
   // The assignee menu for design work is the project's designers, plus
   // anyone else who would be added by being picked.

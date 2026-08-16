@@ -847,18 +847,29 @@ a.evidence:hover{ color:var(--brand-dark); text-decoration:underline; }
    ══════════════════════════════════════════════════════ */
 .insights{
   display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));
-  gap:14px;
+  /* 460 rather than 340: at the smaller width two of these sat side by
+     side on a laptop and every chart was squeezed into a strip. Two
+     columns only when there is genuinely room for two. */
+  grid-template-columns:repeat(auto-fit, minmax(460px, 1fr));
+  gap:16px;
   margin-bottom:24px;
+}
+@media (max-width:560px){
+  .insights{ grid-template-columns:1fr; }
 }
 .insight{
   background:var(--surface);
   border:1px solid var(--line);
   border-radius:var(--radius-md);
-  padding:16px 18px 14px;
+  padding:18px 20px 16px;
   box-shadow:var(--shadow-sm);
   min-width:0;
+  /* Opening "Show the numbers" must not resize the figure above it. The
+     card grows downward; the chart keeps the height it had. */
+  display:flex;
+  flex-direction:column;
 }
+.insight .chart{ flex:none; }
 .insight h3{
   margin:0 0 2px;
   font-family:"Archivo", sans-serif;
@@ -930,20 +941,20 @@ a.evidence:hover{ color:var(--brand-dark); text-decoration:underline; }
 .charttable .data-table th:not(:first-child){ text-align:right; }
 
 /* ── Horizontal bars ── */
-.barlist{ display:grid; gap:7px; }
+.barlist{ display:grid; gap:9px; }
 .barrow{ display:grid; grid-template-columns:minmax(88px,140px) 1fr auto; gap:10px; align-items:center; }
 .bname{ font-size:12px; font-weight:600; color:var(--ink); min-width:0; }
 .bname .bsub{ display:block; font-size:10px; font-weight:500; color:var(--muted); }
-.btrack{ height:9px; border-radius:100px; background:var(--line-2); overflow:hidden; }
+.btrack{ height:12px; border-radius:100px; background:var(--line-2); overflow:hidden; }
 /* Sequential: one hue, more is longer. */
 .bfill{ height:100%; border-radius:100px; background:var(--brand); }
 .bval{ font-size:11.5px; font-weight:700; color:var(--ink-2); white-space:nowrap; }
 
 /* ── Meters ── */
-.meterlist{ display:grid; gap:9px; }
+.meterlist{ display:grid; gap:12px; }
 .meterrow{ display:grid; grid-template-columns:56px 1fr auto; gap:10px; align-items:center; }
 .mwhen{ font-size:11px; font-weight:700; color:var(--muted); }
-.mtrack{ height:11px; border-radius:100px; background:var(--line-2); overflow:hidden; }
+.mtrack{ height:14px; border-radius:100px; background:var(--line-2); overflow:hidden; }
 .mfill{ height:100%; border-radius:100px; background:var(--ok); transition:width .3s ease; }
 .mval{ font-size:12px; font-weight:800; color:var(--ink-2); white-space:nowrap; }
 /* A word as well as a colour — status is never colour alone. */
@@ -954,9 +965,9 @@ a.evidence:hover{ color:var(--brand-dark); text-decoration:underline; }
 .meterrow.over  .mval{ color:var(--err); }
 
 /* ── Columns ── */
-.collist{ display:flex; align-items:flex-end; gap:8px; min-height:132px; }
+.collist{ display:flex; align-items:flex-end; gap:9px; min-height:178px; }
 .colrow{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; }
-.colbarwrap{ width:100%; height:96px; display:flex; align-items:flex-end; }
+.colbarwrap{ width:100%; height:140px; display:flex; align-items:flex-end; }
 /* Sequential: one hue, taller is more. */
 .colbar{ width:100%; border-radius:4px 4px 0 0; background:var(--brand); }
 .colrow:hover .colbar{ filter:brightness(1.06); }
@@ -965,3 +976,30 @@ a.evidence:hover{ color:var(--brand-dark); text-decoration:underline; }
 .colzero{ width:100%; height:2px; border-radius:2px; background:var(--line-3); }
 .colval{ font-size:11.5px; font-weight:800; color:var(--ink-2); }
 .collabel{ font-size:10px; font-weight:600; color:var(--muted); text-align:center; }
+
+/* ══════════════════════════════════════════════════════
+   Project team panel
+   ──────────────────────────────────────────────────────
+   The crew chips sit directly under the heading with no
+   card of their own — they are a summary line, and
+   wrapping a summary in a box makes it compete with the
+   sections that follow.
+   ══════════════════════════════════════════════════════ */
+#projectTeam{ margin-bottom:14px; }
+#projectTeam .crew{ margin-top:0; }
+#projectTeam .crewgroup{ font-size:12.5px; padding:6px 13px; }
+
+/* A role nobody has an account for is a different problem from a role
+   nobody is ticked for, and it is not solved on this screen — so it
+   reads as a sentence with a way out, not as an empty picker. */
+.emptyrole{
+  display:block;
+  font-size:12px; line-height:1.5;
+  color:var(--muted);
+}
+.emptyrole .xref{ color:var(--brand); font-weight:600; text-decoration:none; }
+.emptyrole .xref:hover{ color:var(--brand-dark); text-decoration:underline; }
+/* Without a checkbox inside, the bordered well is just an empty frame. */
+.check-group:has(.emptyrole){
+  background:none; border-style:dashed; border-color:var(--empty-border);
+}
