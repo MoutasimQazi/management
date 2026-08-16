@@ -236,13 +236,14 @@ signOutBtn.addEventListener('click', () => {
 function route(){
   if (!readSession()) { showSignedOut(); return; }
   let page = (location.hash || '#/bugs').replace(/^#\//, '') || 'bugs';
-  if (!['bugs','cases'].includes(page)) page = 'bugs';
+  if (!['bugs','cases','projects'].includes(page)) page = 'bugs';
 
   pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
   navLinks.forEach(a => a.classList.toggle('on', a.dataset.nav === page));
 
-  if (page === 'bugs')  renderBugs();
-  if (page === 'cases') renderCases();
+  if (page === 'bugs')     renderBugs();
+  if (page === 'cases')    renderCases();
+  if (page === 'projects') renderQaProjects();
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);
@@ -607,4 +608,63 @@ if (session) {
   showApp();
 } else {
   showSignedOut();
+}
+
+
+/* ════════════════════════════════════════════════════
+   My projects
+   ────────────────────────────────────────────────────
+   QA see only the projects assigned to them, which is
+   the single most confusing thing about this page if you
+   cannot see what that set is: an empty bug list means
+   "nothing to test" and "you are on no projects" and
+   there was no way to tell which.
+
+   So the set is a page of its own, with what is
+   outstanding on each and who to ask if one is missing.
+   ════════════════════════════════════════════════════ */
+async function renderQaProjects(){
+  const listEl  = document.getElementById('qaProjectList');
+  const statsEl = document.getElementById('qaStats');
+  listEl.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    myProjects = await api(PM_QA_PROJECTS_URL);
+
+    const openBugs = myProjects.reduce((n, p) => n + (p.open_bugs || 0), 0);
+    const toVerify = myProjects.reduce((n, p) => n + (p.to_verify || 0), 0);
+    const cases    = myProjects.reduce((n, p) => n + (p.cases || 0), 0);
+    statsEl.innerHTML = statTiles([
+      { num: myProjects.length, lbl: '📁 Projects' },
+      { num: openBugs, lbl: '🐞 Open bugs',      href: '#/bugs' },
+      { num: toVerify, lbl: '✅ Waiting to verify', href: '#/bugs' },
+      { num: cases,    lbl: '🧪 Test cases',     href: '#/cases' }
+    ]);
+
+    document.getElementById('qaProjectCount').textContent = String(myProjects.length);
+    listEl.innerHTML = myProjects.length
+      ? myProjects.map(qaProjectRow).join('')
+      : '<div class="empty">No projects are assigned to you yet. An admin, or the ' +
+        'business analyst running a project, can add you to it — then its bugs and ' +
+        'test cases appear here.</div>';
+  } catch (err) {
+    statsEl.innerHTML = '';
+    listEl.innerHTML = '<div class="empty">Could not load projects (' + esc(err.message) + ').</div>';
+  }
+}
+
+function qaProjectRow(p){
+  return '<div class="task-row">' +
+    '<div class="tinfo">' +
+      '<div class="ttitle">' + esc(p.project_name) + '</div>' +
+      '<div class="tmeta">' +
+        (p.client_name ? '<span>' + esc(p.client_name) + '</span>' : '') +
+        // Who to chase when something about the project is unclear.
+        '<span>' + (p.manager_name ? 'BA · ' + esc(p.manager_name) : 'No BA') + '</span>' +
+        '<span>' + p.open_bugs + ' open bug' + (p.open_bugs === 1 ? '' : 's') + '</span>' +
+        (p.to_verify ? '<span class="due soon">' + p.to_verify + ' to verify</span>' : '') +
+        '<span>' + p.cases + ' test case' + (p.cases === 1 ? '' : 's') + '</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="tactions">' + badge(p.status) + '</div>' +
+  '</div>';
 }

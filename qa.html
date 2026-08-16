@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=39">
-  <link rel="stylesheet" href="projects.css?v=39">
+  <link rel="stylesheet" href="style.css?v=40">
+  <link rel="stylesheet" href="projects.css?v=40">
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=39"></script>
+  <script src="theme.js?v=40"></script>
 </head>
 
 <body>
@@ -59,8 +59,9 @@
 
     <!-- Tier 2: pages within QA. -->
     <nav class="subnav">
-      <a href="#/bugs"  data-nav="bugs">Bugs</a>
-      <a href="#/cases" data-nav="cases">Test cases</a>
+      <a href="#/bugs"     data-nav="bugs">Bugs</a>
+      <a href="#/cases"    data-nav="cases">Test cases</a>
+      <a href="#/projects" data-nav="projects">My projects</a>
     </nav>
 
     <!-- ── Page: Bugs ──────────────────────────────────── -->
@@ -123,6 +124,24 @@
       <div id="bugsList"></div>
     </section>
 
+    <!-- ── Page: My projects ───────────────────────────── -->
+    <section id="page-projects" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>My <em>projects</em></h1>
+          <p class="sub">The projects you have been given access to. Bugs and test cases you can see are the ones on these — if a project is missing, ask an admin or its business analyst to add you.</p>
+        </div>
+      </div>
+
+      <div class="stats" id="qaStats"></div>
+
+      <div class="panel-head">
+        <h2>Projects</h2>
+        <span class="count" id="qaProjectCount">0</span>
+      </div>
+      <div id="qaProjectList"></div>
+    </section>
+
     <!-- ── Page: Test cases ────────────────────────────── -->
     <section id="page-cases" class="page">
       <div class="pagehead">
@@ -158,7 +177,7 @@
 
   </div>
 
-  <script src="ui.js?v=39"></script>
-  <script src="qa.js?v=39"></script>
+  <script src="ui.js?v=40"></script>
+  <script src="qa.js?v=40"></script>
 </body>
 </html>

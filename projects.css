@@ -1013,3 +1013,9 @@ a.evidence:hover{ color:var(--brand-dark); text-decoration:underline; }
 .check.inlinecheck:hover{ color:var(--ink-2); border:none; }
 /* A deactivated row is kept but visibly spent. */
 .data-table tr.inactive{ opacity:.55; }
+
+/* The business analyst who runs a project, in the projects list. Their
+   own column now, where the client used to be — who runs a project is
+   the question this list is asked far more often than who it is for. */
+.baname{ font-size:13px; font-weight:600; color:var(--ink); }
+.data-table td .baname + .tsub{ margin-top:1px; }

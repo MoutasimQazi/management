@@ -43,6 +43,7 @@ const PM_TASKS_STATUS_URL     = PM_API_BASE + "pm-tasks-status.php";
 const PM_QUESTIONS_LIST_URL   = PM_API_BASE + "pm-questions-list.php";
 const PM_QUESTIONS_CREATE_URL = PM_API_BASE + "pm-questions-create.php";
 const PM_QUESTIONS_ANSWER_URL = PM_API_BASE + "pm-questions-answer.php";
+const PM_MANAGERS_PICKABLE_URL = PM_API_BASE + "pm-managers-pickable.php";
 const PM_PROJECT_TEAM_URL      = PM_API_BASE + "pm-project-team.php";
 const PM_PROJECT_TEAM_SAVE_URL = PM_API_BASE + "pm-project-team-save.php";
 const PM_DESIGN_LIST_URL       = PM_API_BASE + "pm-designtasks-list.php";
@@ -410,18 +411,30 @@ async function renderProjects(){
   }
 }
 
+/* The Client column became the Business analyst column. Who runs a
+   project is the question asked of this list far more often than who it
+   is for — and the client was never lost, it moved under the project
+   name where it reads as part of the project's identity. */
 function projectsTable(rows){
   return '<div class="table-wrap"><table class="data-table"><thead><tr>' +
-    '<th>Project</th><th>Client</th><th>Status</th><th>Priority</th><th>Due</th>' +
+    '<th>Project</th><th>Business analyst</th><th>Status</th><th>Priority</th><th>Due</th>' +
     '</tr></thead><tbody>' +
     rows.map(projectRow).join('') +
     '</tbody></table></div>';
 }
 function projectRow(p){
+  /* A project with no owner is a real state — the BA was removed, or it
+     was created before ownership was enforced — and it is worth seeing
+     rather than showing an em dash like any other blank. */
+  const ba = p.manager_name
+    ? '<span class="baname">' + esc(p.manager_name) + '</span>' +
+      (p.manager_active == 0 ? '<span class="tsub">deactivated</span>' : '')
+    : '<span class="gapflag">no BA</span>';
   return '<tr class="clickable" data-project-row="' + p.project_id + '">' +
     '<td><div class="ttitle">' + esc(p.project_name) + '</div>' +
+      (p.client_name ? '<div class="tsub">' + esc(p.client_name) + '</div>' : '') +
       (p.description ? '<div class="tsub">' + esc(p.description) + '</div>' : '') + '</td>' +
-    '<td>' + esc(p.client_name || '—') + '</td>' +
+    '<td>' + ba + '</td>' +
     '<td>' + badge(p.status) + '</td>' +
     '<td>' + prioBadge(p.priority) + '</td>' +
     '<td class="nowrap">' + (p.due_date ? esc(fmtDay(p.due_date)) : '—') + '</td>' +
@@ -499,6 +512,10 @@ async function renderProjectDetail(projectId){
           '</div>' +
         '</div>' +
         '<div class="meta">' + badge(project.status) + prioBadge(project.priority) +
+        // Who runs it, on the project itself and not only in the list.
+        '<span class="chip">' +
+          (project.manager_name ? 'BA · ' + esc(project.manager_name) : 'No business analyst') +
+        '</span>' +
         (project.client_name ? '<span class="chip">' + esc(project.client_name) + '</span>' : '') +
         (project.due_date ? '<span class="chip">Due ' + esc(fmtDay(project.due_date)) + '</span>' : '') +
         '</div>' +
@@ -520,6 +537,14 @@ async function renderProjectDetail(projectId){
           '<div class="field"><label>Due date</label><input id="editProjDue" type="date" value="' + esc(project.due_date ? String(project.due_date).slice(0,10) : '') + '" /></div>' +
           '<div class="field"><label>Description</label><input id="editProjDescription" value="' + esc(project.description || '') + '" /></div>' +
         '</div>' +
+        /* Handing the project to a different BA. Admin only — a BA
+           moving their own project away is giving work up, and moving
+           someone else's to themselves is taking it. The server enforces
+           this too; leaving the field out is not the protection. */
+        (isAdmin
+          ? '<div class="field"><label>Business analyst <span class="opt">— who runs this project</span></label>' +
+              '<select id="editProjOwner"></select></div>'
+          : '') +
         '<div class="actions"><button type="submit">Save changes</button>' +
           '<button type="button" class="secondary" id="editProjectCancelBtn">Cancel</button></div>' +
       '</form>' +
@@ -649,6 +674,7 @@ async function renderProjectDetail(projectId){
       '<div id="projectDesignList"></div>';
 
     populateEmployeeSelects();
+    if (isAdmin) fillOwnerPicker(project.manager_id);
     wireTaskEstimate();
     wireDemos(projectId);
     renderDemos(projectId);
@@ -671,9 +697,16 @@ async function renderProjectDetail(projectId){
       const status = document.getElementById('editProjStatus').value;
       const due_date = document.getElementById('editProjDue').value || null;
       if (!project_name) return;
+      // Only sent when the field exists, so a BA's ordinary edit can
+      // never carry an owner change with it.
+      const ownerSel = document.getElementById('editProjOwner');
       try {
-        await api(PM_PROJECTS_UPDATE_URL, { method: 'POST',
-          body: { project_id: projectId, project_name, client_name, description, priority, status, due_date } });
+        const body = { project_id: projectId, project_name, client_name, description, priority, status, due_date };
+        if (ownerSel && ownerSel.value) body.manager_id = Number(ownerSel.value);
+        const res = await api(PM_PROJECTS_UPDATE_URL, { method: 'POST', body });
+        // A handover is worth naming — it changes who this project is
+        // somebody's job, and everyone's list of projects with it.
+        if (res && res.reassigned_to) toast('Handed to ' + res.reassigned_to + '.', 'ok');
         allProjects = [];
         renderProjectDetail(projectId);
       } catch (err) {
@@ -1365,6 +1398,24 @@ async function renderDemos(projectId){
   } catch (err) {
     // Migration 011 may not be imported yet.
     listEl.innerHTML = '<div class="empty">Could not load demos (' + esc(err.message) + ').</div>';
+  }
+}
+
+/* ── Who runs this project ────────────────────────────
+   Business analysts are the managers here: a project belongs to one, and
+   moving it is a real handover, not an edit. Only an admin can do it,
+   enforced on the server as well as by hiding the field. */
+async function fillOwnerPicker(currentId){
+  const sel = document.getElementById('editProjOwner');
+  if (!sel) return;
+  try {
+    const rows = await api(PM_MANAGERS_PICKABLE_URL);
+    sel.innerHTML = rows.map(r =>
+      '<option value="' + r.id + '"' + (Number(r.id) === Number(currentId) ? ' selected' : '') + '>' +
+      esc(r.name) + (r.role === 'ADMIN' ? ' — Admin' : '') + '</option>').join('')
+      || '<option value="">No business analysts exist yet</option>';
+  } catch (_) {
+    sel.innerHTML = '<option value="">Could not load the list</option>';
   }
 }
 
