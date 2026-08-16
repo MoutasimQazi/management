@@ -36,19 +36,46 @@ if ($assignedTo !== null) {
     }
 }
 
-$due = trim($b['due_date'] ?? '');
+/* The rate card decides how long this takes and, from that, when it is
+   due. Computed here rather than trusted from the page — see auth.php.
+   A due date typed by hand still wins: the estimate is a default, not a
+   ruling, and someone who knows better should be able to say so. */
+$estimate = loadDesignEstimate($pdo, $b['estimate_id'] ?? null);
+$quantity = isset($b['quantity']) ? (float)$b['quantity'] : 1;
+$hasFrd   = array_key_exists('has_frd', $b) ? !empty($b['has_frd']) : true;
+$case     = strtoupper(trim($b['estimate_case'] ?? 'BEST')) === 'WORST' ? 'WORST' : 'BEST';
+
+$hours   = designEstimateHours($estimate, $quantity, $hasFrd, $case);
+$start   = trim($b['start_date'] ?? '');
+$start   = $start !== '' ? $start : null;
+$due     = trim($b['due_date'] ?? '');
+$dueDate = $due !== '' ? $due : designTargetDate($hours, $start);
+
 $stmt = $pdo->prepare(
-    "INSERT INTO design_tasks (project_id, title, brief, kind, link, due_date, assigned_to, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO design_tasks
+       (project_id, estimate_id, title, brief, kind, quantity, has_frd, estimate_case,
+        estimated_hours, start_date, link, due_date, assigned_to, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 );
 $stmt->execute([
     $projectId,
+    $estimate ? (int)$estimate['estimate_id'] : null,
     trim($b['title']),
     trim($b['brief'] ?? '') !== '' ? trim($b['brief']) : null,
     $kind,
+    $quantity > 0 ? $quantity : 1,
+    $hasFrd ? 1 : 0,
+    $case,
+    $hours,
+    $start,
     trim($b['link'] ?? '') !== '' ? trim($b['link']) : null,
-    $due !== '' ? $due : null,
+    $dueDate,
     $assignedTo,
     $user['id'],
 ]);
-echo json_encode(['success' => true, 'design_id' => (int)$pdo->lastInsertId()]);
+echo json_encode([
+    'success'         => true,
+    'design_id'       => (int)$pdo->lastInsertId(),
+    'estimated_hours' => $hours,
+    'due_date'        => $dueDate,
+]);

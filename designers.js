@@ -23,6 +23,9 @@ const PM_DESIGN_LIST_URL      = PM_API_BASE + "pm-designtasks-list.php";
 const PM_DESIGN_CREATE_URL    = PM_API_BASE + "pm-designtasks-create.php";
 const PM_DESIGN_UPDATE_URL    = PM_API_BASE + "pm-designtasks-update.php";
 const PM_DESIGN_DELETE_URL    = PM_API_BASE + "pm-designtasks-delete.php";
+const PM_RATES_LIST_URL       = PM_API_BASE + "pm-design-estimates-list.php";
+const PM_RATES_SAVE_URL       = PM_API_BASE + "pm-design-estimates-save.php";
+const PM_RATES_DELETE_URL     = PM_API_BASE + "pm-design-estimates-delete.php";
 const PM_BUGS_LIST_URL        = PM_API_BASE + "pm-bugs-list.php";
 const PM_BUGS_UPDATE_URL      = PM_API_BASE + "pm-bugs-update.php";
 const PM_TASKS_LIST_URL       = PM_API_BASE + "pm-tasks-list.php";
@@ -46,6 +49,8 @@ let isAdmin     = false;
 let myProjects  = [];
 let allDesigners = [];
 let allDesigns  = [];
+let allRates    = [];   // the design_estimates rate card
+let hoursPerDay = 8;    // sent by the server so both agree on a working day
 
 const STATUSES = ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'CHANGES', 'APPROVED'];
 const KIND_LABELS = {
@@ -227,6 +232,9 @@ function showApp(){
    the approvals half this page has no room for. Two places to request
    leave, one of which cannot approve any, is worse than one. */
 function applyRoleView(){
+  // The rate card is company policy about how long work takes, so only
+  // an admin edits it — everyone else just gets estimated by it.
+  document.getElementById('ratesNavLink').hidden = !isAdmin;
   if (!isAdmin) return;
 
   const retitle = (sel, html, sub) => {
@@ -264,16 +272,19 @@ signOutBtn.addEventListener('click', () => {
 function route(){
   if (!readSession()) { showSignedOut(); return; }
   let page = (location.hash || '#/work').replace(/^#\//, '') || 'work';
-  if (!['work','bugs','projects','questions','leave'].includes(page)) page = 'work';
+  if (!['work','bugs','projects','questions','leave','rates'].includes(page)) page = 'work';
   // An admin has neither of these pages here — see applyRoleView. A stale
   // bookmark lands on the board rather than a section that was removed.
   if ((page === 'leave' || page === 'bugs') && isAdmin) page = 'work';
+  // And the rate card is theirs alone.
+  if (page === 'rates' && !isAdmin) page = 'work';
 
   pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
   navLinks.forEach(a => a.classList.toggle('on', a.dataset.nav === page));
 
   if (page === 'work')      renderDesigns();
   if (page === 'bugs')      renderBugs();
+  if (page === 'rates')     renderRates();
   if (page === 'projects')  renderProjects();
   if (page === 'questions') renderQuestions();
   if (page === 'leave')     renderLeave();
@@ -293,6 +304,14 @@ async function loadProjects(){
     myProjects = projects;
     allDesigners = designers;
 
+    /* The rate card fills the deliverable picker. Tolerated if it fails
+       — migration 009 may not be in yet, and not having an estimate must
+       not stop design work being created with a hand-set date. */
+    loadRates().catch(() => {
+      document.getElementById('dDeliverable').innerHTML =
+        '<option value="">Rate card unavailable — set the date by hand</option>';
+    });
+
     const sel = document.getElementById('dProject');
     // An admin sees every project, so an empty list means none exist —
     // not that nobody has assigned them any.
@@ -308,6 +327,140 @@ async function loadProjects(){
     toast('Could not load your projects: ' + err.message, 'err');
   }
 }
+
+/* ════════════════════════════════════════════════════
+   The rate card
+   ────────────────────────────────────────────────────
+   Rates are stored as hours for one unit, because the
+   source sheet writes them both ways round — "2 Screens
+   / Hour" and "1 Screen / 2 Hours" are the same axis
+   read from opposite ends, and only one of them can be
+   multiplied by a quantity. The familiar phrasing is
+   rebuilt for display.
+
+   The date preview here mirrors designTargetDate() in
+   auth.php. The server recomputes on save and its answer
+   is the one stored — this is a preview, so that picking
+   "worst case" visibly moves the date before anyone
+   commits to it.
+   ════════════════════════════════════════════════════ */
+const CASE_COLS = {
+  '1:BEST':  'frd_best',   '1:WORST':  'frd_worst',
+  '0:BEST':  'nofrd_best', '0:WORST':  'nofrd_worst'
+};
+
+// 0.5 → "2 Screens / hour"; 2 → "1 Screen / 2 hours".
+function rateText(hours, unit){
+  const h = Number(hours);
+  if (!(h > 0)) return '—';
+  const u = unit || 'Screen';
+  if (h < 1) {
+    const per = Math.round(1 / h);
+    return per + ' ' + u + 's / hour';
+  }
+  return '1 ' + u + ' / ' + (h % 1 ? h.toFixed(2).replace(/0+$/, '') : h) +
+    (h === 1 ? ' hour' : ' hours');
+}
+
+function hoursText(h){
+  const n = Number(h);
+  if (!(n > 0)) return '—';
+  if (n < 8) return n + (n === 1 ? ' hour' : ' hours');
+  const days = Math.ceil(n / hoursPerDay);
+  return n + ' hours (' + days + ' working day' + (days === 1 ? '' : 's') + ')';
+}
+
+/* Same rule as the server: whole working days at hoursPerDay each, day
+   one being the start date, weekends skipped. Holidays are not modelled
+   in either place. */
+function targetDateFrom(hours, startISO){
+  if (!(hours > 0)) return null;
+  const d = startISO ? new Date(startISO + 'T00:00:00') : new Date();
+  d.setHours(0, 0, 0, 0);
+  const days = Math.ceil(hours / hoursPerDay);
+  const skip = () => { while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1); };
+  skip();
+  for (let i = 1; i < days; i++) { d.setDate(d.getDate() + 1); skip(); }
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
+async function loadRates(){
+  const data = await api(PM_RATES_LIST_URL + (isAdmin ? '?all=1' : ''));
+  allRates = data.estimates || [];
+  if (data.hours_per_day) hoursPerDay = Number(data.hours_per_day);
+  fillDeliverablePicker();
+  return allRates;
+}
+
+/* Two dependent selects over one flat list: the deliverable narrows the
+   complexities, because not every deliverable has all three. */
+function fillDeliverablePicker(){
+  const dSel = document.getElementById('dDeliverable');
+  if (!dSel) return;
+  const usable = allRates.filter(r => r.is_active);
+  const names = [...new Set(usable.map(r => r.deliverable))];
+  dSel.innerHTML = names.length
+    ? '<option value="">No estimate — set the date by hand</option>' +
+      names.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('')
+    : '<option value="">Rate card is empty</option>';
+  fillComplexityPicker();
+}
+
+function fillComplexityPicker(){
+  const name = document.getElementById('dDeliverable').value;
+  const cSel = document.getElementById('dComplexity');
+  const rows = allRates.filter(r => r.is_active && r.deliverable === name);
+  cSel.innerHTML = rows.length
+    ? rows.map(r => '<option value="' + r.estimate_id + '">' +
+        esc(r.complexity.charAt(0) + r.complexity.slice(1).toLowerCase()) +
+        (r.definition ? ' — ' + esc(r.definition) : '') + '</option>').join('')
+    : '<option value="">—</option>';
+  refreshEstimate();
+}
+
+function currentRate(){
+  const id = Number(document.getElementById('dComplexity').value);
+  return allRates.find(r => Number(r.estimate_id) === id) || null;
+}
+
+/* Recomputed on every change to anything it depends on, so the sentence
+   under the form always describes what is about to be saved. */
+function refreshEstimate(){
+  const note = document.getElementById('dEstimateNote');
+  const rate = currentRate();
+  const unitLabel = document.getElementById('dUnitLabel');
+
+  if (!rate) {
+    unitLabel.textContent = 'units';
+    note.className = 'estimate-note';
+    note.textContent = 'No estimate — set the due date by hand.';
+    return;
+  }
+
+  unitLabel.textContent = (rate.unit || 'Screen').toLowerCase() + 's';
+  const qty   = Number(document.getElementById('dQuantity').value) || 0;
+  const frd   = document.getElementById('dFrd').value;
+  const kase  = document.getElementById('dCase').value;
+  const per   = Number(rate[CASE_COLS[frd + ':' + kase]]);
+  const hours = Math.round(per * qty * 100) / 100;
+  const start = document.getElementById('dStart').value;
+  const target = targetDateFrom(hours, start);
+
+  note.className = 'estimate-note on';
+  note.innerHTML = qty > 0
+    ? '<b>' + esc(hoursText(hours)) + '</b> — ' + esc(rateText(per, rate.unit)) +
+      ' × ' + qty + ' ' + esc((rate.unit || 'unit').toLowerCase()) + (qty === 1 ? '' : 's') +
+      (target ? '. Target <b>' + esc(fmtDay(target)) + '</b>' +
+                ', unless you set a due date below.' : '.')
+    : 'Enter how many ' + esc((rate.unit || 'unit').toLowerCase()) + 's to get an estimate.';
+}
+
+['dDeliverable'].forEach(id =>
+  document.getElementById(id).addEventListener('change', fillComplexityPicker));
+['dComplexity', 'dQuantity', 'dFrd', 'dCase', 'dStart'].forEach(id =>
+  document.getElementById(id).addEventListener('input', refreshEstimate));
 
 /* ════════════════════════════════════════════════════
    My work — the design task board
@@ -384,6 +537,15 @@ function designRow(d){
         '<span class="kindchip">' + esc(KIND_LABELS[d.kind] || d.kind) + '</span>' +
         '<span>' + esc(d.project_name) + '</span>' +
         '<span>' + (d.assigned_to_name ? esc(d.assigned_to_name) : 'Unassigned') + '</span>' +
+        // What the estimate was, and under which conditions — so a date
+        // that looks wrong can be argued with rather than just missed.
+        (d.estimated_hours > 0
+          ? '<span title="' + esc((d.estimate_deliverable || '') + ' · ' +
+              (d.estimate_complexity || '').toLowerCase() + ' · ' +
+              (d.has_frd == 1 ? 'with FRD' : 'without FRD') + ' · ' +
+              String(d.estimate_case || '').toLowerCase() + ' case') + '">' +
+            'Est. ' + esc(hoursText(Number(d.estimated_hours))) + '</span>'
+          : '') +
         dueNote(d.due_date) +
         // safeUrl (ui.js): an escaped "javascript:…" is still a live
         // javascript: URL, so only http(s) is rendered as a link at all.
@@ -469,14 +631,21 @@ document.getElementById('designScopeFilter').addEventListener('change', renderDe
 
 document.getElementById('newDesignForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const rate = currentRate();
   const body = {
     project_id:  Number(document.getElementById('dProject').value),
     title:       document.getElementById('dTitle').value.trim(),
     brief:       document.getElementById('dBrief').value.trim(),
     kind:        document.getElementById('dKind').value,
     link:        document.getElementById('dLink').value.trim(),
+    // Blank means "use the estimate" — the server fills it in.
     due_date:    document.getElementById('dDue').value,
-    assigned_to: document.getElementById('dAssignee').value
+    assigned_to: document.getElementById('dAssignee').value,
+    estimate_id:   rate ? rate.estimate_id : '',
+    quantity:      Number(document.getElementById('dQuantity').value) || 1,
+    has_frd:       document.getElementById('dFrd').value === '1' ? 1 : 0,
+    estimate_case: document.getElementById('dCase').value,
+    start_date:    document.getElementById('dStart').value
   };
   if (!body.project_id || !body.title) return;
   try {
@@ -486,6 +655,153 @@ document.getElementById('newDesignForm').addEventListener('submit', async (e) =>
     renderDesigns();
   } catch (err) {
     toast('Could not create the design task: ' + err.message, 'err');
+  }
+});
+
+/* ════════════════════════════════════════════════════
+   Rate card admin
+   ────────────────────────────────────────────────────
+   Admin-only, enforced on the server too. A rate that
+   nothing has used is deleted; one that tasks reference
+   is retired instead, so their estimates keep the row
+   that explains where the number came from.
+   ════════════════════════════════════════════════════ */
+function rateFormReset(){
+  const f = document.getElementById('newRateForm');
+  f.reset();
+  document.getElementById('rEstimateId').value = '';
+  document.getElementById('rSubmitBtn').textContent = 'Add rate';
+}
+
+document.getElementById('newRateToggle').addEventListener('click', () => {
+  const f = document.getElementById('newRateForm');
+  if (f.classList.contains('open') && document.getElementById('rEstimateId').value) rateFormReset();
+  f.classList.toggle('open');
+});
+document.getElementById('rateCancelBtn').addEventListener('click', () => {
+  rateFormReset();
+  document.getElementById('newRateForm').classList.remove('open');
+});
+document.getElementById('rateSearch').addEventListener('input', drawRates);
+
+async function renderRates(){
+  const listEl = document.getElementById('ratesList');
+  listEl.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    await loadRates();
+    drawRates();
+  } catch (err) {
+    listEl.innerHTML = '<div class="empty">Could not load the rate card (' + esc(err.message) + ').</div>';
+  }
+}
+
+function drawRates(){
+  const listEl = document.getElementById('ratesList');
+  const q = (document.getElementById('rateSearch').value || '').trim().toLowerCase();
+  const rows = q
+    ? allRates.filter(r => [r.deliverable, r.definition, r.complexity]
+        .some(v => String(v || '').toLowerCase().includes(q)))
+    : allRates;
+
+  document.getElementById('rateCount').textContent =
+    q ? rows.length + ' of ' + allRates.length : String(allRates.length);
+
+  if (!rows.length) {
+    listEl.innerHTML = '<div class="empty">' +
+      (allRates.length ? 'Nothing matches that.' : 'The rate card is empty. Import migration 009 to seed it, or add rates by hand.') +
+      '</div>';
+    return;
+  }
+
+  listEl.innerHTML =
+    '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+      '<th>Deliverable</th><th>Complexity</th>' +
+      '<th>FRD best</th><th>FRD worst</th><th>No FRD best</th><th>No FRD worst</th><th></th>' +
+    '</tr></thead><tbody>' +
+    rows.map(r =>
+      '<tr' + (r.is_active ? '' : ' class="retired"') + '>' +
+        '<td><div class="ttitle">' + esc(r.deliverable) +
+          (r.is_active ? '' : '<span class="gapflag">retired</span>') + '</div>' +
+          (r.definition ? '<div class="tsub">' + esc(r.definition) + '</div>' : '') +
+          '<div class="tsub">per ' + esc(r.unit.toLowerCase()) + '</div></td>' +
+        '<td>' + esc(r.complexity.charAt(0) + r.complexity.slice(1).toLowerCase()) + '</td>' +
+        '<td class="nowrap"><div class="tsub">' + esc(rateText(r.frd_best, r.unit)) + '</div></td>' +
+        '<td class="nowrap"><div class="tsub">' + esc(rateText(r.frd_worst, r.unit)) + '</div></td>' +
+        '<td class="nowrap"><div class="tsub">' + esc(rateText(r.nofrd_best, r.unit)) + '</div></td>' +
+        '<td class="nowrap"><div class="tsub">' + esc(rateText(r.nofrd_worst, r.unit)) + '</div></td>' +
+        '<td class="actions-cell">' +
+          '<button type="button" class="icon-btn" data-rate-edit="' + r.estimate_id + '">Edit</button>' +
+          '<button type="button" class="icon-btn danger" data-rate-del="' + r.estimate_id + '">Delete</button>' +
+        '</td></tr>').join('') +
+    '</tbody></table></div>';
+
+  listEl.querySelectorAll('[data-rate-edit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const r = allRates.find(x => Number(x.estimate_id) === Number(btn.dataset.rateEdit));
+      if (!r) return;
+      document.getElementById('rEstimateId').value = r.estimate_id;
+      document.getElementById('rDeliverable').value = r.deliverable;
+      document.getElementById('rComplexity').value  = r.complexity;
+      document.getElementById('rUnit').value        = r.unit;
+      document.getElementById('rSort').value        = r.sort_order;
+      document.getElementById('rDefinition').value  = r.definition || '';
+      document.getElementById('rFrdBest').value     = r.frd_best;
+      document.getElementById('rFrdWorst').value    = r.frd_worst;
+      document.getElementById('rNoFrdBest').value   = r.nofrd_best;
+      document.getElementById('rNoFrdWorst').value  = r.nofrd_worst;
+      document.getElementById('rSubmitBtn').textContent = 'Save changes';
+      document.getElementById('newRateForm').classList.add('open');
+      window.scrollTo(0, 0);
+    });
+  });
+
+  listEl.querySelectorAll('[data-rate-del]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const r = allRates.find(x => Number(x.estimate_id) === Number(btn.dataset.rateDel));
+      if (!await confirmDialog({
+        title: 'Delete this rate?',
+        body: (r ? r.deliverable + ' · ' + r.complexity.toLowerCase() + '. ' : '') +
+              'If any design task was estimated from it, it is retired instead of deleted so those estimates keep their source.',
+        confirmLabel: 'Delete rate',
+        danger: true
+      })) return;
+      btn.disabled = true;
+      try {
+        const res = await api(PM_RATES_DELETE_URL, { method:'POST', body:{ estimate_id: Number(btn.dataset.rateDel) } });
+        toast(res.message || 'Rate deleted.', 'ok', !!res.retired);
+        renderRates();
+      } catch (err) {
+        toast('Could not delete: ' + err.message, 'err');
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+document.getElementById('newRateForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = {
+    estimate_id: document.getElementById('rEstimateId').value || 0,
+    deliverable: document.getElementById('rDeliverable').value.trim(),
+    complexity:  document.getElementById('rComplexity').value,
+    unit:        document.getElementById('rUnit').value,
+    sort_order:  Number(document.getElementById('rSort').value) || 0,
+    definition:  document.getElementById('rDefinition').value.trim(),
+    frd_best:    Number(document.getElementById('rFrdBest').value),
+    frd_worst:   Number(document.getElementById('rFrdWorst').value),
+    nofrd_best:  Number(document.getElementById('rNoFrdBest').value),
+    nofrd_worst: Number(document.getElementById('rNoFrdWorst').value),
+    is_active:   1
+  };
+  if (!body.deliverable) return;
+  try {
+    await api(PM_RATES_SAVE_URL, { method:'POST', body });
+    rateFormReset();
+    e.target.classList.remove('open');
+    toast('Rate card updated.', 'ok');
+    renderRates();
+  } catch (err) {
+    toast('Could not save the rate: ' + err.message, 'err');
   }
 });
 

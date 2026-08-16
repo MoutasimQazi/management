@@ -628,3 +628,25 @@ a.evidence{
   text-decoration:none;
 }
 a.evidence:hover{ color:var(--brand-dark); text-decoration:underline; }
+
+/* The live estimate under the design-task form. Quiet until there is
+   something to say, so an empty form is not shouting a number at you. */
+.estimate-note{
+  margin:2px 0 0;
+  padding:10px 13px;
+  border-radius:var(--radius-sm);
+  background:var(--surface-2);
+  border:1px solid var(--line);
+  font-size:12.5px;
+  color:var(--muted);
+}
+.estimate-note.on{
+  background:var(--brand-soft);
+  border-color:var(--brand-100);
+  color:var(--brand-dark);
+}
+.estimate-note b{ font-weight:800; }
+
+/* A retired rate stays on the admin's card, greyed, because tasks still
+   point at it — it is just no longer offered when creating work. */
+.data-table tr.retired{ opacity:.55; }

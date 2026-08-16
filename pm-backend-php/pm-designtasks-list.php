@@ -7,14 +7,20 @@ $user = requireRole($pdo, $USERS, ['ADMIN', 'DESIGNER', 'MANAGER', 'MARKETING'])
 
 $sql = "SELECT d.design_id, d.project_id, d.title, d.brief, d.kind, d.status,
                d.link, d.due_date, d.assigned_to, d.created_by,
+               d.estimate_id, d.quantity, d.has_frd, d.estimate_case,
+               d.estimated_hours, d.start_date,
                d.created_at, d.updated_at,
                p.project_name, p.client_name,
                a.full_name AS assigned_to_name,
-               c.full_name AS created_by_name
+               c.full_name AS created_by_name,
+               e.deliverable AS estimate_deliverable,
+               e.complexity  AS estimate_complexity,
+               e.unit        AS estimate_unit
         FROM design_tasks d
         JOIN projects p ON p.project_id = d.project_id
         LEFT JOIN managers a ON a.manager_id = d.assigned_to
         LEFT JOIN managers c ON c.manager_id = d.created_by
+        LEFT JOIN design_estimates e ON e.estimate_id = d.estimate_id
         WHERE $scope";
 
 if (!empty($_GET['project_id'])) {

@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=23">
-  <link rel="stylesheet" href="projects.css?v=23">
+  <link rel="stylesheet" href="style.css?v=24">
+  <link rel="stylesheet" href="projects.css?v=24">
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=23"></script>
+  <script src="theme.js?v=24"></script>
 </head>
 
 <body>
@@ -64,6 +64,7 @@
       <a href="#/projects"  data-nav="projects">Projects</a>
       <a href="#/questions" data-nav="questions">Questions</a>
       <a href="#/leave"     data-nav="leave">Leave</a>
+      <a href="#/rates" data-nav="rates" id="ratesNavLink" hidden>Rate card</a>
     </nav>
 
     <!-- ── Page: My work ───────────────────────────────── -->
@@ -91,9 +92,37 @@
         </div>
         <div class="field"><label>Title</label><input id="dTitle" required placeholder="e.g. Checkout screen — mobile" /></div>
         <div class="field"><label>Brief <span class="opt">— optional</span></label><textarea id="dBrief" placeholder="What is needed, and anything that constrains it."></textarea></div>
+
+        <!-- The rate card. Picking a deliverable and a complexity, then
+             saying how many and under what conditions, is what produces
+             the estimate and the target date below. -->
+        <div class="row">
+          <div class="field"><label>Deliverable <span class="opt">— from the rate card</span></label><select id="dDeliverable"></select></div>
+          <div class="field"><label>Complexity</label><select id="dComplexity"></select></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>How many <span class="opt" id="dUnitLabel">screens</span></label><input id="dQuantity" type="number" min="0.5" step="0.5" value="1" /></div>
+          <div class="field"><label>FRD</label>
+            <select id="dFrd">
+              <option value="1" selected>With a proper FRD</option>
+              <option value="0">Without a proper FRD</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Case</label>
+            <select id="dCase">
+              <option value="BEST" selected>Best case</option>
+              <option value="WORST">Worst case</option>
+            </select>
+          </div>
+          <div class="field"><label>Start date <span class="opt">— defaults to today</span></label><input id="dStart" type="date" /></div>
+        </div>
+        <div class="estimate-note" id="dEstimateNote">Pick a deliverable to get an estimate.</div>
+
         <div class="row">
           <div class="field"><label>Assign to <span class="opt">— optional</span></label><select id="dAssignee"></select></div>
-          <div class="field"><label>Due date <span class="opt">— optional</span></label><input id="dDue" type="date" /></div>
+          <div class="field"><label>Due date <span class="opt">— leave blank to use the estimate</span></label><input id="dDue" type="date" /></div>
         </div>
         <div class="field"><label>Link to the work <span class="opt">— optional</span></label><input id="dLink" type="url" placeholder="https://figma.com/…" /></div>
         <div class="actions">
@@ -122,6 +151,65 @@
         </select>
       </div>
       <div id="designList"></div>
+    </section>
+
+    <!-- ── Page: Rate card (ADMIN only) ────────────────── -->
+    <section id="page-rates" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>Design <em>rate card</em></h1>
+          <p class="sub">How long each kind of design work takes. Everything here is an hours-per-unit figure — a design task multiplies it by how many screens, pages or apps it covers to get its estimate and its target date.</p>
+        </div>
+        <button type="button" class="btn-sm" id="newRateToggle" style="border:none">+ New rate</button>
+      </div>
+
+      <form id="newRateForm" class="inline-form">
+        <input type="hidden" id="rEstimateId" value="" />
+        <div class="row">
+          <div class="field"><label>Deliverable</label><input id="rDeliverable" required placeholder="e.g. Mobile Screen Design" /></div>
+          <div class="field"><label>Complexity</label>
+            <select id="rComplexity">
+              <option value="EASY" selected>Easy</option>
+              <option value="MODERATE">Moderate</option>
+              <option value="COMPLEX">Complex</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Unit</label>
+            <select id="rUnit">
+              <option value="Screen" selected>Screen</option>
+              <option value="Page">Page</option>
+              <option value="App">App</option>
+              <option value="Project">Project</option>
+            </select>
+          </div>
+          <div class="field"><label>Order <span class="opt">— lower sorts first</span></label><input id="rSort" type="number" step="1" value="0" /></div>
+        </div>
+        <div class="field"><label>Definition <span class="opt">— optional, what counts as this</span></label><input id="rDefinition" placeholder="e.g. Dashboard, Listing, Forms, Cart" /></div>
+
+        <p class="hint" style="margin:2px 0 0">Hours for <b>one</b> unit. Half an hour each is 0.5; three per hour is 0.333.</p>
+        <div class="row">
+          <div class="field"><label>With FRD — best</label><input id="rFrdBest" type="number" min="0.01" step="0.001" required /></div>
+          <div class="field"><label>With FRD — worst</label><input id="rFrdWorst" type="number" min="0.01" step="0.001" required /></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Without FRD — best</label><input id="rNoFrdBest" type="number" min="0.01" step="0.001" required /></div>
+          <div class="field"><label>Without FRD — worst</label><input id="rNoFrdWorst" type="number" min="0.01" step="0.001" required /></div>
+        </div>
+        <div class="actions">
+          <button type="submit" id="rSubmitBtn">Add rate</button>
+          <button type="button" class="secondary" id="rateCancelBtn">Cancel</button>
+        </div>
+      </form>
+
+      <div class="panel-head">
+        <h2>Rates</h2>
+        <span class="count" id="rateCount">0</span>
+        <span class="spacer"></span>
+        <input type="search" id="rateSearch" class="searchbox" placeholder="Search deliverable…" />
+      </div>
+      <div id="ratesList"></div>
     </section>
 
     <!-- ── Page: Bugs ──────────────────────────────────── -->
@@ -209,7 +297,7 @@
 
   </div>
 
-  <script src="ui.js?v=23"></script>
-  <script src="designers.js?v=23"></script>
+  <script src="ui.js?v=24"></script>
+  <script src="designers.js?v=24"></script>
 </body>
 </html>

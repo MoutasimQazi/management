@@ -11,7 +11,8 @@ $designId = (int)($b['design_id'] ?? 0);
 
 [$scope, $params] = projectScope($user, 'project_id');
 $check = $pdo->prepare(
-    "SELECT design_id, title, brief, kind, status, link, due_date, assigned_to
+    "SELECT design_id, title, brief, kind, status, link, due_date, assigned_to,
+            estimate_id, quantity, has_frd, estimate_case, estimated_hours, start_date
      FROM design_tasks WHERE design_id = ? AND $scope"
 );
 $check->execute(array_merge([$designId], $params));
@@ -72,13 +73,51 @@ $brief = array_key_exists('brief', $b)
     ? (trim((string)$b['brief']) !== '' ? trim($b['brief']) : null) : $existing['brief'];
 $link = array_key_exists('link', $b)
     ? (trim((string)$b['link']) !== '' ? trim($b['link']) : null) : $existing['link'];
-$due = array_key_exists('due_date', $b)
-    ? (trim((string)$b['due_date']) !== '' ? trim($b['due_date']) : null) : $existing['due_date'];
+/* Re-estimating happens only when the request touches something the
+   estimate depends on. A status move must not silently recalculate a
+   date somebody set deliberately three weeks ago. */
+$estimateKeys = ['estimate_id', 'quantity', 'has_frd', 'estimate_case', 'start_date'];
+$touchesEstimate = (bool)array_intersect($estimateKeys, array_keys($b));
+
+$estimateId = array_key_exists('estimate_id', $b) ? $b['estimate_id'] : $existing['estimate_id'];
+$quantity   = array_key_exists('quantity', $b) ? (float)$b['quantity'] : (float)$existing['quantity'];
+$hasFrd     = array_key_exists('has_frd', $b) ? !empty($b['has_frd']) : (bool)$existing['has_frd'];
+$case       = array_key_exists('estimate_case', $b)
+    ? (strtoupper(trim($b['estimate_case'])) === 'WORST' ? 'WORST' : 'BEST')
+    : $existing['estimate_case'];
+$start = array_key_exists('start_date', $b)
+    ? (trim((string)$b['start_date']) !== '' ? trim($b['start_date']) : null)
+    : $existing['start_date'];
+if ($quantity <= 0) $quantity = 1;
+
+if ($touchesEstimate) {
+    $estimate = loadDesignEstimate($pdo, $estimateId);
+    $estimateId = $estimate ? (int)$estimate['estimate_id'] : null;
+    $hours = designEstimateHours($estimate, $quantity, $hasFrd, $case);
+} else {
+    $hours = $existing['estimated_hours'] !== null ? (float)$existing['estimated_hours'] : null;
+}
+
+/* A hand-typed due date always wins. Otherwise a re-estimate moves the
+   date with it, and everything else leaves it alone. */
+if (array_key_exists('due_date', $b)) {
+    $due = trim((string)$b['due_date']) !== '' ? trim($b['due_date']) : null;
+} elseif ($touchesEstimate) {
+    $due = designTargetDate($hours, $start) ?: $existing['due_date'];
+} else {
+    $due = $existing['due_date'];
+}
 
 $stmt = $pdo->prepare(
     "UPDATE design_tasks
-     SET title = ?, brief = ?, kind = ?, status = ?, link = ?, due_date = ?, assigned_to = ?
+     SET title = ?, brief = ?, kind = ?, status = ?, link = ?, due_date = ?, assigned_to = ?,
+         estimate_id = ?, quantity = ?, has_frd = ?, estimate_case = ?,
+         estimated_hours = ?, start_date = ?
      WHERE design_id = ?"
 );
-$stmt->execute([$title, $brief, $kind, $status, $link, $due, $assignedTo, $designId]);
-echo json_encode(['success' => true]);
+$stmt->execute([
+    $title, $brief, $kind, $status, $link, $due, $assignedTo,
+    $estimateId, $quantity, $hasFrd ? 1 : 0, $case, $hours, $start,
+    $designId,
+]);
+echo json_encode(['success' => true, 'estimated_hours' => $hours, 'due_date' => $due]);

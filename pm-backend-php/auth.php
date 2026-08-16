@@ -175,6 +175,64 @@ function resolveBugAssignee(PDO $pdo, array $b): array {
     exit;
 }
 
+/* ── Design estimates ─────────────────────────────────
+ * A design task borrows a rate from the card and multiplies it by how
+ * many screens / pages / apps it covers. The arithmetic is here rather
+ * than in the browser so the stored hours and the stored date always
+ * agree with the rate that was actually used — a page computing its own
+ * number could send anything.
+ */
+
+// A working day. Not a constant anyone should have to guess at twice.
+const DESIGN_HOURS_PER_DAY = 8;
+
+/* Hours for a whole task: the rate for the chosen condition × quantity.
+ * $row is a design_estimates row; returns null when there is no estimate
+ * to make, which is a legitimate state and not an error. */
+function designEstimateHours(?array $row, float $quantity, bool $hasFrd, string $case): ?float {
+    if (!$row || $quantity <= 0) return null;
+    $col = ($hasFrd ? 'frd_' : 'nofrd_') . (strtoupper($case) === 'WORST' ? 'worst' : 'best');
+    if (!isset($row[$col])) return null;
+    return round((float)$row[$col] * $quantity, 2);
+}
+
+/* Target date for that many hours, starting from $start.
+ *
+ * Counts working days and skips weekends, because a 40-hour estimate
+ * handed out on a Thursday is not due on Saturday. Day one is the start
+ * date itself, so 8 hours or fewer lands on the day it began. Public
+ * holidays are not modelled — the workspace has no calendar of them, and
+ * inventing one here would be worse than the small optimism this leaves.
+ */
+function designTargetDate(?float $hours, ?string $start): ?string {
+    if ($hours === null || $hours <= 0) return null;
+    $date = new DateTime($start ?: 'today');
+
+    $days = (int)ceil($hours / DESIGN_HOURS_PER_DAY);
+    // Start on a working day, then step forward for each day after the first.
+    while ((int)$date->format('N') >= 6) $date->modify('+1 day');
+    for ($i = 1; $i < $days; $i++) {
+        $date->modify('+1 day');
+        while ((int)$date->format('N') >= 6) $date->modify('+1 day');
+    }
+    return $date->format('Y-m-d');
+}
+
+/* Loads a rate-card row the caller named, or halts if it does not exist.
+ * Returns null when no estimate was requested at all. */
+function loadDesignEstimate(PDO $pdo, $estimateId): ?array {
+    if ($estimateId === null || $estimateId === '' || (int)$estimateId === 0) return null;
+    $q = $pdo->prepare("SELECT * FROM design_estimates WHERE estimate_id = ? AND is_active = 1");
+    $q->execute([(int)$estimateId]);
+    $row = $q->fetch();
+    if (!$row) {
+        http_response_code(400);
+        echo json_encode(['error' => 'That estimate is no longer on the rate card.']);
+        exit;
+    }
+    return $row;
+}
+
 // Shared 403 for ownership checks that fail — same message everywhere.
 function denyNotYours() {
     http_response_code(403);
