@@ -506,6 +506,58 @@ async function renderProjectDetail(projectId){
           '<button type="button" class="secondary" id="editProjectCancelBtn">Cancel</button></div>' +
       '</form>' +
       (project.description ? '<div class="sect full" style="margin-bottom:16px"><h4>Description</h4><p>' + esc(project.description) + '</p></div>' : '') +
+
+      /* Staffing the project. A BA could always create design work and
+         bugs here; what they could not do was put the designer or QA
+         account on the project, so the work was invisible to them. */
+      '<div class="panel-head" style="margin-top:26px">' +
+        '<h2>Team</h2><span class="spacer"></span>' +
+        '<button type="button" class="btn-sm" id="teamEditToggle" style="border:none">Edit team</button>' +
+      '</div>' +
+      '<div id="projectTeam"></div>' +
+      '<form id="projectTeamForm" class="inline-form">' +
+        '<div class="field"><label>Designers on this project</label>' +
+          '<div id="teamDesigners" class="check-group"></div></div>' +
+        '<div class="field"><label>QA on this project</label>' +
+          '<div id="teamQa" class="check-group"></div></div>' +
+        '<p class="hint" style="margin:0">Ticking someone here gives them this project on their own board. It does not touch any other project they are on.</p>' +
+        '<div class="actions"><button type="submit">Save team</button>' +
+          '<button type="button" class="secondary" id="teamCancelBtn">Cancel</button></div>' +
+      '</form>' +
+
+      /* Demo dates. Set here by whoever runs the project; visible to
+         everyone on it, wherever they work — see pm-demos-list.php. */
+      '<div class="panel-head" style="margin-top:26px">' +
+        '<h2>Demos</h2><span class="count" id="demoCount">0</span>' +
+        '<span class="spacer"></span>' +
+        '<button type="button" class="btn-sm" id="newDemoToggle" style="border:none">+ Add demo</button>' +
+      '</div>' +
+      '<form id="newDemoForm" class="inline-form">' +
+        '<input type="hidden" id="demoId" value="" />' +
+        '<div class="row">' +
+          '<div class="field"><label>Type</label><select id="demoType">' +
+            '<option value="INTERNAL" selected>Internal demo</option>' +
+            '<option value="CLIENT">Client demo</option>' +
+            '<option value="STAKEHOLDER">Stakeholder demo</option>' +
+            '<option value="DRY_RUN">Dry run</option>' +
+            '<option value="OTHER">Other</option>' +
+          '</select></div>' +
+          '<div class="field"><label>Status</label><select id="demoStatus">' +
+            '<option value="PLANNED" selected>Planned</option>' +
+            '<option value="DONE">Done</option>' +
+            '<option value="CANCELLED">Cancelled</option>' +
+          '</select></div>' +
+        '</div>' +
+        '<div class="row">' +
+          '<div class="field"><label>Date</label><input id="demoDate" type="date" required /></div>' +
+          '<div class="field"><label>Time <span class="opt">— optional</span></label><input id="demoTime" type="time" /></div>' +
+        '</div>' +
+        '<div class="field"><label>Title <span class="opt">— optional</span></label><input id="demoTitle" placeholder="e.g. Checkout walkthrough" /></div>' +
+        '<div class="field"><label>Notes <span class="opt">— optional</span></label><input id="demoNotes" placeholder="Anything the team should know" /></div>' +
+        '<div class="actions"><button type="submit" id="demoSubmitBtn">Add demo</button>' +
+          '<button type="button" class="secondary" id="demoCancelBtn">Cancel</button></div>' +
+      '</form>' +
+      '<div id="projectDemosList"></div>' +
       '<div class="panel-head"><h2>Tasks</h2><span class="count">' + tasksForProject.length + '</span>' +
         '<span class="spacer"></span>' +
         '<button type="button" class="btn-sm" id="newTaskToggle" style="border:none">+ New task</button></div>' +
@@ -549,24 +601,6 @@ async function renderProjectDetail(projectId){
       '</form>' +
       '<div id="projectTasksList"></div>' +
 
-      /* Staffing the project. A BA could always create design work and
-         bugs here; what they could not do was put the designer or QA
-         account on the project, so the work was invisible to them. */
-      '<div class="panel-head" style="margin-top:26px">' +
-        '<h2>Team</h2><span class="spacer"></span>' +
-        '<button type="button" class="btn-sm" id="teamEditToggle" style="border:none">Edit team</button>' +
-      '</div>' +
-      '<div id="projectTeam"></div>' +
-      '<form id="projectTeamForm" class="inline-form">' +
-        '<div class="field"><label>Designers on this project</label>' +
-          '<div id="teamDesigners" class="check-group"></div></div>' +
-        '<div class="field"><label>QA on this project</label>' +
-          '<div id="teamQa" class="check-group"></div></div>' +
-        '<p class="hint" style="margin:0">Ticking someone here gives them this project on their own board. It does not touch any other project they are on.</p>' +
-        '<div class="actions"><button type="submit">Save team</button>' +
-          '<button type="button" class="secondary" id="teamCancelBtn">Cancel</button></div>' +
-      '</form>' +
-
       // Design work, created from the project rather than the design board.
       '<div class="panel-head" style="margin-top:26px">' +
         '<h2>Design work</h2><span class="count" id="pdDesignCount">0</span>' +
@@ -590,41 +624,7 @@ async function renderProjectDetail(projectId){
         '<div class="actions"><button type="submit">Add design work</button>' +
           '<button type="button" class="secondary" id="pdDesignCancelBtn">Cancel</button></div>' +
       '</form>' +
-      '<div id="projectDesignList"></div>' +
-
-      /* Demo dates. Set here by whoever runs the project; visible to
-         everyone on it, wherever they work — see pm-demos-list.php. */
-      '<div class="panel-head" style="margin-top:26px">' +
-        '<h2>Demos</h2><span class="count" id="demoCount">0</span>' +
-        '<span class="spacer"></span>' +
-        '<button type="button" class="btn-sm" id="newDemoToggle" style="border:none">+ Add demo</button>' +
-      '</div>' +
-      '<form id="newDemoForm" class="inline-form">' +
-        '<input type="hidden" id="demoId" value="" />' +
-        '<div class="row">' +
-          '<div class="field"><label>Type</label><select id="demoType">' +
-            '<option value="INTERNAL" selected>Internal demo</option>' +
-            '<option value="CLIENT">Client demo</option>' +
-            '<option value="STAKEHOLDER">Stakeholder demo</option>' +
-            '<option value="DRY_RUN">Dry run</option>' +
-            '<option value="OTHER">Other</option>' +
-          '</select></div>' +
-          '<div class="field"><label>Status</label><select id="demoStatus">' +
-            '<option value="PLANNED" selected>Planned</option>' +
-            '<option value="DONE">Done</option>' +
-            '<option value="CANCELLED">Cancelled</option>' +
-          '</select></div>' +
-        '</div>' +
-        '<div class="row">' +
-          '<div class="field"><label>Date</label><input id="demoDate" type="date" required /></div>' +
-          '<div class="field"><label>Time <span class="opt">— optional</span></label><input id="demoTime" type="time" /></div>' +
-        '</div>' +
-        '<div class="field"><label>Title <span class="opt">— optional</span></label><input id="demoTitle" placeholder="e.g. Checkout walkthrough" /></div>' +
-        '<div class="field"><label>Notes <span class="opt">— optional</span></label><input id="demoNotes" placeholder="Anything the team should know" /></div>' +
-        '<div class="actions"><button type="submit" id="demoSubmitBtn">Add demo</button>' +
-          '<button type="button" class="secondary" id="demoCancelBtn">Cancel</button></div>' +
-      '</form>' +
-      '<div id="projectDemosList"></div>';
+      '<div id="projectDesignList"></div>';
 
     populateEmployeeSelects();
     wireTaskEstimate();
