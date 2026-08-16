@@ -18,11 +18,16 @@ $isAdmin = $user['role'] === 'ADMIN';
  * someone between the roster and a staff login deactivates the row they
  * came from rather than deleting it (the foreign keys above), so without
  * this filter every move would leave a stale duplicate in the directory. */
+/* Deactivated staff are hidden by default for the reason above, but not
+   permanently: without a way to see them, an account deactivated because
+   its work is still referenced — or one deactivated by mistake — is
+   invisible and unrecoverable from inside the app. */
+$includeInactive = !empty($_GET['include_inactive']);
 $staff = $pdo->query(
     "SELECT manager_id AS id, full_name AS name, email, role, is_active,
             (token IS NOT NULL) AS has_login, temp_password, NULL AS department,
             NULL AS designation, NULL AS manager_id
-     FROM managers WHERE is_active = 1"
+     FROM managers" . ($includeInactive ? "" : " WHERE is_active = 1")
 )->fetchAll();
 foreach ($staff as &$s) { $s['kind'] = 'STAFF'; $s['id'] = (int)$s['id']; }
 unset($s);

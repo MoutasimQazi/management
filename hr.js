@@ -10,7 +10,9 @@ const PM_API_BASE = "https://management.moveneticsdigital.com/pm-backend-php/";
 const PM_EMPLOYEES_LIST_URL   = PM_API_BASE + "pm-employees-list.php";
 const PM_EMPLOYEES_CREATE_URL = PM_API_BASE + "pm-employees-create.php";
 const PM_EMPLOYEES_UPDATE_URL = PM_API_BASE + "pm-employees-update.php";
-const PM_EMPLOYEES_DELETE_URL = PM_API_BASE + "pm-employees-delete.php";
+/* pm-employees-delete.php is superseded by pm-people-delete.php, which
+   handles both kinds. The old endpoint stays on disk — it is still a
+   valid way to remove a developer — but nothing here calls it. */
 const PM_EMPLOYEES_RESET_PW_URL = PM_API_BASE + "pm-employees-reset-password.php";
 const PM_MANAGERS_RESET_PW_URL  = PM_API_BASE + "pm-managers-reset-password.php";
 const PM_OPENINGS_LIST_URL    = PM_API_BASE + "pm-openings-list.php";
@@ -25,6 +27,7 @@ const PM_MANAGERS_LIST_URL    = PM_API_BASE + "pm-managers-list.php";
 const PM_MANAGERS_CREATE_URL  = PM_API_BASE + "pm-managers-create.php";
 const PM_PEOPLE_ROLE_URL      = PM_API_BASE + "pm-people-role.php";
 const PM_PEOPLE_LIST_URL      = PM_API_BASE + "pm-people-list.php";
+const PM_PEOPLE_DELETE_URL    = PM_API_BASE + "pm-people-delete.php";
 const PM_PEOPLE_CREATE_URL    = PM_API_BASE + "pm-people-create.php";
 const PM_PROJECTS_LIST_URL    = PM_API_BASE + "pm-projects-list.php";
 const PM_QA_ASSIGNMENTS_URL   = PM_API_BASE + "pm-qa-assignments-list.php";
@@ -524,7 +527,9 @@ async function renderPeople(){
   const listEl = document.getElementById('peopleList');
   listEl.innerHTML = '<div class="empty">Loading…</div>';
   try {
-    allPeople = await api(PM_PEOPLE_LIST_URL);
+    const showInactive = document.getElementById('showInactive');
+    allPeople = await api(PM_PEOPLE_LIST_URL +
+      (showInactive && showInactive.checked ? '?include_inactive=1' : ''));
     drawPeople();
   } catch (err) {
     listEl.innerHTML = '<div class="empty">Could not load people (' + esc(err.message) + ').</div>';
@@ -596,8 +601,11 @@ function personRow(p){
       (p.has_login == 1 && isAdmin
         ? '<button type="button" class="icon-btn" data-reset-pw="' + p.kind + '-' + p.id + '">Reset password</button>'
         : '') +
-      (p.kind === 'EMPLOYEE'
-        ? '<button type="button" class="icon-btn danger" data-emp-delete="' + p.id + '">Delete</button>'
+      /* Every kind, not only developers. Staff had no delete at all,
+         which is why a manager could never be removed from this screen. */
+      (isAdmin || p.kind === 'EMPLOYEE'
+        ? '<button type="button" class="icon-btn danger" data-person-delete="' +
+          p.kind + '-' + p.id + '">' + (p.is_active == 0 ? 'Remove' : 'Delete') + '</button>'
         : '') +
     '</td></tr>';
 }
@@ -670,22 +678,34 @@ function wirePeopleRows(root){
     });
   });
 
-  root.querySelectorAll('[data-emp-delete]').forEach(btn => {
+  root.querySelectorAll('[data-person-delete]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const id = Number(btn.dataset.empDelete);
-      const person = allPeople.find(p => p.kind === 'EMPLOYEE' && p.id === id);
+      const [kind, rawId] = btn.dataset.personDelete.split('-');
+      const id = Number(rawId);
+      const person = allPeople.find(p => p.kind === kind && p.id === id);
+      const name = person ? person.name : 'this person';
+
+      /* Staff cannot always be deleted outright — their work is
+         referenced all over the workspace — so the dialog says what will
+         actually happen rather than promising something it cannot do. */
       if (!await confirmDialog({
-        title: 'Delete ' + (person ? person.name : 'this person') + '?',
-        body: 'They come off the roster entirely. This cannot be undone.',
-        confirmLabel: 'Delete person',
+        title: 'Remove ' + name + '?',
+        body: kind === 'STAFF'
+          ? 'Their login stops working immediately. If nothing references their work the account is deleted outright; if it does, the record is kept and you will be told what is holding it.'
+          : 'They come off the roster entirely. This cannot be undone.',
+        confirmLabel: 'Remove ' + (person ? person.name.split(' ')[0] : 'them'),
         danger: true
       })) return;
+
       btn.disabled = true;
       try {
-        await api(PM_EMPLOYEES_DELETE_URL, { method: 'POST', body: { employee_id: id } });
+        const res = await api(PM_PEOPLE_DELETE_URL, { method: 'POST', body: { kind, id } });
+        // Sticky when the account was kept — that message has to be read.
+        toast(res.removed ? name + ' removed.' : (res.message || name + ' deactivated.'),
+              res.removed ? 'ok' : 'info', !res.removed);
         renderPeople();
       } catch (err) {
-        toast('Could not delete: ' + err.message, 'err');
+        toast('Could not remove ' + name + ': ' + err.message, 'err');
         btn.disabled = false;
       }
     });
@@ -935,3 +955,4 @@ async function renderPatterns(){
 }
 
 document.getElementById('patternMonths').addEventListener('change', renderPatterns);
+document.getElementById('showInactive').addEventListener('change', renderPeople);
