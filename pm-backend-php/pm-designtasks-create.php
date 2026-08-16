@@ -26,6 +26,7 @@ if (!in_array($kind, $KINDS, true)) $kind = 'UI';
 // An assignee must actually be a designer — otherwise the board fills
 // with work assigned to people who have no page to see it on.
 $assignedTo = isset($b['assigned_to']) && $b['assigned_to'] !== '' ? (int)$b['assigned_to'] : null;
+$granted = false;
 if ($assignedTo !== null) {
     $who = $pdo->prepare("SELECT manager_id FROM managers WHERE manager_id = ? AND role = 'DESIGNER' AND is_active = 1");
     $who->execute([$assignedTo]);
@@ -33,6 +34,26 @@ if ($assignedTo !== null) {
         http_response_code(400);
         echo json_encode(['error' => 'That account is not an active designer.']);
         exit;
+    }
+
+    /* A designer sees only the projects assigned to them, so handing work
+     * to one who is not on this project used to create a row they could
+     * not open — assigned work, invisible to the assignee. Being given
+     * the work IS being put on the project, so the grant follows the
+     * assignment rather than waiting for someone to notice.
+     *
+     * Only ever adds. Nothing here can take a designer off a project. */
+    try {
+        $on = $pdo->prepare("SELECT 1 FROM design_assignments WHERE designer_id = ? AND project_id = ?");
+        $on->execute([$assignedTo, $projectId]);
+        if (!$on->fetch()) {
+            $pdo->prepare("INSERT INTO design_assignments (designer_id, project_id) VALUES (?, ?)")
+                ->execute([$assignedTo, $projectId]);
+            $granted = true;
+        }
+    } catch (PDOException $e) {
+        // design_assignments missing (migration 006 not imported). The
+        // task is still worth creating; it just cannot be granted yet.
     }
 }
 
@@ -78,4 +99,7 @@ echo json_encode([
     'design_id'       => (int)$pdo->lastInsertId(),
     'estimated_hours' => $hours,
     'due_date'        => $dueDate,
+    // So the page can say "and they were added to the project", rather
+    // than the access appearing from nowhere.
+    'granted_access'  => $granted,
 ]);

@@ -43,6 +43,10 @@ const PM_TASKS_STATUS_URL     = PM_API_BASE + "pm-tasks-status.php";
 const PM_QUESTIONS_LIST_URL   = PM_API_BASE + "pm-questions-list.php";
 const PM_QUESTIONS_CREATE_URL = PM_API_BASE + "pm-questions-create.php";
 const PM_QUESTIONS_ANSWER_URL = PM_API_BASE + "pm-questions-answer.php";
+const PM_PROJECT_TEAM_URL      = PM_API_BASE + "pm-project-team.php";
+const PM_PROJECT_TEAM_SAVE_URL = PM_API_BASE + "pm-project-team-save.php";
+const PM_DESIGN_LIST_URL       = PM_API_BASE + "pm-designtasks-list.php";
+const PM_DESIGN_CREATE_URL     = PM_API_BASE + "pm-designtasks-create.php";
 const PM_DEMOS_LIST_URL       = PM_API_BASE + "pm-demos-list.php";
 const PM_DEMOS_SAVE_URL       = PM_API_BASE + "pm-demos-save.php";
 const PM_DEMOS_DELETE_URL     = PM_API_BASE + "pm-demos-delete.php";
@@ -545,6 +549,49 @@ async function renderProjectDetail(projectId){
       '</form>' +
       '<div id="projectTasksList"></div>' +
 
+      /* Staffing the project. A BA could always create design work and
+         bugs here; what they could not do was put the designer or QA
+         account on the project, so the work was invisible to them. */
+      '<div class="panel-head" style="margin-top:26px">' +
+        '<h2>Team</h2><span class="spacer"></span>' +
+        '<button type="button" class="btn-sm" id="teamEditToggle" style="border:none">Edit team</button>' +
+      '</div>' +
+      '<div id="projectTeam"></div>' +
+      '<form id="projectTeamForm" class="inline-form">' +
+        '<div class="field"><label>Designers on this project</label>' +
+          '<div id="teamDesigners" class="check-group"></div></div>' +
+        '<div class="field"><label>QA on this project</label>' +
+          '<div id="teamQa" class="check-group"></div></div>' +
+        '<p class="hint" style="margin:0">Ticking someone here gives them this project on their own board. It does not touch any other project they are on.</p>' +
+        '<div class="actions"><button type="submit">Save team</button>' +
+          '<button type="button" class="secondary" id="teamCancelBtn">Cancel</button></div>' +
+      '</form>' +
+
+      // Design work, created from the project rather than the design board.
+      '<div class="panel-head" style="margin-top:26px">' +
+        '<h2>Design work</h2><span class="count" id="pdDesignCount">0</span>' +
+        '<span class="spacer"></span>' +
+        '<button type="button" class="btn-sm" id="newPdDesignToggle" style="border:none">+ Add design work</button>' +
+      '</div>' +
+      '<form id="newPdDesignForm" class="inline-form">' +
+        '<div class="row">' +
+          '<div class="field"><label>Title</label><input id="pdDesignTitle" required placeholder="e.g. Checkout screen — mobile" /></div>' +
+          '<div class="field"><label>Kind</label><select id="pdDesignKind">' +
+            '<option value="UI" selected>UI</option><option value="UX">UX</option>' +
+            '<option value="BRANDING">Branding</option><option value="ILLUSTRATION">Illustration</option>' +
+            '<option value="OTHER">Other</option>' +
+          '</select></div>' +
+        '</div>' +
+        '<div class="row">' +
+          '<div class="field"><label>Assign to <span class="opt">— adds them to the project</span></label><select id="pdDesignAssignee"></select></div>' +
+          '<div class="field"><label>Due date <span class="opt">— optional</span></label><input id="pdDesignDue" type="date" /></div>' +
+        '</div>' +
+        '<div class="field"><label>Brief <span class="opt">— optional</span></label><input id="pdDesignBrief" placeholder="What is needed" /></div>' +
+        '<div class="actions"><button type="submit">Add design work</button>' +
+          '<button type="button" class="secondary" id="pdDesignCancelBtn">Cancel</button></div>' +
+      '</form>' +
+      '<div id="projectDesignList"></div>' +
+
       /* Demo dates. Set here by whoever runs the project; visible to
          everyone on it, wherever they work — see pm-demos-list.php. */
       '<div class="panel-head" style="margin-top:26px">' +
@@ -583,6 +630,9 @@ async function renderProjectDetail(projectId){
     wireTaskEstimate();
     wireDemos(projectId);
     renderDemos(projectId);
+    wireProjectTeam(projectId);
+    renderProjectTeam(projectId);
+    renderProjectDesign(projectId);
 
     document.getElementById('editProjectToggle').addEventListener('click', () => {
       document.getElementById('editProjectForm').classList.toggle('open');
@@ -1307,5 +1357,163 @@ async function renderDemos(projectId){
   } catch (err) {
     // Migration 011 may not be imported yet.
     listEl.innerHTML = '<div class="empty">Could not load demos (' + esc(err.message) + ').</div>';
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   Project team and design work
+   ────────────────────────────────────────────────────
+   The gap this closes: a BA could already create design
+   tasks and bugs for their own project — MANAGER is in
+   both create allowlists — but putting a designer or QA
+   account ON the project was admin-only, and those roles
+   see only their assigned projects. So assigning design
+   work produced a row the designer could not open.
+
+   Staffing your own project is the job, not an
+   administrative act, so it happens here and is scoped
+   to projects you run.
+   ════════════════════════════════════════════════════ */
+let projectTeam = { designers: [], qa: [], developers: [] };
+
+async function renderProjectTeam(projectId){
+  const el = document.getElementById('projectTeam');
+  if (!el) return;
+  try {
+    projectTeam = await api(PM_PROJECT_TEAM_URL + '?project_id=' + projectId);
+  } catch (err) {
+    el.innerHTML = '<div class="empty">Could not load the team (' + esc(err.message) + ').</div>';
+    return;
+  }
+
+  const on = list => list.filter(p => p.on_project);
+  const chips = (label, names, gap) =>
+    '<span class="crewgroup' + (gap ? ' gap' : '') + '"><b>' + label + '</b>' +
+      (names.length ? esc(names.join(', ')) : 'nobody yet') + '</span>';
+
+  const devs = projectTeam.developers.map(d => d.name + ' (' + d.open_tasks + ')');
+  el.innerHTML = '<div class="crew">' +
+    chips('Dev', devs, !devs.length) +
+    chips('Design', on(projectTeam.designers).map(p => p.name), !on(projectTeam.designers).length) +
+    chips('QA', on(projectTeam.qa).map(p => p.name), !on(projectTeam.qa).length) +
+  '</div>';
+
+  // The pickers, ticked to match what came back.
+  const boxes = (rows, name) => rows.length
+    ? rows.map(p =>
+        '<label class="check"><input type="checkbox" value="' + p.id + '"' +
+        (p.on_project ? ' checked' : '') + ' data-team="' + name + '" />' +
+        '<span>' + esc(p.name) + '</span></label>').join('')
+    : '<span class="hint">No ' + name + ' accounts yet — HR › People can add one.</span>';
+
+  document.getElementById('teamDesigners').innerHTML = boxes(projectTeam.designers, 'designer');
+  document.getElementById('teamQa').innerHTML        = boxes(projectTeam.qa, 'qa');
+
+  // The assignee menu for design work is the project's designers, plus
+  // anyone else who would be added by being picked.
+  const sel = document.getElementById('pdDesignAssignee');
+  if (sel) {
+    sel.innerHTML = '<option value="">Nobody yet</option>' +
+      projectTeam.designers.map(p =>
+        '<option value="' + p.id + '">' + esc(p.name) +
+        (p.on_project ? '' : ' — will be added to this project') + '</option>').join('');
+  }
+}
+
+function wireProjectTeam(projectId){
+  const form = document.getElementById('projectTeamForm');
+  if (!form) return;
+
+  document.getElementById('teamEditToggle').addEventListener('click', () => {
+    form.classList.toggle('open');
+  });
+  document.getElementById('teamCancelBtn').addEventListener('click', () => {
+    form.classList.remove('open');
+    renderProjectTeam(projectId);   // discard any un-saved ticking
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const pick = kind => [...form.querySelectorAll('[data-team="' + kind + '"]:checked')]
+      .map(c => Number(c.value));
+    try {
+      await api(PM_PROJECT_TEAM_SAVE_URL, { method:'POST', body:{
+        project_id: projectId,
+        designer_ids: pick('designer'),
+        qa_ids: pick('qa')
+      }});
+      form.classList.remove('open');
+      toast('Team saved. They see this project on their own board now.', 'ok');
+      renderProjectTeam(projectId);
+    } catch (err) {
+      toast('Could not save the team: ' + err.message, 'err');
+    }
+  });
+
+  // ── Design work from the project page ──
+  const dForm = document.getElementById('newPdDesignForm');
+  document.getElementById('newPdDesignToggle').addEventListener('click', () => {
+    dForm.classList.toggle('open');
+  });
+  document.getElementById('pdDesignCancelBtn').addEventListener('click', () => {
+    dForm.classList.remove('open');
+  });
+
+  dForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('pdDesignTitle').value.trim();
+    if (!title) return;
+    try {
+      const res = await api(PM_DESIGN_CREATE_URL, { method:'POST', body:{
+        project_id:  projectId,
+        title,
+        kind:        document.getElementById('pdDesignKind').value,
+        brief:       document.getElementById('pdDesignBrief').value.trim(),
+        assigned_to: document.getElementById('pdDesignAssignee').value,
+        due_date:    document.getElementById('pdDesignDue').value
+      }});
+      e.target.reset();
+      e.target.classList.remove('open');
+      /* The backend adds the designer to the project if they were not on
+         it, because assigned work nobody can see is the bug this whole
+         change exists to remove. Say so rather than letting the access
+         appear from nowhere. */
+      toast(res.granted_access
+        ? 'Design work added — and the designer was put on this project.'
+        : 'Design work added.', 'ok');
+      renderProjectDesign(projectId);
+      renderProjectTeam(projectId);
+    } catch (err) {
+      toast('Could not add design work: ' + err.message, 'err');
+    }
+  });
+}
+
+async function renderProjectDesign(projectId){
+  const el = document.getElementById('projectDesignList');
+  if (!el) return;
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const rows = await api(PM_DESIGN_LIST_URL + '?project_id=' + projectId);
+    const countEl = document.getElementById('pdDesignCount');
+    if (countEl) countEl.textContent = String(rows.length);
+
+    el.innerHTML = rows.length
+      ? rows.map(d =>
+          '<div class="task-row">' +
+            '<div class="tinfo">' +
+              '<div class="ttitle">' + esc(d.title) + '</div>' +
+              '<div class="tmeta">' +
+                '<span class="kindchip">' + esc(d.kind) + '</span>' +
+                '<span>' + (d.assigned_to_name ? esc(d.assigned_to_name) : 'Unassigned') + '</span>' +
+                (d.due_date ? '<span>Due ' + esc(fmtDay(d.due_date)) + '</span>' : '') +
+                (d.estimated_hours > 0 ? '<span>Est. ' + esc(hoursText(Number(d.estimated_hours))) + '</span>' : '') +
+              '</div>' +
+            '</div>' +
+            '<div class="tactions">' + badge(d.status) + '</div>' +
+          '</div>').join('')
+      : '<div class="empty">No design work on this project yet.</div>';
+  } catch (err) {
+    el.innerHTML = '<div class="empty">Could not load design work (' + esc(err.message) + ').</div>';
   }
 }
