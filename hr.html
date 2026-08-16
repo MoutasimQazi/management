@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=35">
-  <link rel="stylesheet" href="projects.css?v=35">
+  <link rel="stylesheet" href="style.css?v=36">
+  <link rel="stylesheet" href="projects.css?v=36">
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=35"></script>
+  <script src="theme.js?v=36"></script>
 </head>
 
 <body>
@@ -106,11 +106,22 @@
         </div>
       </div>
 
+      <!-- WHAT IS IN FLIGHT — the requests still open, first. HR does not
+           approve them, but "what is outstanding" is the question this
+           page gets opened with. -->
+      <div class="panel-head"><h2>Pending</h2><span class="count" id="pendingCount">0</span></div>
+      <div id="pendingLeaveList" style="margin-bottom:24px"></div>
+
+      <!-- WHERE THINGS STAND — this month at a glance. -->
       <div class="panel-head"><h2 id="monthLabel">This month</h2></div>
       <div class="summary-row" id="monthSummary"></div>
 
-      <!-- The pattern nobody can see one request at a time: who takes
-           leave often, and whose leave keeps landing on demos. -->
+      <!-- THE RECORD — everything, for looking something up. -->
+      <div class="panel-head"><h2>All requests</h2><span class="count" id="allLeaveCount">0</span></div>
+      <div id="allLeaveList" style="margin-bottom:24px"></div>
+
+      <!-- TRENDS — the months-long shape, which informs a conversation
+           rather than demanding an action, so it comes after the record. -->
       <div class="panel-head">
         <h2>Leave patterns</h2>
         <span class="spacer"></span>
@@ -120,20 +131,12 @@
           <option value="12">Last 12 months</option>
         </select>
       </div>
-      <!-- Leave days per month, so a heavy month is visible at a glance. -->
       <div class="insight" style="margin-bottom:14px">
         <h3>Leave by month</h3>
         <p class="isub">Total days taken across everyone, month by month.</p>
         <div id="chartAbsence"></div>
       </div>
-
-      <div id="patternList" style="margin-bottom:24px"></div>
-
-      <div class="panel-head"><h2>Pending</h2><span class="count" id="pendingCount">0</span></div>
-      <div id="pendingLeaveList" style="margin-bottom:24px"></div>
-
-      <div class="panel-head"><h2>All requests</h2><span class="count" id="allLeaveCount">0</span></div>
-      <div id="allLeaveList"></div>
+      <div id="patternList"></div>
     </section>
 
     <!-- ── Page: People (staff + developers in one place) ── -->
@@ -219,8 +222,8 @@
 
   </div>
 
-  <script src="ui.js?v=35"></script>
-  <script src="charts.js?v=35"></script>
-  <script src="hr.js?v=35"></script>
+  <script src="ui.js?v=36"></script>
+  <script src="charts.js?v=36"></script>
+  <script src="hr.js?v=36"></script>
 </body>
 </html>

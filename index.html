@@ -11,13 +11,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=35">
-  <link rel="stylesheet" href="projects.css?v=35">
+  <link rel="stylesheet" href="style.css?v=36">
+  <link rel="stylesheet" href="projects.css?v=36">
 
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=35"></script>
+  <script src="theme.js?v=36"></script>
 </head>
 
 <body>
@@ -62,6 +62,19 @@
         <a class="btn-sm" href="meetings.html#/dispatch">+ New dispatch</a>
       </div>
 
+
+      <!-- NEEDS YOU — someone is blocked until you act. Hidden when empty, so this only takes the top of the page when it exists. -->
+      <!-- Pending leave requests addressed to me (admin sees all pending).
+           Approval happens here, on the approver's side — HR only tracks. -->
+      <div id="approvalsPanel" style="display:none; margin-bottom:24px">
+        <div class="panel-head">
+          <h2>Leave approvals</h2>
+          <span class="count" id="approvalsCount">0</span>
+        </div>
+        <div id="approvalsList"></div>
+      </div>
+
+      <!-- WHERE THINGS STAND — the headline numbers, each one a link. -->
       <!-- Live summary from the Project Management module, same session token —
            Projects is the primary tool, so its status leads the dashboard. -->
       <div class="panel-head">
@@ -84,6 +97,20 @@
       <!-- Admin only: every project with the people on it. The tiles above
            count the work; this says who is carrying it, and where a
            project has nobody in a role. -->
+
+      <!-- WHAT IS COMING — dates that are nearly here. -->
+      <!-- Demos coming up on projects you're working on. Hidden when
+           there are none — an empty panel is just furniture. -->
+      <div id="demoPanel" style="display:none; margin-bottom:24px">
+        <div class="panel-head">
+          <h2>Upcoming demos</h2>
+          <span class="count" id="demoCount">0</span>
+        </div>
+        <div id="demoList"></div>
+      </div>
+
+
+      <!-- WHO AND WHAT — staffing, and what has slipped. -->
       <div id="teamPanel" style="display:none; margin-bottom:24px">
         <div class="panel-head">
           <h2>Who is on what</h2>
@@ -94,6 +121,49 @@
         <div id="teamList"></div>
       </div>
 
+      <!-- Every due date that moved, and the reason given. An admin sees
+           all of them; a BA sees their own projects. Hidden when nothing
+           has slipped, which is the state worth having. -->
+      <div id="extPanel" style="display:none; margin-bottom:24px">
+        <div class="panel-head">
+          <h2>Extended deadlines</h2>
+          <span class="count" id="extCount">0</span>
+          <span class="spacer"></span>
+          <span class="hint">Most recent first</span>
+        </div>
+        <div id="extList"></div>
+      </div>
+
+
+      <!-- Company-wide "who's on leave" — always visible so anyone (admin
+           included) can see at a glance who's out right now. -->
+      <div style="margin-bottom:24px">
+        <div class="panel-head">
+          <h2>On leave</h2>
+          <span class="count" id="leaveCount">0</span>
+          <span class="spacer"></span>
+          <button type="button" class="btn-sm" id="myLeaveToggle" style="border:none">+ Request leave</button>
+        </div>
+        <form id="myLeaveForm" class="inline-form">
+          <div class="row">
+            <div class="field"><label>From</label><input id="myLeaveStart" type="date" required /></div>
+            <div class="field"><label>To <span class="opt">— leave as-is for a single day</span></label><input id="myLeaveEnd" type="date" required /></div>
+          </div>
+          <div class="field"><label>Send to</label><div id="myLeaveApprovers" class="check-group"></div></div>
+          <div class="field"><label>Reason <span class="opt">— optional</span></label><input id="myLeaveReason" placeholder="e.g. Family trip" /></div>
+          <div class="actions">
+            <button type="submit">Request leave</button>
+            <button type="button" class="secondary" id="myLeaveCancelBtn">Cancel</button>
+          </div>
+        </form>
+        <div class="sect actionitems today">
+          <ul id="leaveList"></ul>
+        </div>
+        <div id="myLeaveList" style="margin-top:14px"></div>
+      </div>
+
+
+      <!-- TRENDS — informs a decision, never demands one, so it sits below everything that does. -->
       <!-- Admin only: four figures, each answering a question the panels
            below can only answer one row at a time. -->
       <div id="insightsPanel" style="display:none; margin-bottom:24px">
@@ -126,66 +196,8 @@
         </div>
       </div>
 
-      <!-- Every due date that moved, and the reason given. An admin sees
-           all of them; a BA sees their own projects. Hidden when nothing
-           has slipped, which is the state worth having. -->
-      <div id="extPanel" style="display:none; margin-bottom:24px">
-        <div class="panel-head">
-          <h2>Extended deadlines</h2>
-          <span class="count" id="extCount">0</span>
-          <span class="spacer"></span>
-          <span class="hint">Most recent first</span>
-        </div>
-        <div id="extList"></div>
-      </div>
 
-      <!-- Demos coming up on projects you're working on. Hidden when
-           there are none — an empty panel is just furniture. -->
-      <div id="demoPanel" style="display:none; margin-bottom:24px">
-        <div class="panel-head">
-          <h2>Upcoming demos</h2>
-          <span class="count" id="demoCount">0</span>
-        </div>
-        <div id="demoList"></div>
-      </div>
-
-      <!-- Pending leave requests addressed to me (admin sees all pending).
-           Approval happens here, on the approver's side — HR only tracks. -->
-      <div id="approvalsPanel" style="display:none; margin-bottom:24px">
-        <div class="panel-head">
-          <h2>Leave approvals</h2>
-          <span class="count" id="approvalsCount">0</span>
-        </div>
-        <div id="approvalsList"></div>
-      </div>
-
-      <!-- Company-wide "who's on leave" — always visible so anyone (admin
-           included) can see at a glance who's out right now. -->
-      <div style="margin-bottom:24px">
-        <div class="panel-head">
-          <h2>On leave</h2>
-          <span class="count" id="leaveCount">0</span>
-          <span class="spacer"></span>
-          <button type="button" class="btn-sm" id="myLeaveToggle" style="border:none">+ Request leave</button>
-        </div>
-        <form id="myLeaveForm" class="inline-form">
-          <div class="row">
-            <div class="field"><label>From</label><input id="myLeaveStart" type="date" required /></div>
-            <div class="field"><label>To <span class="opt">— leave as-is for a single day</span></label><input id="myLeaveEnd" type="date" required /></div>
-          </div>
-          <div class="field"><label>Send to</label><div id="myLeaveApprovers" class="check-group"></div></div>
-          <div class="field"><label>Reason <span class="opt">— optional</span></label><input id="myLeaveReason" placeholder="e.g. Family trip" /></div>
-          <div class="actions">
-            <button type="submit">Request leave</button>
-            <button type="button" class="secondary" id="myLeaveCancelBtn">Cancel</button>
-          </div>
-        </form>
-        <div class="sect actionitems today">
-          <ul id="leaveList"></ul>
-        </div>
-        <div id="myLeaveList" style="margin-top:14px"></div>
-      </div>
-
+      <!-- THE OTHER SECTIONS — status you look at, not act on. -->
       <!-- Admin-only: HR + Marketing at a glance, with a way into each. -->
       <div id="hrMktPanel" style="display:none; margin-bottom:24px">
         <div class="panel-head">
@@ -239,9 +251,9 @@
 
   </div>
 
-  <script src="fireflies.js?v=35"></script>
-  <script src="ui.js?v=35"></script>
-  <script src="charts.js?v=35"></script>
+  <script src="fireflies.js?v=36"></script>
+  <script src="ui.js?v=36"></script>
+  <script src="charts.js?v=36"></script>
   <script>
     /* ════════════════════════════════════════════════════
        1. Config
