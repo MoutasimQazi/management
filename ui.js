@@ -378,7 +378,12 @@ const LEAVE_LIST_URL      = PM_UI_API_BASE + "pm-leave-list.php";
 const LEAVE_CREATE_URL    = PM_UI_API_BASE + "pm-leave-create.php";
 const LEAVE_APPROVERS_URL = PM_UI_API_BASE + "pm-approvers-list.php";
 
-async function leaveApi(url, token, body){
+/* Named leaveFetch, not leaveApi: index.html's inline script declares its
+   own leaveApi(url, body) at top level, and being the later script it
+   would replace this one wholesale — a two-argument function standing in
+   for a three-argument one. Nothing routed through here today, which is
+   the only reason it had not broken yet. */
+async function leaveFetch(url, token, body){
   const res = await fetch(url, {
     method: body ? 'POST' : 'GET',
     headers: Object.assign({ 'Authorization': 'Bearer ' + token },
@@ -423,10 +428,13 @@ function leaveIsAdmin(role){ return String(role || '').toUpperCase() === 'ADMIN'
 async function renderLeavePanel(token, role){
   const mineEl = document.getElementById('myLeaveList');
   const teamEl = document.getElementById('teamLeaveList');
-  if (!mineEl || !teamEl) return;
+  /* "Who else is out" is optional. HR's page already lists every request
+     in full, so it mounts the form and its own requests and nothing else
+     — it should not need a hidden element to satisfy this function. */
+  if (!mineEl) return;
 
   mineEl.innerHTML = '<div class="empty">Loading…</div>';
-  teamEl.innerHTML = '<div class="empty">Loading…</div>';
+  if (teamEl) teamEl.innerHTML = '<div class="empty">Loading…</div>';
 
   // Approvers are fetched once — the list only changes when someone's
   // role does, not while a form is open.
@@ -437,7 +445,7 @@ async function renderLeavePanel(token, role){
     box.dataset.loaded = '1';
   } else if (box && !box.dataset.loaded) {
     try {
-      const rows = await leaveApi(LEAVE_APPROVERS_URL, token);
+      const rows = await leaveFetch(LEAVE_APPROVERS_URL, token);
       box.innerHTML = rows.map(m =>
         '<label class="check"><input type="checkbox" value="' + m.manager_id + '" data-approver />' +
         '<span>' + uiEsc(m.full_name) + '</span></label>').join('') ||
@@ -449,23 +457,28 @@ async function renderLeavePanel(token, role){
   }
 
   try {
+    // Only ask for the company list when there is somewhere to put it.
     const [mine, everyone] = await Promise.all([
-      leaveApi(LEAVE_LIST_URL + '?mine=1', token),
-      leaveApi(LEAVE_LIST_URL, token)
+      leaveFetch(LEAVE_LIST_URL + '?mine=1', token),
+      teamEl ? leaveFetch(LEAVE_LIST_URL, token) : Promise.resolve([])
     ]);
-    document.getElementById('myLeaveCount').textContent = String(mine.length);
+    const mineCount = document.getElementById('myLeaveCount');
+    if (mineCount) mineCount.textContent = String(mine.length);
     mineEl.innerHTML = mine.length
       ? mine.map(leavePanelRow).join('')
       : '<div class="empty">No leave requests yet — use the form above.</div>';
 
-    const others = everyone.filter(r => r.status === 'APPROVED');
-    document.getElementById('teamLeaveCount').textContent = String(others.length);
-    teamEl.innerHTML = others.length
-      ? others.map(leavePanelRow).join('')
-      : '<div class="empty">No one is currently on approved leave.</div>';
+    if (teamEl) {
+      const others = everyone.filter(r => r.status === 'APPROVED');
+      const teamCount = document.getElementById('teamLeaveCount');
+      if (teamCount) teamCount.textContent = String(others.length);
+      teamEl.innerHTML = others.length
+        ? others.map(leavePanelRow).join('')
+        : '<div class="empty">No one is currently on approved leave.</div>';
+    }
   } catch (err) {
     mineEl.innerHTML = '<div class="empty">Could not load leave (' + uiEsc(err.message) + ').</div>';
-    teamEl.innerHTML = '';
+    if (teamEl) teamEl.innerHTML = '';
   }
 }
 
@@ -478,9 +491,17 @@ function wireLeavePanel(token, role){
   if (leaveIsAdmin(role)) {
     const btn = form.querySelector('button[type="submit"]');
     if (btn) btn.textContent = 'Add leave';
-    const head = document.querySelector('#page-leave .pagehead .sub');
-    if (head) head.textContent =
-      'Book your own time off — it goes straight on the calendar. You can also see who else is out.';
+    /* The note goes in the form, not in the page heading. HR's leave
+       page heading describes the whole page — an admin opening it used
+       to find that description replaced by a sentence about their own
+       time off. */
+    if (!form.querySelector('.leavenote')) {
+      const note = document.createElement('p');
+      note.className = 'hint leavenote';
+      note.style.margin = '0';
+      note.textContent = 'Goes straight on the calendar — an admin books rather than requests.';
+      form.insertBefore(note, form.querySelector('.actions'));
+    }
   }
 
   /* A single day is the common case, so picking the start fills the end
@@ -506,7 +527,7 @@ function wireLeavePanel(token, role){
       return;
     }
     try {
-      const res = await leaveApi(LEAVE_CREATE_URL, token, {
+      const res = await leaveFetch(LEAVE_CREATE_URL, token, {
         start_date, end_date, reason: reason.trim(), approver_ids
       });
       form.reset();
