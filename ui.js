@@ -350,6 +350,51 @@ function demoDay(iso){
     : d.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' });
 }
 
+/* A date split for the calendar tile. A run of demos reads far faster as
+   a column of day numbers than as a column of sentences. */
+function demoParts(iso){
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d.getTime())) return { day:'—', mon:'', dow:'' };
+  return {
+    day: String(d.getDate()),
+    mon: d.toLocaleDateString('en-IN', { month:'short' }).toUpperCase(),
+    dow: d.toLocaleDateString('en-IN', { weekday:'short' })
+  };
+}
+
+/* One demo, as a card. Shared so the dashboards and the project page
+   cannot drift into two different-looking versions of the same thing.
+   `actions` is trailing HTML — the project page passes edit/delete. */
+function demoCard(d, actions){
+  const p = demoParts(d.demo_date);
+  const c = demoCountdown(d.demo_date);
+  const done = d.status && d.status !== 'PLANNED';
+  return '<div class="demo-row ' + (done ? 'done' : c.cls) + '">' +
+    '<div class="dcal">' +
+      '<span class="dmon">' + uiEsc(p.mon) + '</span>' +
+      '<span class="dnum">' + uiEsc(p.day) + '</span>' +
+      '<span class="ddow">' + uiEsc(p.dow) + '</span>' +
+    '</div>' +
+    '<div class="dinfo">' +
+      '<div class="dtitle">' +
+        '<span class="demochip ' + uiEsc(String(d.demo_type).toLowerCase()) + '">' +
+          uiEsc(demoLabel(d.demo_type)) + '</span>' +
+        '<span class="dname">' + uiEsc(d.title || d.project_name) + '</span>' +
+      '</div>' +
+      '<div class="dmeta">' + uiEsc(d.project_name) +
+        (d.client_name ? ' · ' + uiEsc(d.client_name) : '') + '</div>' +
+      (d.notes ? '<div class="dnotes">' + uiEsc(d.notes) + '</div>' : '') +
+    '</div>' +
+    '<div class="dside">' +
+      (done
+        ? '<span class="dstatus">' + uiEsc(String(d.status).toLowerCase()) + '</span>'
+        : '<span class="dcount">' + uiEsc(c.text) + '</span>') +
+      (d.demo_time ? '<span class="dtime">' + uiEsc(String(d.demo_time).slice(0,5)) + '</span>' : '') +
+      (actions ? '<span class="dactions">' + actions + '</span>' : '') +
+    '</div>' +
+  '</div>';
+}
+
 /* How near it is, which is what anyone reading a demo date wants first. */
 function demoCountdown(iso){
   const d = new Date(iso + 'T00:00:00');
@@ -383,21 +428,7 @@ async function renderUpcomingDemos(opts){
     const countEl = opts.count && document.getElementById(opts.count);
     if (countEl) countEl.textContent = String(demos.length);
 
-    list.innerHTML = demos.map(d => {
-      const c = demoCountdown(d.demo_date);
-      return '<div class="demo-row ' + c.cls + '">' +
-        '<div class="dwhen"><span class="ddate">' + uiEsc(demoDay(d.demo_date)) + '</span>' +
-          (d.demo_time ? '<span class="dtime">' + uiEsc(String(d.demo_time).slice(0,5)) + '</span>' : '') +
-          '<span class="dcount">' + uiEsc(c.text) + '</span></div>' +
-        '<div class="dinfo">' +
-          '<div class="dtitle"><span class="demochip ' + uiEsc(String(d.demo_type).toLowerCase()) + '">' +
-            uiEsc(demoLabel(d.demo_type)) + '</span> ' +
-            uiEsc(d.title || d.project_name) + '</div>' +
-          '<div class="dmeta">' + uiEsc(d.project_name) +
-            (d.client_name ? ' · ' + uiEsc(d.client_name) : '') +
-            (d.notes ? ' · ' + uiEsc(d.notes) : '') + '</div>' +
-        '</div></div>';
-    }).join('');
+    list.innerHTML = demos.map(d => demoCard(d)).join('');
   } catch (_) {
     // Migration 011 may not be in yet — a dashboard should not shout
     // about a feature nobody has installed.

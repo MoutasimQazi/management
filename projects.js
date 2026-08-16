@@ -1294,29 +1294,12 @@ async function renderDemos(projectId){
       return;
     }
 
-    listEl.innerHTML = demos.map(d => {
-      const c = demoCountdown(d.demo_date);   // ui.js
-      return '<div class="task-row">' +
-        '<div class="tinfo">' +
-          '<div class="ttitle">' +
-            '<span class="demochip ' + esc(String(d.demo_type).toLowerCase()) + '">' +
-              esc(demoLabel(d.demo_type)) + '</span> ' +
-            esc(d.title || d.project_name) +
-          '</div>' +
-          '<div class="tmeta">' +
-            '<span>' + esc(demoDay(d.demo_date)) + '</span>' +
-            (d.demo_time ? '<span>' + esc(String(d.demo_time).slice(0,5)) + '</span>' : '') +
-            (d.status === 'PLANNED'
-              ? '<span class="due ' + esc(c.cls) + '">' + esc(c.text) + '</span>'
-              : '') +
-            (d.notes ? '<span>' + esc(d.notes) + '</span>' : '') +
-          '</div>' +
-        '</div>' +
-        '<div class="tactions">' + badge(d.status) +
-          '<button type="button" class="icon-btn" data-demo-edit="' + d.demo_id + '">Edit</button>' +
-          '<button type="button" class="icon-btn danger" data-demo-del="' + d.demo_id + '">Delete</button>' +
-        '</div></div>';
-    }).join('');
+    // demoCard (ui.js) — the same card the dashboards use, plus the
+    // buttons only the people who run the project get.
+    listEl.innerHTML = demos.map(d => demoCard(d,
+      '<button type="button" class="icon-btn" data-demo-edit="' + d.demo_id + '">Edit</button>' +
+      '<button type="button" class="icon-btn danger" data-demo-del="' + d.demo_id + '">Delete</button>'
+    )).join('');
 
     listEl.querySelectorAll('[data-demo-edit]').forEach(btn => {
       btn.addEventListener('click', () => {

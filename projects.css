@@ -653,35 +653,85 @@ a.evidence:hover{ color:var(--brand-dark); text-decoration:underline; }
 
 /* ══════════════════════════════════════════════════════
    Demos
+   ──────────────────────────────────────────────────────
+   A calendar tile and a card. A run of demos has to be
+   scannable down the date column — the first question is
+   always "when", and a column of day numbers answers it
+   far faster than a column of sentences.
    ══════════════════════════════════════════════════════ */
 .demo-row{
   display:flex;
-  align-items:flex-start;
-  gap:16px;
-  padding:13px 16px;
+  align-items:stretch;
+  gap:14px;
+  padding:12px;
   border:1px solid var(--line);
   border-radius:var(--radius-md);
   background:var(--surface);
-  margin-bottom:8px;
+  margin-bottom:9px;
+  transition:border-color .15s, box-shadow .15s;
 }
-/* The date column is fixed width so a list of demos reads down the page
-   as a column of dates rather than a ragged edge. */
-.demo-row .dwhen{
-  flex:0 0 108px;
+.demo-row:hover{ border-color:var(--line-3); box-shadow:var(--shadow-sm); }
+
+/* The tile. Fixed width so every card's text starts on the same line. */
+.demo-row .dcal{
+  flex:0 0 58px;
   display:flex;
   flex-direction:column;
-  gap:2px;
+  align-items:center;
+  justify-content:center;
+  padding:7px 0 6px;
+  border-radius:var(--radius-sm);
+  background:var(--surface-2);
+  border:1px solid var(--line);
 }
-.demo-row .ddate{ font-size:13px; font-weight:800; color:var(--ink); }
-.demo-row .dtime{ font-size:11.5px; color:var(--ink-2); }
-.demo-row .dcount{ font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+.demo-row .dmon{
+  font-size:9px; font-weight:800; letter-spacing:.12em;
+  color:var(--muted); text-transform:uppercase;
+}
+.demo-row .dnum{
+  font-family:"Archivo", sans-serif;
+  font-size:22px; font-weight:800; line-height:1.05;
+  color:var(--ink); letter-spacing:-.02em;
+}
+.demo-row .ddow{ font-size:9.5px; font-weight:700; color:var(--muted); }
+
+.demo-row .dinfo{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:3px; }
+.demo-row .dtitle{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.demo-row .dname{ font-size:13.5px; font-weight:700; color:var(--ink); }
+.demo-row .dmeta{ font-size:12px; color:var(--muted); }
+.demo-row .dnotes{
+  font-size:12px; color:var(--ink-2);
+  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
+}
+
+.demo-row .dside{
+  flex:0 0 auto;
+  display:flex; flex-direction:column; align-items:flex-end; justify-content:center; gap:4px;
+}
+.demo-row .dcount{
+  font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+  color:var(--muted); white-space:nowrap;
+}
+.demo-row .dtime{ font-size:12px; font-weight:600; color:var(--ink-2); }
+.demo-row .dstatus{
+  font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--muted);
+}
+.demo-row .dactions{ display:flex; gap:6px; margin-top:4px; }
+
+/* Nearness, carried by the tile rather than by tinting the whole card —
+   a list of five demos all shouting is a list that says nothing. */
+.demo-row.soon .dcal{ background:var(--warn-soft); border-color:var(--warn-line); }
+.demo-row.soon .dnum, .demo-row.soon .dmon, .demo-row.soon .ddow{ color:var(--warn); }
 .demo-row.soon .dcount{ color:var(--warn); }
-.demo-row.now  .dcount{ color:var(--err); }
-.demo-row.now{ border-color:var(--err-line); background:var(--err-soft); }
-.demo-row.soon{ border-color:var(--warn-line); }
-.demo-row .dinfo{ min-width:0; }
-.demo-row .dtitle{ font-size:13.5px; font-weight:700; color:var(--ink); }
-.demo-row .dmeta{ margin-top:3px; font-size:12px; color:var(--muted); }
+
+.demo-row.now{ border-color:var(--err-line); }
+.demo-row.now .dcal{ background:var(--err-soft); border-color:var(--err-line); }
+.demo-row.now .dnum, .demo-row.now .dmon, .demo-row.now .ddow{ color:var(--err); }
+.demo-row.now .dcount{ color:var(--err); }
+
+/* Done or cancelled: kept, but out of the way of what is still coming. */
+.demo-row.done{ opacity:.6; }
 
 /* Which kind of demo. Client-facing is the one worth spotting fastest. */
 .demochip{
@@ -690,9 +740,23 @@ a.evidence:hover{ color:var(--brand-dark); text-decoration:underline; }
   font-size:9.5px; font-weight:800;
   letter-spacing:.07em; text-transform:uppercase;
   background:var(--line-2); border:1px solid var(--line); color:var(--ink-2);
+  white-space:nowrap;
 }
 .demochip.client      { background:var(--brand-soft); border-color:var(--brand-100); color:var(--brand-dark); }
 .demochip.stakeholder { background:var(--info-soft);  border-color:var(--info-line); color:var(--info); }
+.demochip.dry_run     { background:var(--warn-soft);  border-color:var(--warn-line); color:var(--warn); }
+
+@media (max-width:560px){
+  /* The side column has nowhere to go on a phone, so it joins the
+     bottom of the text rather than squeezing the title to nothing. */
+  .demo-row{ flex-wrap:wrap; }
+  .demo-row .dinfo{ flex:1 1 60%; }
+  .demo-row .dside{
+    flex:1 1 100%;
+    flex-direction:row; align-items:center; justify-content:flex-start;
+    gap:10px; padding-left:72px;
+  }
+}
 
 /* Leave that lands on a demo. The one warning an approver has no other
    way to arrive at, so it does not blend into the meta text. */
