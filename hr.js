@@ -844,10 +844,13 @@ async function renderPatterns(){
     return;
   }
 
-  /* Leave days a month with that month's demos above — columnChart is
-     in charts.js. Drawn before the table, since the shape is the point
-     and the per-person numbers are the follow-up question. */
-  columnChart('chartAbsence', (data && data.by_month) || [], {
+  /* Leave days per month. Drawn before the table, since the shape is
+     the point and the per-person numbers are the follow-up question. */
+  columnChart('chartAbsence', ((data && data.by_month) || []).map(m => ({
+    label: m.label, value: m.days
+  })), {
+    unit: ' leave days',
+    nameHeader: 'Month', valueHeader: 'Leave days',
     empty: 'No leave recorded in this period.'
   });
 

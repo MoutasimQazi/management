@@ -78,7 +78,8 @@ function lineChart(host, opts){
     return;
   }
 
-  const W = 640, H = 190, L = 34, R = 96, T = 14, B = 26;
+  // R leaves room for the direct labels; B for the week ticks.
+  const W = 640, H = 200, L = 34, R = 104, T = 16, B = 28;
   const maxRaw = Math.max(1, ...series.flatMap(s => s.values));
   // A round ceiling, so the gridline labels are numbers people recognise.
   const step = Math.pow(10, Math.floor(Math.log10(maxRaw))) * (maxRaw / Math.pow(10, Math.floor(Math.log10(maxRaw))) > 5 ? 2 : 1);
@@ -100,18 +101,53 @@ function lineChart(host, opts){
     ? '' : '<text x="' + x(i) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="9.5" fill="' +
         chartInk('muted') + '">' + svgEsc(weekLabel(w)) + '</text>').join('');
 
+  /* Direct labels sit at each series' last point, which collide the
+     moment two series finish near each other — and with three flat-ish
+     lines that is most of the time. Place them at their true y, then
+     push apart to a minimum gap and keep them inside the plot. The dot
+     stays on the data; only the text moves, so nothing is misread. */
+  const last = weeks.length - 1;
+  const GAP = 13;
+  const placed = series
+    .map((s, si) => ({ si, name: s.name, y: y(s.values[last]) }))
+    .sort((a, b) => a.y - b.y);
+
+  /* Clamp to the top edge FIRST, then space downwards. Clamping after
+     spacing silently eats the first gap — three series ending on the
+     same value came out 8px then 12px apart instead of 13 and 13. */
+  if (placed.length) placed[0].y = Math.max(T + 4, placed[0].y);
+  for (let i = 1; i < placed.length; i++) {
+    placed[i].y = Math.max(placed[i].y, placed[i - 1].y + GAP);
+  }
+  // If that pushed the stack off the bottom, lift the whole run.
+  const overflow = placed.length ? placed[placed.length - 1].y - (H - B) : 0;
+  if (overflow > 0) placed.forEach(p => { p.y = Math.max(T + 4, p.y - overflow); });
+
+  const labelY = {};
+  placed.forEach(p => { labelY[p.si] = p.y; });
+
   const lines = series.map((s, si) => {
     const c = seriesColor(si);
     const d = s.values.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
-    const last = s.values.length - 1;
+    const dotY = y(s.values[last]);
+    const ty   = labelY[si];
+    // A leader line when the label had to move, so it stays attached to
+    // the point it belongs to rather than floating near another series.
+    const leader = Math.abs(ty - dotY) > 2
+      ? '<line x1="' + (x(last) + 5).toFixed(1) + '" y1="' + dotY.toFixed(1) +
+        '" x2="' + (W - R + 4) + '" y2="' + ty.toFixed(1) +
+        '" stroke="' + c + '" stroke-width="1" stroke-opacity=".45" />'
+      : '';
     return '<path d="' + d + '" fill="none" stroke="' + c + '" stroke-width="2" ' +
-             'stroke-linejoin="round" stroke-linecap="round" />' +
+             'stroke-linejoin="round" stroke-linecap="round" />' + leader +
            // A 2px surface ring, so overlapping end points stay separable.
-           '<circle cx="' + x(last).toFixed(1) + '" cy="' + y(s.values[last]).toFixed(1) +
+           '<circle cx="' + x(last).toFixed(1) + '" cy="' + dotY.toFixed(1) +
              '" r="4" fill="' + c + '" stroke="var(--surface)" stroke-width="2" />' +
-           '<text x="' + (W - R + 8) + '" y="' + (y(s.values[last]) + 3.5).toFixed(1) + '" ' +
+           '<text x="' + (W - R + 8) + '" y="' + (ty + 3.5).toFixed(1) + '" ' +
              'font-size="10.5" font-weight="700" fill="' + chartInk() + '">' +
-             svgEsc(s.name) + '</text>';
+             svgEsc(s.name) +
+             '<tspan font-weight="800" fill="' + chartInk() + '"> ' + s.values[last] + '</tspan>' +
+           '</text>';
   }).join('');
 
   /* One hover column per week rather than per point: the target is the
@@ -196,10 +232,9 @@ function meterRows(host, rows){
         (r.capacity > 0 ? Math.round((r.committed / r.capacity) * 100) : 0) + '%']));
 }
 
-/* ── Columns with markers, for absence against demos ──
-   One column per month. Demos are marks above the column rather than a
-   second series: they are a different thing being counted, and two
-   y-scales on one chart is the mistake this avoids. */
+/* ── Columns, for a value per period ──────────────────
+   One column per month. Sequential — one hue, taller is more — because
+   these are comparable quantities of the same thing, not identities. */
 function columnChart(host, rows, opts){
   const el = typeof host === 'string' ? document.getElementById(host) : host;
   if (!el) return;
@@ -208,24 +243,23 @@ function columnChart(host, rows, opts){
     el.innerHTML = '<div class="empty">' + (opts.empty || 'Nothing to show.') + '</div>';
     return;
   }
-  const max = Math.max(1, ...rows.map(r => r.days));
+  const max = Math.max(1, ...rows.map(r => r.value));
+  const unit = opts.unit || '';
   el.innerHTML =
     '<div class="collist">' + rows.map(r => {
-      const h = Math.max(2, (r.days / max) * 100);
-      const dots = r.demos
-        ? '<div class="coldemos" title="' + svgEsc(r.demos + ' demo' + (r.demos === 1 ? '' : 's') + ' this month') + '">' +
-          Array.from({ length: Math.min(r.demos, 6) }, () => '<i></i>').join('') +
-          (r.demos > 6 ? '<span>+' + (r.demos - 6) + '</span>' : '') + '</div>'
-        : '<div class="coldemos"></div>';
-      return '<div class="colrow' + (r.demos && r.days ? ' crunch' : '') +
-        '" title="' + svgEsc(r.label + ' — ' + r.days + ' leave days, ' + r.demos + ' demos') + '">' +
-        dots +
-        '<div class="colbarwrap"><div class="colbar" style="height:' + h.toFixed(1) + '%"></div></div>' +
-        '<div class="colval">' + r.days + '</div>' +
+      // A zero month still gets a visible stub, so the month is not
+      // missing from the axis — "none" and "no data" must look different.
+      const h = r.value > 0 ? Math.max(4, (r.value / max) * 100) : 0;
+      return '<div class="colrow" title="' + svgEsc(r.label + ' — ' + r.value + unit) + '">' +
+        '<div class="colval">' + svgEsc(String(r.value)) + '</div>' +
+        '<div class="colbarwrap">' +
+          (r.value > 0
+            ? '<div class="colbar" style="height:' + h.toFixed(1) + '%"></div>'
+            : '<div class="colzero"></div>') +
+        '</div>' +
         '<div class="collabel">' + svgEsc(r.label) + '</div>' +
       '</div>';
     }).join('') + '</div>' +
-    '<p class="hint" style="margin:8px 2px 0">Bars are leave days taken. Dots above are demos ' +
-      'that month — a tall bar under a row of dots is a month where people were away and something was being shown.</p>' +
-    chartTable(['Month', 'Leave days', 'Demos'], rows.map(r => [r.label, r.days, r.demos]));
+    chartTable([opts.nameHeader || 'Month', opts.valueHeader || 'Value'],
+      rows.map(r => [r.label, r.value]));
 }

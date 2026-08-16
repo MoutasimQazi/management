@@ -879,14 +879,55 @@ a.evidence:hover{ color:var(--brand-dark); text-decoration:underline; }
 
 /* The table every chart carries: the relief for the one sub-3:1 slot,
    the screen-reader answer, and what people use when they want the
-   number rather than the shape. */
-.charttable{ margin-top:10px; }
+   number rather than the shape.
+
+   It has to undo most of .data-table. That style is built for a
+   full-width page table — min-width 620px so columns never crush, 16px
+   radius, its own border, shadow and scroll shadows — and inside a
+   340px chart card all of that turned a three-column table into a
+   horizontally scrolling box with heavy chrome. Here the table is small
+   and already inside a card, so it wants none of it. */
+.charttable{ margin-top:12px; border-top:1px solid var(--line); padding-top:10px; }
 .charttable summary{
-  cursor:pointer; font-size:11px; font-weight:700;
+  cursor:pointer;
+  display:flex; align-items:center; gap:6px;
+  font-size:11px; font-weight:700;
   color:var(--muted); letter-spacing:.03em;
+  list-style:none;              /* the default triangle sits off-baseline */
+  user-select:none;
+  padding:3px 0;
 }
+.charttable summary::-webkit-details-marker{ display:none; }
+/* A chevron that turns, so open and shut are legible at a glance. */
+.charttable summary::before{
+  content:"";
+  width:0; height:0;
+  border-left:4px solid currentColor;
+  border-top:3.5px solid transparent;
+  border-bottom:3.5px solid transparent;
+  transition:transform .15s ease;
+  flex:none;
+}
+.charttable[open] summary::before{ transform:rotate(90deg); }
 .charttable summary:hover{ color:var(--brand-dark); }
+.charttable summary:focus-visible{ outline:2px solid var(--brand); outline-offset:2px; border-radius:4px; }
 .charttable[open] summary{ margin-bottom:8px; }
+
+/* Strip the page-table chrome and let the columns size to their content. */
+.charttable .table-wrap{
+  border:none; border-radius:0; box-shadow:none;
+  background:none; margin-bottom:0;
+  max-height:220px; overflow-y:auto;   /* twelve weeks without growing the card */
+}
+.charttable .data-table{ min-width:0; font-size:11.5px; }
+.charttable .data-table th{
+  padding:5px 9px; font-size:9px; background:none;
+  position:sticky; top:0; background:var(--surface);   /* header survives the scroll */
+}
+.charttable .data-table td{ padding:5px 9px; white-space:nowrap; }
+/* Numbers right-aligned so they compare down the column. */
+.charttable .data-table td:not(:first-child),
+.charttable .data-table th:not(:first-child){ text-align:right; }
 
 /* ── Horizontal bars ── */
 .barlist{ display:grid; gap:7px; }
@@ -912,15 +953,15 @@ a.evidence:hover{ color:var(--brand-dark); text-decoration:underline; }
 .meterrow.over  .mfill{ background:var(--err); }
 .meterrow.over  .mval{ color:var(--err); }
 
-/* ── Columns with demo markers ── */
-.collist{ display:flex; align-items:flex-end; gap:8px; min-height:150px; }
+/* ── Columns ── */
+.collist{ display:flex; align-items:flex-end; gap:8px; min-height:132px; }
 .colrow{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; }
-.coldemos{ display:flex; flex-wrap:wrap; justify-content:center; gap:2px; min-height:14px; align-items:flex-end; }
-.coldemos i{ width:5px; height:5px; border-radius:50%; background:var(--brand); display:block; }
-.coldemos span{ font-size:8.5px; font-weight:700; color:var(--brand); }
 .colbarwrap{ width:100%; height:96px; display:flex; align-items:flex-end; }
-.colbar{ width:100%; border-radius:4px 4px 0 0; background:var(--line-3); }
-/* Leave and demos in the same month is the thing this chart is for. */
-.colrow.crunch .colbar{ background:var(--warn); }
-.colval{ font-size:11px; font-weight:800; color:var(--ink-2); }
-.collabel{ font-size:9.5px; font-weight:600; color:var(--muted); text-align:center; }
+/* Sequential: one hue, taller is more. */
+.colbar{ width:100%; border-radius:4px 4px 0 0; background:var(--brand); }
+.colrow:hover .colbar{ filter:brightness(1.06); }
+/* A month with no leave is a fact, not a gap — it gets a baseline stub
+   so "none" and "no data" cannot be mistaken for each other. */
+.colzero{ width:100%; height:2px; border-radius:2px; background:var(--line-3); }
+.colval{ font-size:11.5px; font-weight:800; color:var(--ink-2); }
+.collabel{ font-size:10px; font-weight:600; color:var(--muted); text-align:center; }
