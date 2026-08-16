@@ -20,6 +20,7 @@ const PM_CANDIDATES_LIST_URL  = PM_API_BASE + "pm-candidates-list.php";
 const PM_CANDIDATES_CREATE_URL= PM_API_BASE + "pm-candidates-create.php";
 const PM_CANDIDATES_UPDATE_URL= PM_API_BASE + "pm-candidates-update.php";
 const PM_LEAVE_LIST_URL       = PM_API_BASE + "pm-leave-list.php";
+const PM_LEAVE_PATTERNS_URL   = PM_API_BASE + "pm-leave-patterns.php";
 const PM_MANAGERS_LIST_URL    = PM_API_BASE + "pm-managers-list.php";
 const PM_MANAGERS_CREATE_URL  = PM_API_BASE + "pm-managers-create.php";
 const PM_PEOPLE_ROLE_URL      = PM_API_BASE + "pm-people-role.php";
@@ -414,6 +415,7 @@ function currentMonth(){
 // dashboard), so this page is read-only: the monthly summary plus every
 // request and who it's waiting on / was decided by.
 async function renderLeave(){
+  renderPatterns();   // the months-long view the per-request screens cannot show
   const pendingEl = document.getElementById('pendingLeaveList');
   const allEl = document.getElementById('allLeaveList');
   const summaryEl = document.getElementById('monthSummary');
@@ -808,3 +810,76 @@ if (session) {
 } else {
   showSignedOut();
 }
+
+/* ════════════════════════════════════════════════════
+   Leave patterns
+   ────────────────────────────────────────────────────
+   An approver decides one request at a time and can only
+   see that one request. Nobody was looking at the shape
+   of it over months: who takes leave often, and whose
+   leave keeps landing on demos.
+
+   The demo count comes from the same demoClashesFor the
+   approver saw at the time, so this and that agree. Two
+   different answers to the same question would make both
+   useless.
+
+   Read as information, not as an accusation. Someone
+   with three demo-adjacent absences may be on the one
+   project that demos every fortnight — which is a
+   scheduling problem, not a person problem, and the
+   numbers here are the start of that conversation.
+   ════════════════════════════════════════════════════ */
+async function renderPatterns(){
+  const el = document.getElementById('patternList');
+  if (!el) return;
+  const months = document.getElementById('patternMonths').value || 6;
+  el.innerHTML = '<div class="empty">Loading…</div>';
+
+  let data;
+  try {
+    data = await api(PM_LEAVE_PATTERNS_URL + '?months=' + months);
+  } catch (err) {
+    el.innerHTML = '<div class="empty">Could not load patterns (' + esc(err.message) + ').</div>';
+    return;
+  }
+
+  const people = (data && data.people) || [];
+  if (!people.length) {
+    el.innerHTML = '<div class="empty">No leave taken in this period.</div>';
+    return;
+  }
+
+  el.innerHTML =
+    '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+      '<th>Person</th><th>Requests</th><th>Days</th><th>Around a demo</th><th>Last leave</th>' +
+    '</tr></thead><tbody>' +
+    people.map(p => {
+      /* Two or more is the point at which it stops being a coincidence
+         worth ignoring. Below that the number is still shown — it just
+         is not flagged, because flagging everything flags nothing. */
+      const flagged = p.near_demo >= 2;
+      const detail = p.examples.map(x =>
+        (x.proximity === 'during' ? 'away on ' : 'back just before ') +
+        demoLabel(x.demo_type).toLowerCase() + ' ' + demoDay(x.demo_date) +
+        ' (' + x.project_name + ')').join('\n');
+
+      return '<tr>' +
+        '<td><div class="ttitle">' + esc(p.person) + '</div>' +
+          '<div class="tsub">' + esc(roleLabel(p.role)) + '</div></td>' +
+        '<td class="nowrap">' + p.requests + '</td>' +
+        '<td class="nowrap">' + p.days + ' day' + (p.days === 1 ? '' : 's') + '</td>' +
+        '<td class="nowrap">' + (p.near_demo
+            ? '<span class="demoflag' + (flagged ? ' hot' : '') + '"' +
+              (detail ? ' title="' + esc(detail) + '"' : '') + '>' +
+              p.near_demo + ' of ' + p.requests + '</span>'
+            : '<span class="tsub">—</span>') + '</td>' +
+        '<td class="nowrap"><div class="tsub">' + esc(fmtDay(p.last_leave)) + '</div></td>' +
+      '</tr>';
+    }).join('') +
+    '</tbody></table></div>' +
+    '<p class="hint" style="margin:8px 2px 0">“Around a demo” counts requests that fell on a demo day, ' +
+      'or ended within a week of one, on a project that person was working on. Hover for which.</p>';
+}
+
+document.getElementById('patternMonths').addEventListener('change', renderPatterns);

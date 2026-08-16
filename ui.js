@@ -380,6 +380,59 @@ function demoDay(iso){
     : d.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' });
 }
 
+/* ── Picking a time ───────────────────────────────────
+   <input type="time"> renders 24-hour or 12-hour entirely on the
+   browser's locale, so the same field showed "14:30" to one person and
+   "2:30 PM" to another with nothing either could do about it. It also
+   asks for a free-typed time when a demo is never at 14:37.
+
+   A select of quarter-hour slots instead: always AM/PM, always the same
+   everywhere, and one choice rather than three fields. The value stays
+   "HH:MM" so nothing behind it changes.
+
+   Working hours are listed first because that is when demos happen; the
+   rest of the day follows so nothing is impossible to pick. */
+function timeOptions(selected){
+  const sel = String(selected || '').slice(0, 5);
+  const label = (h, m) => {
+    const ampm = h < 12 ? 'AM' : 'PM';
+    const h12  = h % 12 === 0 ? 12 : h % 12;
+    return h12 + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+  };
+  const slot = (h, m) => {
+    const v = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    return '<option value="' + v + '"' + (v === sel ? ' selected' : '') + '>' +
+      label(h, m) + '</option>';
+  };
+
+  let work = '', rest = '';
+  for (let h = 0; h < 24; h++) {
+    for (const m of [0, 15, 30, 45]) {
+      if (h >= 8 && h <= 20) work += slot(h, m);
+      else rest += slot(h, m);
+    }
+  }
+  /* A time already stored outside the quarter-hour grid — set before
+     this existed, or by the API — would otherwise vanish from its own
+     field on the next edit. */
+  const known = sel === '' || work.indexOf('"' + sel + '"') >= 0 || rest.indexOf('"' + sel + '"') >= 0;
+  const extra = known ? '' :
+    '<option value="' + uiEsc(sel) + '" selected>' + uiEsc(sel) + '</option>';
+
+  return '<option value="">No time set</option>' + extra +
+    '<optgroup label="Working hours">' + work + '</optgroup>' +
+    '<optgroup label="Outside working hours">' + rest + '</optgroup>';
+}
+
+/* "14:30" → "2:30 PM", for reading back. */
+function timeLabel(v){
+  const s = String(v || '').slice(0, 5);
+  const m = s.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return s;
+  const h = Number(m[1]);
+  return (h % 12 === 0 ? 12 : h % 12) + ':' + m[2] + ' ' + (h < 12 ? 'AM' : 'PM');
+}
+
 /* A date split for the calendar tile. A run of demos reads far faster as
    a column of day numbers than as a column of sentences. */
 function demoParts(iso){
@@ -419,7 +472,7 @@ function demoCard(d, actions){
       (done
         ? '<span class="dstatus">' + uiEsc(String(d.status).toLowerCase()) + '</span>'
         : '<span class="dcount">' + uiEsc(c.text) + '</span>') +
-      (d.demo_time ? '<span class="dtime">' + uiEsc(String(d.demo_time).slice(0,5)) + '</span>' : '') +
+      (d.demo_time ? '<span class="dtime">' + uiEsc(timeLabel(d.demo_time)) + '</span>' : '') +
       (actions ? '<span class="dactions">' + actions + '</span>' : '') +
     '</div>' +
   '</div>';

@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=32">
-  <link rel="stylesheet" href="projects.css?v=32">
+  <link rel="stylesheet" href="style.css?v=33">
+  <link rel="stylesheet" href="projects.css?v=33">
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=32"></script>
+  <script src="theme.js?v=33"></script>
 </head>
 
 <body>
@@ -109,6 +109,19 @@
       <div class="panel-head"><h2 id="monthLabel">This month</h2></div>
       <div class="summary-row" id="monthSummary"></div>
 
+      <!-- The pattern nobody can see one request at a time: who takes
+           leave often, and whose leave keeps landing on demos. -->
+      <div class="panel-head">
+        <h2>Leave patterns</h2>
+        <span class="spacer"></span>
+        <select id="patternMonths" class="searchbox filter-select">
+          <option value="3">Last 3 months</option>
+          <option value="6" selected>Last 6 months</option>
+          <option value="12">Last 12 months</option>
+        </select>
+      </div>
+      <div id="patternList" style="margin-bottom:24px"></div>
+
       <div class="panel-head"><h2>Pending</h2><span class="count" id="pendingCount">0</span></div>
       <div id="pendingLeaveList" style="margin-bottom:24px"></div>
 
@@ -199,7 +212,7 @@
 
   </div>
 
-  <script src="ui.js?v=32"></script>
-  <script src="hr.js?v=32"></script>
+  <script src="ui.js?v=33"></script>
+  <script src="hr.js?v=33"></script>
 </body>
 </html>

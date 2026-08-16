@@ -568,7 +568,11 @@ async function renderProjectDetail(projectId){
         '</div>' +
         '<div class="row">' +
           '<div class="field"><label>Date</label><input id="demoDate" type="date" required /></div>' +
-          '<div class="field"><label>Time <span class="opt">— optional</span></label><input id="demoTime" type="time" /></div>' +
+          /* A select of quarter-hour slots, not <input type="time">:
+             that renders 24-hour or 12-hour on browser locale alone.
+             timeOptions is in ui.js. */
+          '<div class="field"><label>Time <span class="opt">— optional</span></label>' +
+            '<select id="demoTime">' + timeOptions() + '</select></div>' +
         '</div>' +
         '<div class="field"><label>Title <span class="opt">— optional</span></label><input id="demoTitle" placeholder="e.g. Checkout walkthrough" /></div>' +
         '<div class="field"><label>Notes <span class="opt">— optional</span></label><input id="demoNotes" placeholder="Anything the team should know" /></div>' +
@@ -1327,7 +1331,10 @@ async function renderDemos(projectId){
         document.getElementById('demoType').value   = d.demo_type;
         document.getElementById('demoStatus').value = d.status;
         document.getElementById('demoDate').value   = d.demo_date;
-        document.getElementById('demoTime').value   = d.demo_time ? String(d.demo_time).slice(0,5) : '';
+        // Rebuilt rather than assigned, so a stored time that is not on
+        // the quarter-hour grid still appears as its own option.
+        document.getElementById('demoTime').innerHTML =
+          timeOptions(d.demo_time ? String(d.demo_time).slice(0,5) : '');
         document.getElementById('demoTitle').value  = d.title || '';
         document.getElementById('demoNotes').value  = d.notes || '';
         document.getElementById('demoSubmitBtn').textContent = 'Save changes';
