@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=24">
-  <link rel="stylesheet" href="projects.css?v=24">
+  <link rel="stylesheet" href="style.css?v=25">
+  <link rel="stylesheet" href="projects.css?v=25">
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=24"></script>
+  <script src="theme.js?v=25"></script>
 </head>
 
 <body>
@@ -62,6 +62,7 @@
       <a href="#/projects"  data-nav="projects">Projects</a>
       <a href="#/tasks"     data-nav="tasks">Tasks</a>
       <a href="#/questions" data-nav="questions">Questions</a>
+      <a href="#/rates" data-nav="rates" id="ratesNavLink" hidden>Rate card</a>
     </nav>
 
     <!-- ── Page: Dashboard ─────────────────────────────── -->
@@ -187,9 +188,73 @@
       <div id="questionsList"></div>
     </section>
 
+    <!-- ── Page: Developer rate card (ADMIN only) ──────── -->
+    <section id="page-rates" class="page">
+      <div class="pagehead">
+        <div>
+          <h1>Developer <em>rate card</em></h1>
+          <p class="sub">How long each kind of build takes. A task multiplies the rate by how many screens, modules or endpoints it covers to get its ETA and its due date. The design half of this card lives under Design.</p>
+        </div>
+        <button type="button" class="btn-sm" id="newRateToggle" style="border:none">+ New rate</button>
+      </div>
+
+      <form id="newRateForm" class="inline-form">
+        <input type="hidden" id="rEstimateId" value="" />
+        <div class="row">
+          <div class="field"><label>Deliverable</label><input id="rDeliverable" required placeholder="e.g. API Integration" /></div>
+          <div class="field"><label>Complexity</label>
+            <select id="rComplexity">
+              <option value="EASY" selected>Easy</option>
+              <option value="MODERATE">Moderate</option>
+              <option value="COMPLEX">Complex</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Unit</label>
+            <select id="rUnit">
+              <option value="Screen" selected>Screen</option>
+              <option value="Page">Page</option>
+              <option value="Module">Module</option>
+              <option value="API">API</option>
+              <option value="Endpoint">Endpoint</option>
+              <option value="Feature">Feature</option>
+              <option value="Bug">Bug</option>
+              <option value="App">App</option>
+              <option value="Project">Project</option>
+            </select>
+          </div>
+          <div class="field"><label>Order <span class="opt">— lower sorts first</span></label><input id="rSort" type="number" step="1" value="0" /></div>
+        </div>
+        <div class="field"><label>Definition <span class="opt">— optional, what counts as this</span></label><input id="rDefinition" placeholder="e.g. Auth, pagination, error states" /></div>
+
+        <p class="hint" style="margin:2px 0 0">Hours for <b>one</b> unit. Half an hour each is 0.5; three per hour is 0.333.</p>
+        <div class="row">
+          <div class="field"><label>With FRD — best</label><input id="rFrdBest" type="number" min="0.01" step="0.001" required /></div>
+          <div class="field"><label>With FRD — worst</label><input id="rFrdWorst" type="number" min="0.01" step="0.001" required /></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Without FRD — best</label><input id="rNoFrdBest" type="number" min="0.01" step="0.001" required /></div>
+          <div class="field"><label>Without FRD — worst</label><input id="rNoFrdWorst" type="number" min="0.01" step="0.001" required /></div>
+        </div>
+        <div class="actions">
+          <button type="submit" id="rSubmitBtn">Add rate</button>
+          <button type="button" class="secondary" id="rateCancelBtn">Cancel</button>
+        </div>
+      </form>
+
+      <div class="panel-head">
+        <h2>Rates</h2>
+        <span class="count" id="rateCount">0</span>
+        <span class="spacer"></span>
+        <input type="search" id="rateSearch" class="searchbox" placeholder="Search deliverable…" />
+      </div>
+      <div id="ratesList"></div>
+    </section>
+
   </div>
 
-  <script src="ui.js?v=24"></script>
-  <script src="projects.js?v=24"></script>
+  <script src="ui.js?v=25"></script>
+  <script src="projects.js?v=25"></script>
 </body>
 </html>

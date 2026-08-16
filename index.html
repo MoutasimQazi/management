@@ -11,13 +11,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=24">
-  <link rel="stylesheet" href="projects.css?v=24">
+  <link rel="stylesheet" href="style.css?v=25">
+  <link rel="stylesheet" href="projects.css?v=25">
 
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=24"></script>
+  <script src="theme.js?v=25"></script>
 </head>
 
 <body>
@@ -180,8 +180,8 @@
 
   </div>
 
-  <script src="fireflies.js?v=24"></script>
-  <script src="ui.js?v=24"></script>
+  <script src="fireflies.js?v=25"></script>
+  <script src="ui.js?v=25"></script>
   <script>
     /* ════════════════════════════════════════════════════
        1. Config
@@ -494,6 +494,36 @@
     // Pending requests addressed to me — approve/reject inline. The
     // backend scopes this: managers see requests naming them as an
     // approver, ADMIN sees every pending request.
+    /* Approving one day off at a time is how somebody quietly ends up with
+       three weeks in a month: each request is reasonable on its own. Every
+       pending request therefore shows the rest of that person's leave in
+       the same month, and the running total including this one. The
+       backend works it out (pm-leave-list.php) so the count is the same
+       wherever it is asked from. */
+    function monthContext(r){
+      const total = Number(r.month_total_days || 0);
+      if (!total) return '';
+      const monthName = r.month
+        ? new Date(r.month + '-01T00:00:00').toLocaleDateString('en-IN', { month:'long' })
+        : 'this month';
+      const others = Array.isArray(r.month_other) ? r.month_other : [];
+
+      // Nothing else booked is worth saying too — it is the reassuring answer.
+      if (!others.length) {
+        return '<div class="monthctx">Only leave in ' + esc(monthName) + ' — ' +
+          total + ' day' + (total === 1 ? '' : 's') + '.</div>';
+      }
+      const heavy = total >= 5 ? ' heavy' : '';
+      return '<div class="monthctx' + heavy + '">' +
+        '<b>' + total + ' day' + (total === 1 ? '' : 's') + ' in ' + esc(monthName) + '</b> ' +
+        'including this one · also ' +
+        others.map(o =>
+          esc(fmtDay(o.start_date)) +
+          (o.start_date !== o.end_date ? '–' + esc(fmtDay(o.end_date)) : '') +
+          ' (' + esc(String(o.status).toLowerCase()) + ')').join(' · ') +
+      '</div>';
+    }
+
     async function loadApprovals(){
       if (!readSession()) return;
       try {
@@ -505,7 +535,9 @@
             '<div class="lmeta">' +
               '<span>' + esc(fmtDay(r.start_date)) + ' – ' + esc(fmtDay(r.end_date)) + '</span>' +
               (r.reason ? '<span>' + esc(r.reason) + '</span>' : '') +
-            '</div></div>' +
+            '</div>' +
+            monthContext(r) +
+            '</div>' +
           '<div class="tactions">' +
             '<button type="button" class="icon-btn" data-leave-approve="' + r.leave_id + '">Approve</button>' +
             '<button type="button" class="icon-btn danger" data-leave-reject="' + r.leave_id + '">Reject</button>' +

@@ -18,8 +18,13 @@ if (!$q->fetch()) {
  * hours on those tasks with nothing explaining where they came from —
  * the foreign key is ON DELETE SET NULL, so the link would just vanish.
  * Retiring keeps the history and takes the row out of the picker. */
-$used = $pdo->prepare("SELECT COUNT(*) AS n FROM design_tasks WHERE estimate_id = ?");
-$used->execute([$estimateId]);
+/* Both boards point at this table now, so both have to be asked before a
+   row can be considered unused. */
+$used = $pdo->prepare(
+    "SELECT (SELECT COUNT(*) FROM design_tasks WHERE estimate_id = ?)
+          + (SELECT COUNT(*) FROM tasks WHERE estimate_id = ?) AS n"
+);
+$used->execute([$estimateId, $estimateId]);
 $n = (int)$used->fetch()['n'];
 
 if ($n > 0) {

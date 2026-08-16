@@ -64,4 +64,92 @@ $sql .= " ORDER BY l.start_date DESC";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
-echo json_encode($stmt->fetchAll());
+$rows = $stmt->fetchAll();
+
+/* ── Context for an approver ──────────────────────────
+ * Approving a day off one request at a time is how someone quietly ends
+ * up with three weeks in one month: each request looks reasonable alone.
+ * So an approvals list carries, for every pending request, the rest of
+ * that person's leave in the same calendar month.
+ *
+ * One extra query for the whole list rather than one per row — an
+ * approver with a dozen pending requests should not cost a dozen
+ * round trips to answer the same question.
+ */
+if (!empty($_GET['approvals']) && $rows) {
+    $keys = [];      // "E:12" / "M:5" → true, who we need history for
+    $bounds = [];
+    foreach ($rows as $r) {
+        $keys[($r['employee_id'] ? 'E:' . $r['employee_id'] : 'M:' . $r['manager_id'])] = true;
+        $bounds[] = substr($r['start_date'], 0, 7);
+    }
+    sort($bounds);
+    $first = $bounds[0] . '-01';
+    $last  = end($bounds) . '-01';
+
+    $empIds = array_values(array_filter(array_map(fn($r) => $r['employee_id'], $rows)));
+    $mgrIds = array_values(array_filter(array_map(fn($r) => $r['manager_id'], $rows)));
+
+    $clauses = [];
+    $ctxParams = [];
+    if ($empIds) {
+        $clauses[] = 'l.employee_id IN (' . implode(',', array_fill(0, count($empIds), '?')) . ')';
+        $ctxParams = array_merge($ctxParams, $empIds);
+    }
+    if ($mgrIds) {
+        $clauses[] = 'l.manager_id IN (' . implode(',', array_fill(0, count($mgrIds), '?')) . ')';
+        $ctxParams = array_merge($ctxParams, $mgrIds);
+    }
+
+    $history = [];
+    if ($clauses) {
+        $ctxSql = "SELECT l.leave_id, l.employee_id, l.manager_id, l.start_date, l.end_date, l.status
+                   FROM leave_requests l
+                   WHERE (" . implode(' OR ', $clauses) . ")
+                     AND l.start_date <= LAST_DAY(?) AND l.end_date >= ?
+                   ORDER BY l.start_date ASC";
+        $ctxStmt = $pdo->prepare($ctxSql);
+        $ctxStmt->execute(array_merge($ctxParams, [$last, $first]));
+        $history = $ctxStmt->fetchAll();
+    }
+
+    foreach ($rows as &$r) {
+        $key   = $r['employee_id'] ? 'E:' . $r['employee_id'] : 'M:' . $r['manager_id'];
+        $month = substr($r['start_date'], 0, 7);
+        $mine  = [];
+        $days  = 0;
+
+        foreach ($history as $h) {
+            $hKey = $h['employee_id'] ? 'E:' . $h['employee_id'] : 'M:' . $h['manager_id'];
+            if ($hKey !== $key) continue;
+            if (substr($h['start_date'], 0, 7) !== $month &&
+                substr($h['end_date'],   0, 7) !== $month) continue;
+            if ($h['status'] === 'REJECTED') continue;   // a refusal is not time off
+
+            // Days inside this month only, so a request spanning a month
+            // boundary is not counted twice across two months.
+            $mStart = new DateTime($month . '-01');
+            $mEnd   = (new DateTime($month . '-01'))->modify('last day of this month');
+            $s = max(new DateTime($h['start_date']), $mStart);
+            $e = min(new DateTime($h['end_date']),   $mEnd);
+            $n = $s <= $e ? $s->diff($e)->days + 1 : 0;
+            $days += $n;
+
+            if ((int)$h['leave_id'] !== (int)$r['leave_id']) {
+                $mine[] = [
+                    'leave_id'   => (int)$h['leave_id'],
+                    'start_date' => $h['start_date'],
+                    'end_date'   => $h['end_date'],
+                    'status'     => $h['status'],
+                    'days'       => $n,
+                ];
+            }
+        }
+        $r['month']            = $month;
+        $r['month_other']      = $mine;   // everything else they have that month
+        $r['month_total_days'] = $days;   // including the request being reviewed
+    }
+    unset($r);
+}
+
+echo json_encode($rows);

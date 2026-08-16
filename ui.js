@@ -36,6 +36,28 @@ function safeUrl(v){
   return /^https?:\/\//i.test(url) ? url : '';
 }
 
+/* ── Date fields ──────────────────────────────────────
+   A date input only opens its calendar from a ~20px glyph in the corner.
+   Click anywhere else and you get a text cursor in a segment, which is
+   why picking a date feels like fighting the control: the obvious target
+   is the field, and the field does nothing.
+
+   showPicker() opens it from anywhere in the field. It must be called
+   from a real user gesture, which a click handler is. Not every browser
+   has it — where it is missing this does nothing and the glyph still
+   works, so nobody is worse off than before.
+
+   Typing is left alone: a click that lands on a segment while the field
+   already has focus is someone editing, not someone reaching for the
+   calendar. */
+document.addEventListener('click', (e) => {
+  const el = e.target.closest && e.target.closest('input[type="date"]');
+  if (!el || el.disabled || el.readOnly) return;
+  if (typeof el.showPicker !== 'function') return;
+  if (document.activeElement === el && el.value) return;
+  try { el.showPicker(); } catch (_) {}   // throws if not user-activated
+});
+
 /* One host reused for every dialog — building and tearing down the
    backdrop each time made the blur flicker between two dialogs in a row. */
 function dialogHost(){
@@ -175,6 +197,66 @@ function confirmDialog(opts){
     cancelLabel: o.cancelLabel
   });
 }
+
+/* ════════════════════════════════════════════════════
+   Estimates
+   ────────────────────────────────────────────────────
+   Shared by the Design and Projects rate cards, which
+   read the same table and do the same arithmetic.
+
+   The date preview mirrors designTargetDate() in
+   auth.php. The server recomputes on save and its answer
+   is what gets stored — this exists so that switching to
+   worst case visibly moves the date before anyone
+   commits to it.
+   ════════════════════════════════════════════════════ */
+const CASE_COLS = {
+  '1:BEST':  'frd_best',   '1:WORST':  'frd_worst',
+  '0:BEST':  'nofrd_best', '0:WORST':  'nofrd_worst'
+};
+
+// 0.5 → "2 Screens / hour"; 2 → "1 Screen / 2 hours".
+function rateText(hours, unit){
+  const h = Number(hours);
+  if (!(h > 0)) return '—';
+  const u = unit || 'Screen';
+  if (h < 1) {
+    const per = Math.round(1 / h);
+    return per + ' ' + u + 's / hour';
+  }
+  return '1 ' + u + ' / ' + (h % 1 ? h.toFixed(2).replace(/0+$/, '') : h) +
+    (h === 1 ? ' hour' : ' hours');
+}
+
+function hoursText(h){
+  const n = Number(h);
+  if (!(n > 0)) return '—';
+  if (n < 8) return n + (n === 1 ? ' hour' : ' hours');
+  const days = Math.ceil(n / estimateHoursPerDay);
+  return n + ' hours (' + days + ' working day' + (days === 1 ? '' : 's') + ')';
+}
+
+/* Same rule as the server: whole working days at estimateHoursPerDay each, day
+   one being the start date, weekends skipped. Holidays are not modelled
+   in either place. */
+function targetDateFrom(hours, startISO){
+  if (!(hours > 0)) return null;
+  const d = startISO ? new Date(startISO + 'T00:00:00') : new Date();
+  d.setHours(0, 0, 0, 0);
+  const days = Math.ceil(hours / estimateHoursPerDay);
+  const skip = () => { while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1); };
+  skip();
+  for (let i = 1; i < days; i++) { d.setDate(d.getDate() + 1); skip(); }
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
+
+/* Set from what the server sends, so the page and the backend cannot
+   disagree about the length of a working day. */
+let estimateHoursPerDay = 8;
+function setEstimateHoursPerDay(h){ if (h > 0) estimateHoursPerDay = Number(h); }
 
 /* ════════════════════════════════════════════════════
    "Who is on what"

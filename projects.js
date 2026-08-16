@@ -43,6 +43,9 @@ const PM_TASKS_STATUS_URL     = PM_API_BASE + "pm-tasks-status.php";
 const PM_QUESTIONS_LIST_URL   = PM_API_BASE + "pm-questions-list.php";
 const PM_QUESTIONS_CREATE_URL = PM_API_BASE + "pm-questions-create.php";
 const PM_QUESTIONS_ANSWER_URL = PM_API_BASE + "pm-questions-answer.php";
+const PM_RATES_LIST_URL       = PM_API_BASE + "pm-design-estimates-list.php";
+const PM_RATES_SAVE_URL       = PM_API_BASE + "pm-design-estimates-save.php";
+const PM_RATES_DELETE_URL     = PM_API_BASE + "pm-design-estimates-delete.php";
 
 /* ── DOM references ─────────────────────────────────── */
 const pmSignedOut = document.getElementById('pmSignedOut');
@@ -57,6 +60,7 @@ let session  = null;
 let isAdmin  = false;
 let allEmployees = [];
 let allProjects  = [];
+let allRates     = [];   // the DEV half of the shared rate card
 
 /* ── Helpers ─────────────────────────────────────────── */
 function esc(s){
@@ -228,6 +232,9 @@ function showApp(){
   roleBadge.textContent = roleBadgeLabel(session.role || 'MANAGER');
   roleBadge.className = 'role-badge' + (isAdmin ? '' : ' manager');
   document.querySelectorAll('.nav-admin').forEach(a => { a.hidden = !isAdmin; });
+  // The rate card sets company-wide expectations about how long work
+  // takes, so only an admin edits it — a BA is estimated by it.
+  document.getElementById('ratesNavLink').hidden = !isAdmin;
   route();
 }
 signOutBtn.addEventListener('click', () => {
@@ -242,7 +249,9 @@ function route(){
   const hash  = location.hash || '#/dashboard';
   const parts = hash.replace(/^#\//, '').split('/');
   let page    = parts[0] || 'dashboard';
-  if (!['dashboard','projects','project','tasks','questions'].includes(page)) page = 'dashboard';
+  if (!['dashboard','projects','project','tasks','questions','rates'].includes(page)) page = 'dashboard';
+  // The rate card is company policy about how long work takes — admins only.
+  if (page === 'rates' && !isAdmin) page = 'dashboard';
 
   pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
   // "Dashboard" in the nav now always means the Fireflies+Projects combined
@@ -256,6 +265,7 @@ function route(){
   if (page === 'project')   renderProjectDetail(Number(parts[1]));
   if (page === 'tasks')     renderTasks();
   if (page === 'questions') renderQuestions();
+  if (page === 'rates')     renderRates();
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);
@@ -497,13 +507,35 @@ async function renderProjectDetail(projectId){
           '<div class="field"><label>Task name</label><input id="taskName" required placeholder="Task name" /></div>' +
           '<div class="field"><label>Assign to</label><select id="taskEmployee" data-role="employee-select" required></select></div>' +
         '</div>' +
+        /* The rate card fills the estimate in. Anything typed into the
+           hours field still wins — see pm-tasks-create.php. */
         '<div class="row">' +
-          '<div class="field"><label>Estimate (hours) <span class="opt">— optional</span></label><input id="taskEta" type="number" min="0" step="0.5" placeholder="e.g. 4" /></div>' +
+          '<div class="field"><label>Deliverable <span class="opt">— from the rate card</span></label><select id="taskDeliverable"></select></div>' +
+          '<div class="field"><label>Complexity</label><select id="taskComplexity"></select></div>' +
+        '</div>' +
+        '<div class="row">' +
+          '<div class="field"><label>How many <span class="opt" id="taskUnitLabel">units</span></label><input id="taskQuantity" type="number" min="0.5" step="0.5" value="1" /></div>' +
+          '<div class="field"><label>FRD</label><select id="taskFrd">' +
+            '<option value="1" selected>With a proper FRD</option>' +
+            '<option value="0">Without a proper FRD</option>' +
+          '</select></div>' +
+        '</div>' +
+        '<div class="row">' +
+          '<div class="field"><label>Case</label><select id="taskCase">' +
+            '<option value="BEST" selected>Best case</option>' +
+            '<option value="WORST">Worst case</option>' +
+          '</select></div>' +
+          '<div class="field"><label>Start date <span class="opt">— defaults to today</span></label><input id="taskStart" type="date" /></div>' +
+        '</div>' +
+        '<div class="estimate-note" id="taskEstimateNote">Pick a deliverable to get an estimate.</div>' +
+        '<div class="row">' +
+          '<div class="field"><label>Estimate (hours) <span class="opt">— blank uses the rate card</span></label><input id="taskEta" type="number" min="0" step="0.5" placeholder="from the rate card" /></div>' +
           '<div class="field"><label>Priority</label><select id="taskPriority">' +
             '<option value="LOW">Low</option><option value="MEDIUM" selected>Medium</option>' +
             '<option value="HIGH">High</option><option value="CRITICAL">Critical</option>' +
           '</select></div>' +
         '</div>' +
+        '<div class="field"><label>Due date <span class="opt">— blank uses the estimate</span></label><input id="taskDue" type="date" /></div>' +
         '<div class="field"><label>Description <span class="opt">— optional</span></label><input id="taskDescription" placeholder="Details" /></div>' +
         '<div class="actions"><button type="submit">Add task</button>' +
           '<button type="button" class="secondary" id="taskCancelBtn">Cancel</button></div>' +
@@ -511,6 +543,7 @@ async function renderProjectDetail(projectId){
       '<div id="projectTasksList"></div>';
 
     populateEmployeeSelects();
+    wireTaskEstimate();
 
     document.getElementById('editProjectToggle').addEventListener('click', () => {
       document.getElementById('editProjectForm').classList.toggle('open');
@@ -566,9 +599,19 @@ async function renderProjectDetail(projectId){
       const priority = document.getElementById('taskPriority').value;
       const description = document.getElementById('taskDescription').value.trim();
       if (!task_name || !employee_id) return;
+      const rate = currentTaskRate();
       try {
         await api(PM_TASKS_CREATE_URL, { method: 'POST',
-          body: { project_id: projectId, employee_id: Number(employee_id), task_name, description, eta_hours, priority } });
+          body: {
+            project_id: projectId, employee_id: Number(employee_id),
+            task_name, description, eta_hours, priority,
+            estimate_id:   rate ? rate.estimate_id : '',
+            quantity:      Number(document.getElementById('taskQuantity').value) || 1,
+            has_frd:       document.getElementById('taskFrd').value === '1' ? 1 : 0,
+            estimate_case: document.getElementById('taskCase').value,
+            start_date:    document.getElementById('taskStart').value,
+            due_date:      document.getElementById('taskDue').value
+          } });
         e.target.reset();
         e.target.classList.remove('open');
         renderProjectDetail(projectId);
@@ -832,3 +875,234 @@ if (session) {
 } else {
   showSignedOut();
 }
+
+/* ════════════════════════════════════════════════════
+   Developer rate card
+   ────────────────────────────────────────────────────
+   The DEV half of the same table the design board uses
+   (migration 010). rateText / hoursText / targetDateFrom
+   / CASE_COLS come from ui.js — one copy, two cards.
+   ════════════════════════════════════════════════════ */
+async function loadRates(){
+  const data = await api(PM_RATES_LIST_URL + '?discipline=DEV' + (isAdmin ? '&all=1' : ''));
+  allRates = data.estimates || [];
+  setEstimateHoursPerDay(data.hours_per_day);
+  return allRates;
+}
+
+/* ── The estimate block on the add-task form ──────────
+   The project detail view rebuilds its form every time it is opened, so
+   these are wired after each render rather than once at load. */
+function wireTaskEstimate(){
+  const dSel = document.getElementById('taskDeliverable');
+  if (!dSel) return;
+
+  const fillComplexities = () => {
+    const cSel = document.getElementById('taskComplexity');
+    const rows = allRates.filter(r => r.is_active && r.deliverable === dSel.value);
+    cSel.innerHTML = rows.length
+      ? rows.map(r => '<option value="' + r.estimate_id + '">' +
+          esc(r.complexity.charAt(0) + r.complexity.slice(1).toLowerCase()) +
+          (r.definition ? ' — ' + esc(r.definition) : '') + '</option>').join('')
+      : '<option value="">—</option>';
+    refreshTaskEstimate();
+  };
+  const fillDeliverables = () => {
+    const names = [...new Set(allRates.filter(r => r.is_active).map(r => r.deliverable))];
+    dSel.innerHTML = names.length
+      ? '<option value="">No estimate — set the hours by hand</option>' +
+        names.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('')
+      : '<option value="">Rate card is empty</option>';
+    fillComplexities();
+  };
+
+  dSel.addEventListener('change', fillComplexities);
+  ['taskComplexity', 'taskQuantity', 'taskFrd', 'taskCase', 'taskStart'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', refreshTaskEstimate);
+  });
+
+  // Already loaded when opening a second project; otherwise fetch, and
+  // tolerate failure so a missing rate card never blocks creating a task.
+  if (allRates.length) fillDeliverables();
+  else loadRates().then(fillDeliverables).catch(() => {
+    dSel.innerHTML = '<option value="">Rate card unavailable — set the hours by hand</option>';
+  });
+}
+
+function currentTaskRate(){
+  const sel = document.getElementById('taskComplexity');
+  if (!sel) return null;
+  return allRates.find(r => Number(r.estimate_id) === Number(sel.value)) || null;
+}
+
+function refreshTaskEstimate(){
+  const note = document.getElementById('taskEstimateNote');
+  if (!note) return;
+  const rate = currentTaskRate();
+  const unitLabel = document.getElementById('taskUnitLabel');
+
+  if (!rate) {
+    if (unitLabel) unitLabel.textContent = 'units';
+    note.className = 'estimate-note';
+    note.textContent = 'No estimate — set the hours and the due date by hand.';
+    return;
+  }
+  if (unitLabel) unitLabel.textContent = (rate.unit || 'unit').toLowerCase() + 's';
+
+  const qty    = Number(document.getElementById('taskQuantity').value) || 0;
+  const frd    = document.getElementById('taskFrd').value;
+  const kase   = document.getElementById('taskCase').value;
+  const per    = Number(rate[CASE_COLS[frd + ':' + kase]]);
+  const hours  = Math.round(per * qty * 100) / 100;
+  const target = targetDateFrom(hours, document.getElementById('taskStart').value);
+
+  note.className = 'estimate-note on';
+  note.innerHTML = qty > 0
+    ? '<b>' + esc(hoursText(hours)) + '</b> — ' + esc(rateText(per, rate.unit)) +
+      ' × ' + qty + ' ' + esc((rate.unit || 'unit').toLowerCase()) + (qty === 1 ? '' : 's') +
+      (target ? '. Due <b>' + esc(fmtDay(target)) + '</b> unless you set one below.' : '.')
+    : 'Enter how many ' + esc((rate.unit || 'unit').toLowerCase()) + 's to get an estimate.';
+}
+
+/* ── The admin page ───────────────────────────────────
+   The same screen as Design › Rate card, pointed at DEV. */
+function rateFormReset(){
+  document.getElementById('newRateForm').reset();
+  document.getElementById('rEstimateId').value = '';
+  document.getElementById('rSubmitBtn').textContent = 'Add rate';
+}
+
+document.getElementById('newRateToggle').addEventListener('click', () => {
+  const f = document.getElementById('newRateForm');
+  if (f.classList.contains('open') && document.getElementById('rEstimateId').value) rateFormReset();
+  f.classList.toggle('open');
+});
+document.getElementById('rateCancelBtn').addEventListener('click', () => {
+  rateFormReset();
+  document.getElementById('newRateForm').classList.remove('open');
+});
+document.getElementById('rateSearch').addEventListener('input', drawRates);
+
+async function renderRates(){
+  const listEl = document.getElementById('ratesList');
+  listEl.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    await loadRates();
+    drawRates();
+  } catch (err) {
+    listEl.innerHTML = '<div class="empty">Could not load the rate card (' + esc(err.message) + ').</div>';
+  }
+}
+
+function drawRates(){
+  const listEl = document.getElementById('ratesList');
+  const q = (document.getElementById('rateSearch').value || '').trim().toLowerCase();
+  const rows = q
+    ? allRates.filter(r => [r.deliverable, r.definition, r.complexity]
+        .some(v => String(v || '').toLowerCase().includes(q)))
+    : allRates;
+
+  document.getElementById('rateCount').textContent =
+    q ? rows.length + ' of ' + allRates.length : String(allRates.length);
+
+  if (!rows.length) {
+    listEl.innerHTML = '<div class="empty">' +
+      (allRates.length ? 'Nothing matches that.'
+                       : 'No developer rates yet. Import migration 010 to seed them, or add rates by hand.') +
+      '</div>';
+    return;
+  }
+
+  listEl.innerHTML =
+    '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+      '<th>Deliverable</th><th>Complexity</th>' +
+      '<th>FRD best</th><th>FRD worst</th><th>No FRD best</th><th>No FRD worst</th><th></th>' +
+    '</tr></thead><tbody>' +
+    rows.map(r =>
+      '<tr' + (r.is_active ? '' : ' class="retired"') + '>' +
+        '<td><div class="ttitle">' + esc(r.deliverable) +
+          (r.is_active ? '' : '<span class="gapflag">retired</span>') + '</div>' +
+          (r.definition ? '<div class="tsub">' + esc(r.definition) + '</div>' : '') +
+          '<div class="tsub">per ' + esc(r.unit.toLowerCase()) + '</div></td>' +
+        '<td>' + esc(r.complexity.charAt(0) + r.complexity.slice(1).toLowerCase()) + '</td>' +
+        '<td class="nowrap"><div class="tsub">' + esc(rateText(r.frd_best, r.unit)) + '</div></td>' +
+        '<td class="nowrap"><div class="tsub">' + esc(rateText(r.frd_worst, r.unit)) + '</div></td>' +
+        '<td class="nowrap"><div class="tsub">' + esc(rateText(r.nofrd_best, r.unit)) + '</div></td>' +
+        '<td class="nowrap"><div class="tsub">' + esc(rateText(r.nofrd_worst, r.unit)) + '</div></td>' +
+        '<td class="actions-cell">' +
+          '<button type="button" class="icon-btn" data-rate-edit="' + r.estimate_id + '">Edit</button>' +
+          '<button type="button" class="icon-btn danger" data-rate-del="' + r.estimate_id + '">Delete</button>' +
+        '</td></tr>').join('') +
+    '</tbody></table></div>';
+
+  listEl.querySelectorAll('[data-rate-edit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const r = allRates.find(x => Number(x.estimate_id) === Number(btn.dataset.rateEdit));
+      if (!r) return;
+      document.getElementById('rEstimateId').value  = r.estimate_id;
+      document.getElementById('rDeliverable').value = r.deliverable;
+      document.getElementById('rComplexity').value  = r.complexity;
+      document.getElementById('rUnit').value        = r.unit;
+      document.getElementById('rSort').value        = r.sort_order;
+      document.getElementById('rDefinition').value  = r.definition || '';
+      document.getElementById('rFrdBest').value     = r.frd_best;
+      document.getElementById('rFrdWorst').value    = r.frd_worst;
+      document.getElementById('rNoFrdBest').value   = r.nofrd_best;
+      document.getElementById('rNoFrdWorst').value  = r.nofrd_worst;
+      document.getElementById('rSubmitBtn').textContent = 'Save changes';
+      document.getElementById('newRateForm').classList.add('open');
+      window.scrollTo(0, 0);
+    });
+  });
+
+  listEl.querySelectorAll('[data-rate-del]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const r = allRates.find(x => Number(x.estimate_id) === Number(btn.dataset.rateDel));
+      if (!await confirmDialog({
+        title: 'Delete this rate?',
+        body: (r ? r.deliverable + ' · ' + r.complexity.toLowerCase() + '. ' : '') +
+              'If any task was estimated from it, it is retired instead of deleted so those estimates keep their source.',
+        confirmLabel: 'Delete rate',
+        danger: true
+      })) return;
+      btn.disabled = true;
+      try {
+        const res = await api(PM_RATES_DELETE_URL, { method:'POST', body:{ estimate_id: Number(btn.dataset.rateDel) } });
+        toast(res.message || 'Rate deleted.', 'ok', !!res.retired);
+        renderRates();
+      } catch (err) {
+        toast('Could not delete: ' + err.message, 'err');
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+document.getElementById('newRateForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = {
+    estimate_id: document.getElementById('rEstimateId').value || 0,
+    deliverable: document.getElementById('rDeliverable').value.trim(),
+    complexity:  document.getElementById('rComplexity').value,
+    unit:        document.getElementById('rUnit').value,
+    sort_order:  Number(document.getElementById('rSort').value) || 0,
+    definition:  document.getElementById('rDefinition').value.trim(),
+    frd_best:    Number(document.getElementById('rFrdBest').value),
+    frd_worst:   Number(document.getElementById('rFrdWorst').value),
+    nofrd_best:  Number(document.getElementById('rNoFrdBest').value),
+    nofrd_worst: Number(document.getElementById('rNoFrdWorst').value),
+    is_active:   1,
+    discipline:  'DEV'   // this card is the developer half of the table
+  };
+  if (!body.deliverable) return;
+  try {
+    await api(PM_RATES_SAVE_URL, { method:'POST', body });
+    rateFormReset();
+    e.target.classList.remove('open');
+    toast('Rate card updated.', 'ok');
+    renderRates();
+  } catch (err) {
+    toast('Could not save the rate: ' + err.message, 'err');
+  }
+});

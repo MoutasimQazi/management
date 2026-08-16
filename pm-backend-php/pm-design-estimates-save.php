@@ -7,11 +7,16 @@ requireRole($pdo, $USERS, ['ADMIN']);
 $b = body();
 
 $COMPLEXITIES = ['EASY', 'MODERATE', 'COMPLEX'];
-$UNITS        = ['Screen', 'Page', 'App', 'Project'];
+// Developer work is not counted in screens and pages alone — a module, an
+// endpoint or a single bug are all real units of estimation.
+$UNITS        = ['Screen', 'Page', 'App', 'Project', 'Module', 'API', 'Endpoint', 'Feature', 'Bug'];
+$DISCIPLINES  = ['DESIGN', 'DEV'];
 
 $deliverable = trim($b['deliverable'] ?? '');
 $complexity  = strtoupper(trim($b['complexity'] ?? ''));
 $unit        = trim($b['unit'] ?? 'Screen');
+$discipline  = strtoupper(trim($b['discipline'] ?? 'DESIGN'));
+if (!in_array($discipline, $DISCIPLINES, true)) $discipline = 'DESIGN';
 
 if ($deliverable === '' || !in_array($complexity, $COMPLEXITIES, true)) {
     http_response_code(400);
@@ -45,13 +50,13 @@ $estimateId = (int)($b['estimate_id'] ?? 0);
 if ($estimateId) {
     $stmt = $pdo->prepare(
         "UPDATE design_estimates
-         SET deliverable = ?, complexity = ?, definition = ?, unit = ?,
+         SET discipline = ?, deliverable = ?, complexity = ?, definition = ?, unit = ?,
              frd_best = ?, frd_worst = ?, nofrd_best = ?, nofrd_worst = ?,
              sort_order = ?, is_active = ?
          WHERE estimate_id = ?"
     );
     $ok = $stmt->execute([
-        $deliverable, $complexity, $definition, $unit,
+        $discipline, $deliverable, $complexity, $definition, $unit,
         $rates['frd_best'], $rates['frd_worst'], $rates['nofrd_best'], $rates['nofrd_worst'],
         $sortOrder, $isActive, $estimateId,
     ]);
@@ -66,12 +71,12 @@ if ($estimateId) {
 try {
     $stmt = $pdo->prepare(
         "INSERT INTO design_estimates
-           (deliverable, complexity, definition, unit,
+           (discipline, deliverable, complexity, definition, unit,
             frd_best, frd_worst, nofrd_best, nofrd_worst, sort_order, is_active)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
     $stmt->execute([
-        $deliverable, $complexity, $definition, $unit,
+        $discipline, $deliverable, $complexity, $definition, $unit,
         $rates['frd_best'], $rates['frd_worst'], $rates['nofrd_best'], $rates['nofrd_worst'],
         $sortOrder, $isActive,
     ]);
