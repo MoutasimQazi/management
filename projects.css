@@ -812,3 +812,13 @@ a.evidence:hover{ color:var(--brand-dark); text-decoration:underline; }
 }
 .data-table tr.clickable:hover,
 .data-table tr[data-project-row]:hover{ background:var(--line-2); }
+
+/* The softer of the two demo warnings: they are back before the demo,
+   just not with much room. Amber, because it is a judgement call for the
+   approver rather than the flat "they are away that day" of the red one. */
+.clashnote.soon{
+  background:var(--warn-soft);
+  border-color:var(--warn-line);
+  color:var(--warn);
+}
+.clashnote + .clashnote{ margin-top:5px; }

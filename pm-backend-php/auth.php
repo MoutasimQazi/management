@@ -208,11 +208,31 @@ function projectInvolvementScope(array $user, string $col): array {
     return ["$col IN (SELECT project_id FROM projects WHERE manager_id = ?)", [$user['id']]];
 }
 
-/* Demos falling inside a date range, on projects a given person is on.
+/* How close a demo can sit after someone gets back and still be the
+ * approver's problem. A week: long enough to catch "off Mon-Wed, client
+ * demo Thursday", short enough that a demo three weeks out — which they
+ * will be back in plenty of time for — does not cry wolf. */
+const DEMO_LOOKAHEAD_DAYS = 7;
+
+/* Demos around a date range, on projects a given person is on.
  *
- * Used to warn an approver that the leave in front of them lands on a
- * demo. Takes the requester's identity rather than the caller's — the
- * question is about them, not about who is reading the answer.
+ * Used to warn an approver about the leave in front of them. Takes the
+ * requester's identity rather than the caller's — the question is about
+ * them, not about who is reading the answer.
+ *
+ * ── Why this looks past the end of the leave ──
+ * The first version only caught a demo falling inside the leave. But
+ * being away Monday to Wednesday before a Thursday client demo is the
+ * worse case and it matched nothing: the person is absent for exactly
+ * the run-up, and back with a day to spare. Both are reported, and each
+ * row says which it is, because they are not the same problem:
+ *
+ *   during  they are away on the day itself
+ *   after   the demo lands within a week of them getting back
+ *
+ * Each row also carries how much unfinished work they hold on that
+ * project, which is the difference between "they are on it" and "they
+ * are the one building it".
  *
  * Returns [] rather than failing if project_demos does not exist yet:
  * migration 011 is imported by hand, and an approvals screen must not
@@ -233,20 +253,43 @@ function demoClashesFor(PDO $pdo, ?int $employeeId, ?int $managerId, string $fro
         $params = [$managerId, $managerId, $managerId];
     }
 
+    // The window runs from the first day off to a week after the last.
+    $until = (new DateTime($to))->modify('+' . DEMO_LOOKAHEAD_DAYS . ' days')->format('Y-m-d');
+
     try {
         $stmt = $pdo->prepare(
             "SELECT d.demo_id, d.project_id, d.demo_type, d.title, d.demo_date, d.demo_time,
-                    p.project_name
+                    p.project_name,
+                    CASE WHEN d.demo_date <= ? THEN 'during' ELSE 'after' END AS proximity,
+                    DATEDIFF(d.demo_date, ?) AS days_after_return
              FROM project_demos d
              JOIN projects p ON p.project_id = d.project_id
              WHERE d.status = 'PLANNED' AND d.demo_date BETWEEN ? AND ? AND $scope
              ORDER BY d.demo_date ASC"
         );
-        $stmt->execute(array_merge([$from, $to], $params));
-        return $stmt->fetchAll();
+        $stmt->execute(array_merge([$to, $to, $from, $until], $params));
+        $rows = $stmt->fetchAll();
     } catch (PDOException $e) {
         return [];   // table not there yet
     }
+
+    /* How much unfinished work they hold on each of those projects. Only
+       meaningful for a developer — QA and designers are on a project as
+       a whole, not through a list of tasks. */
+    foreach ($rows as &$r) {
+        $r['days_after_return'] = (int)$r['days_after_return'];
+        $r['open_tasks'] = 0;
+        if ($employeeId) {
+            $q = $pdo->prepare(
+                "SELECT COUNT(*) AS n FROM tasks
+                 WHERE employee_id = ? AND project_id = ?
+                   AND status NOT IN ('COMPLETED','CANCELLED')"
+            );
+            $q->execute([$employeeId, $r['project_id']]);
+            $r['open_tasks'] = (int)$q->fetch()['n'];
+        }
+    }
+    return $rows;
 }
 
 /* ── Design estimates ─────────────────────────────────

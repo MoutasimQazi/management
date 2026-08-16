@@ -469,15 +469,44 @@ async function renderUpcomingDemos(opts){
 /* The warning that matters: this leave lands on a demo for a project the
    person is working on. Rendered next to a pending request for whoever is
    approving it, and on the requester's own list so they see it first. */
+/* Two different problems, so two different sentences.
+
+   "during"  they are away on the day of the demo
+   "after"   the demo lands within a week of them getting back, so they
+             are absent for the run-up and return with little room
+
+   The second is the one the first version of this missed entirely, and
+   it is often the worse of the two: away Monday to Wednesday before a
+   Thursday client demo reads as no clash at all if you only compare
+   dates for an exact overlap. */
 function demoClashNote(r){
   const clashes = Array.isArray(r.demo_clashes) ? r.demo_clashes : [];
   if (!clashes.length) return '';
-  return '<div class="clashnote">⚠ <b>Clashes with ' +
-    (clashes.length === 1 ? 'a demo' : clashes.length + ' demos') + '</b> · ' +
-    clashes.map(c =>
-      uiEsc(demoLabel(c.demo_type)) + ' on ' + uiEsc(demoDay(c.demo_date)) +
-      ' — ' + uiEsc(c.project_name)).join(' · ') +
-  '</div>';
+
+  const during = clashes.filter(c => c.proximity === 'during');
+  const after  = clashes.filter(c => c.proximity !== 'during');
+
+  const one = c => {
+    const load = c.open_tasks > 0
+      ? ' (' + c.open_tasks + ' open task' + (c.open_tasks === 1 ? '' : 's') + ')' : '';
+    return uiEsc(demoLabel(c.demo_type)) + ' · ' + uiEsc(demoDay(c.demo_date)) +
+           ' — ' + uiEsc(c.project_name) + uiEsc(load);
+  };
+
+  let html = '';
+  if (during.length) {
+    html += '<div class="clashnote">⚠ <b>Away on the day of ' +
+      (during.length === 1 ? 'a demo' : during.length + ' demos') + '</b> · ' +
+      during.map(one).join(' · ') + '</div>';
+  }
+  if (after.length) {
+    // Nearest first is already the order the query returns.
+    const d = after[0].days_after_return;
+    html += '<div class="clashnote soon">⚠ <b>Back ' +
+      (d === 1 ? 'the day before' : d + ' days before') + ' a demo</b> · ' +
+      after.map(one).join(' · ') + '</div>';
+  }
+  return html;
 }
 
 /* ════════════════════════════════════════════════════
