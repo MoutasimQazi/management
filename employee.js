@@ -12,6 +12,7 @@ const PM_API_BASE = "https://management.moveneticsdigital.com/pm-backend-php/";
 const PM_TASKS_LIST_URL       = PM_API_BASE + "pm-tasks-list.php";
 const PM_TASKS_STATUS_URL     = PM_API_BASE + "pm-tasks-status.php";
 const PM_BUGS_LIST_URL        = PM_API_BASE + "pm-bugs-list.php";
+const PM_DEMOS_LIST_URL       = PM_API_BASE + "pm-demos-list.php";
 const PM_BUGS_UPDATE_URL      = PM_API_BASE + "pm-bugs-update.php";
 const PM_QUESTIONS_LIST_URL   = PM_API_BASE + "pm-questions-list.php";
 const PM_QUESTIONS_CREATE_URL = PM_API_BASE + "pm-questions-create.php";
@@ -183,6 +184,13 @@ function showApp(){
   pmSignedOut.classList.remove('active');
   appView.classList.add('active');
   renderUserChip(whoEmail, session.email);
+  /* Demos on the projects this developer holds tasks on. The renderer is
+     in ui.js so the Overview and every role page say the same thing about
+     the same date. */
+  renderUpcomingDemos({
+    url: PM_DEMOS_LIST_URL, token: session.token,
+    panel: 'demoPanel', list: 'demoList', count: 'demoCount'
+  });
   route();
 }
 signOutBtn.addEventListener('click', () => {

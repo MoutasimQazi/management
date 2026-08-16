@@ -27,6 +27,7 @@ const PM_RATES_LIST_URL       = PM_API_BASE + "pm-design-estimates-list.php";
 const PM_RATES_SAVE_URL       = PM_API_BASE + "pm-design-estimates-save.php";
 const PM_RATES_DELETE_URL     = PM_API_BASE + "pm-design-estimates-delete.php";
 const PM_BUGS_LIST_URL        = PM_API_BASE + "pm-bugs-list.php";
+const PM_DEMOS_LIST_URL       = PM_API_BASE + "pm-demos-list.php";
 const PM_BUGS_UPDATE_URL      = PM_API_BASE + "pm-bugs-update.php";
 const PM_TASKS_LIST_URL       = PM_API_BASE + "pm-tasks-list.php";
 const PM_QUESTIONS_LIST_URL   = PM_API_BASE + "pm-questions-list.php";
@@ -211,6 +212,13 @@ function showApp(){
   roleBadge.textContent = isAdmin ? 'Admin' : 'Designer';
   roleBadge.className = 'role-badge' + (isAdmin ? '' : ' manager');
   document.querySelectorAll('.nav-admin').forEach(a => { a.hidden = !isAdmin; });
+
+  /* Everyone on a project sees its demos — renderer in ui.js so the
+     Overview and every role page say the same thing about the same date. */
+  renderUpcomingDemos({
+    url: PM_DEMOS_LIST_URL, token: session.token,
+    panel: 'demoPanel', list: 'demoList', count: 'demoCount'
+  });
   applyRoleView();
   loadProjects();
   route();

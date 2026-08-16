@@ -650,3 +650,60 @@ a.evidence:hover{ color:var(--brand-dark); text-decoration:underline; }
 /* A retired rate stays on the admin's card, greyed, because tasks still
    point at it — it is just no longer offered when creating work. */
 .data-table tr.retired{ opacity:.55; }
+
+/* ══════════════════════════════════════════════════════
+   Demos
+   ══════════════════════════════════════════════════════ */
+.demo-row{
+  display:flex;
+  align-items:flex-start;
+  gap:16px;
+  padding:13px 16px;
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  background:var(--surface);
+  margin-bottom:8px;
+}
+/* The date column is fixed width so a list of demos reads down the page
+   as a column of dates rather than a ragged edge. */
+.demo-row .dwhen{
+  flex:0 0 108px;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.demo-row .ddate{ font-size:13px; font-weight:800; color:var(--ink); }
+.demo-row .dtime{ font-size:11.5px; color:var(--ink-2); }
+.demo-row .dcount{ font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+.demo-row.soon .dcount{ color:var(--warn); }
+.demo-row.now  .dcount{ color:var(--err); }
+.demo-row.now{ border-color:var(--err-line); background:var(--err-soft); }
+.demo-row.soon{ border-color:var(--warn-line); }
+.demo-row .dinfo{ min-width:0; }
+.demo-row .dtitle{ font-size:13.5px; font-weight:700; color:var(--ink); }
+.demo-row .dmeta{ margin-top:3px; font-size:12px; color:var(--muted); }
+
+/* Which kind of demo. Client-facing is the one worth spotting fastest. */
+.demochip{
+  display:inline-flex; align-items:center;
+  padding:2px 8px; border-radius:100px;
+  font-size:9.5px; font-weight:800;
+  letter-spacing:.07em; text-transform:uppercase;
+  background:var(--line-2); border:1px solid var(--line); color:var(--ink-2);
+}
+.demochip.client      { background:var(--brand-soft); border-color:var(--brand-100); color:var(--brand-dark); }
+.demochip.stakeholder { background:var(--info-soft);  border-color:var(--info-line); color:var(--info); }
+
+/* Leave that lands on a demo. The one warning an approver has no other
+   way to arrive at, so it does not blend into the meta text. */
+.clashnote{
+  margin-top:7px;
+  padding:8px 11px;
+  border-radius:var(--radius-sm);
+  background:var(--err-soft);
+  border:1px solid var(--err-line);
+  color:var(--err);
+  font-size:11.5px;
+  line-height:1.5;
+}
+.clashnote b{ font-weight:800; }

@@ -11,13 +11,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=25">
-  <link rel="stylesheet" href="projects.css?v=25">
+  <link rel="stylesheet" href="style.css?v=26">
+  <link rel="stylesheet" href="projects.css?v=26">
 
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=25"></script>
+  <script src="theme.js?v=26"></script>
 </head>
 
 <body>
@@ -92,6 +92,16 @@
           <span class="hint" id="teamGaps"></span>
         </div>
         <div id="teamList"></div>
+      </div>
+
+      <!-- Demos coming up on projects you're working on. Hidden when
+           there are none — an empty panel is just furniture. -->
+      <div id="demoPanel" style="display:none; margin-bottom:24px">
+        <div class="panel-head">
+          <h2>Upcoming demos</h2>
+          <span class="count" id="demoCount">0</span>
+        </div>
+        <div id="demoList"></div>
       </div>
 
       <!-- Pending leave requests addressed to me (admin sees all pending).
@@ -180,8 +190,8 @@
 
   </div>
 
-  <script src="fireflies.js?v=25"></script>
-  <script src="ui.js?v=25"></script>
+  <script src="fireflies.js?v=26"></script>
+  <script src="ui.js?v=26"></script>
   <script>
     /* ════════════════════════════════════════════════════
        1. Config
@@ -207,6 +217,7 @@
     const PM_CANDIDATES_LIST_URL = PM_API_BASE + "pm-candidates-list.php";
     const PM_CAMPAIGNS_LIST_URL  = PM_API_BASE + "pm-campaigns-list.php";
     const PM_TEAM_OVERVIEW_URL   = PM_API_BASE + "pm-team-overview.php";
+    const PM_DEMOS_LIST_URL      = PM_API_BASE + "pm-demos-list.php";
 
     /* ════════════════════════════════════════════════════
        2. DOM references
@@ -269,6 +280,11 @@
       loadApprovals();
       loadApprovers();
       loadMyLeave();
+      // Everyone on a project sees its demos, admin or not — renderer in ui.js.
+      renderUpcomingDemos({
+        url: PM_DEMOS_LIST_URL, token: session.token,
+        panel: 'demoPanel', list: 'demoList', count: 'demoCount'
+      });
       if (isAdmin) { loadTeamOverview(); loadHrMktSummary(); }
     }
 
@@ -536,6 +552,7 @@
               '<span>' + esc(fmtDay(r.start_date)) + ' – ' + esc(fmtDay(r.end_date)) + '</span>' +
               (r.reason ? '<span>' + esc(r.reason) + '</span>' : '') +
             '</div>' +
+            demoClashNote(r) +      // ui.js — a demo on a project they work on
             monthContext(r) +
             '</div>' +
           '<div class="tactions">' +

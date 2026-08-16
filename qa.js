@@ -20,6 +20,7 @@ const PM_CASES_CREATE_URL   = PM_API_BASE + "pm-testcases-create.php";
 const PM_CASES_DELETE_URL   = PM_API_BASE + "pm-testcases-delete.php";
 const PM_RUNS_CREATE_URL    = PM_API_BASE + "pm-testruns-create.php";
 const PM_BUG_ASSIGNEES_URL  = PM_API_BASE + "pm-bug-assignees-list.php";
+const PM_DEMOS_LIST_URL       = PM_API_BASE + "pm-demos-list.php";
 
 /* ── DOM references ─────────────────────────────────── */
 const pmSignedOut = document.getElementById('pmSignedOut');
@@ -211,6 +212,13 @@ function showApp(){
   roleBadge.textContent = isAdmin ? 'Admin' : 'QA';
   roleBadge.className = 'role-badge' + (isAdmin ? '' : ' manager');
   document.querySelectorAll('.nav-admin').forEach(a => { a.hidden = !isAdmin; });
+
+  /* Everyone on a project sees its demos — renderer in ui.js so the
+     Overview and every role page say the same thing about the same date. */
+  renderUpcomingDemos({
+    url: PM_DEMOS_LIST_URL, token: session.token,
+    panel: 'demoPanel', list: 'demoList', count: 'demoCount'
+  });
   loadProjects();
   route();
 }

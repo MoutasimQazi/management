@@ -43,6 +43,9 @@ const PM_TASKS_STATUS_URL     = PM_API_BASE + "pm-tasks-status.php";
 const PM_QUESTIONS_LIST_URL   = PM_API_BASE + "pm-questions-list.php";
 const PM_QUESTIONS_CREATE_URL = PM_API_BASE + "pm-questions-create.php";
 const PM_QUESTIONS_ANSWER_URL = PM_API_BASE + "pm-questions-answer.php";
+const PM_DEMOS_LIST_URL       = PM_API_BASE + "pm-demos-list.php";
+const PM_DEMOS_SAVE_URL       = PM_API_BASE + "pm-demos-save.php";
+const PM_DEMOS_DELETE_URL     = PM_API_BASE + "pm-demos-delete.php";
 const PM_RATES_LIST_URL       = PM_API_BASE + "pm-design-estimates-list.php";
 const PM_RATES_SAVE_URL       = PM_API_BASE + "pm-design-estimates-save.php";
 const PM_RATES_DELETE_URL     = PM_API_BASE + "pm-design-estimates-delete.php";
@@ -540,10 +543,46 @@ async function renderProjectDetail(projectId){
         '<div class="actions"><button type="submit">Add task</button>' +
           '<button type="button" class="secondary" id="taskCancelBtn">Cancel</button></div>' +
       '</form>' +
-      '<div id="projectTasksList"></div>';
+      '<div id="projectTasksList"></div>' +
+
+      /* Demo dates. Set here by whoever runs the project; visible to
+         everyone on it, wherever they work — see pm-demos-list.php. */
+      '<div class="panel-head" style="margin-top:26px">' +
+        '<h2>Demos</h2><span class="count" id="demoCount">0</span>' +
+        '<span class="spacer"></span>' +
+        '<button type="button" class="btn-sm" id="newDemoToggle" style="border:none">+ Add demo</button>' +
+      '</div>' +
+      '<form id="newDemoForm" class="inline-form">' +
+        '<input type="hidden" id="demoId" value="" />' +
+        '<div class="row">' +
+          '<div class="field"><label>Type</label><select id="demoType">' +
+            '<option value="INTERNAL" selected>Internal demo</option>' +
+            '<option value="CLIENT">Client demo</option>' +
+            '<option value="STAKEHOLDER">Stakeholder demo</option>' +
+            '<option value="DRY_RUN">Dry run</option>' +
+            '<option value="OTHER">Other</option>' +
+          '</select></div>' +
+          '<div class="field"><label>Status</label><select id="demoStatus">' +
+            '<option value="PLANNED" selected>Planned</option>' +
+            '<option value="DONE">Done</option>' +
+            '<option value="CANCELLED">Cancelled</option>' +
+          '</select></div>' +
+        '</div>' +
+        '<div class="row">' +
+          '<div class="field"><label>Date</label><input id="demoDate" type="date" required /></div>' +
+          '<div class="field"><label>Time <span class="opt">— optional</span></label><input id="demoTime" type="time" /></div>' +
+        '</div>' +
+        '<div class="field"><label>Title <span class="opt">— optional</span></label><input id="demoTitle" placeholder="e.g. Checkout walkthrough" /></div>' +
+        '<div class="field"><label>Notes <span class="opt">— optional</span></label><input id="demoNotes" placeholder="Anything the team should know" /></div>' +
+        '<div class="actions"><button type="submit" id="demoSubmitBtn">Add demo</button>' +
+          '<button type="button" class="secondary" id="demoCancelBtn">Cancel</button></div>' +
+      '</form>' +
+      '<div id="projectDemosList"></div>';
 
     populateEmployeeSelects();
     wireTaskEstimate();
+    wireDemos(projectId);
+    renderDemos(projectId);
 
     document.getElementById('editProjectToggle').addEventListener('click', () => {
       document.getElementById('editProjectForm').classList.toggle('open');
@@ -1106,3 +1145,150 @@ document.getElementById('newRateForm').addEventListener('submit', async (e) => {
     toast('Could not save the rate: ' + err.message, 'err');
   }
 });
+
+/* ════════════════════════════════════════════════════
+   Demos on a project
+   ────────────────────────────────────────────────────
+   Several per project — an internal run-through, the
+   client one, sometimes a dry run. Set here by whoever
+   runs the project; read by everyone on it, including
+   developers, who have no other project access.
+
+   Scheduling one reports who is already booked off that
+   day, because the useful moment to learn that is while
+   choosing the date.
+   ════════════════════════════════════════════════════ */
+function demoFormReset(){
+  const f = document.getElementById('newDemoForm');
+  if (!f) return;
+  f.reset();
+  document.getElementById('demoId').value = '';
+  document.getElementById('demoSubmitBtn').textContent = 'Add demo';
+}
+
+function wireDemos(projectId){
+  const form = document.getElementById('newDemoForm');
+  if (!form) return;
+
+  document.getElementById('newDemoToggle').addEventListener('click', () => {
+    if (form.classList.contains('open') && document.getElementById('demoId').value) demoFormReset();
+    form.classList.toggle('open');
+  });
+  document.getElementById('demoCancelBtn').addEventListener('click', () => {
+    demoFormReset();
+    form.classList.remove('open');
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const body = {
+      demo_id:    document.getElementById('demoId').value || 0,
+      project_id: projectId,
+      demo_type:  document.getElementById('demoType').value,
+      status:     document.getElementById('demoStatus').value,
+      demo_date:  document.getElementById('demoDate').value,
+      demo_time:  document.getElementById('demoTime').value,
+      title:      document.getElementById('demoTitle').value.trim(),
+      notes:      document.getElementById('demoNotes').value.trim()
+    };
+    if (!body.demo_date) return;
+    try {
+      const res = await api(PM_DEMOS_SAVE_URL, { method:'POST', body });
+      demoFormReset();
+      form.classList.remove('open');
+
+      /* Sticky, because it is the one thing worth reading twice: the
+         demo is booked on a day somebody is away. */
+      const away = Array.isArray(res.away) ? res.away : [];
+      if (away.length) {
+        toast('Demo saved — but ' + away.map(a => a.person).join(', ') +
+              (away.length === 1 ? ' is' : ' are') + ' on leave that day.', 'err', true);
+      } else {
+        toast('Demo saved.', 'ok');
+      }
+      renderDemos(projectId);
+    } catch (err) {
+      toast('Could not save the demo: ' + err.message, 'err');
+    }
+  });
+}
+
+async function renderDemos(projectId){
+  const listEl = document.getElementById('projectDemosList');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const demos = await api(PM_DEMOS_LIST_URL + '?project_id=' + projectId);
+    const countEl = document.getElementById('demoCount');
+    if (countEl) countEl.textContent = String(demos.length);
+
+    if (!demos.length) {
+      listEl.innerHTML = '<div class="empty">No demos scheduled. Everyone on this project sees the dates you add here.</div>';
+      return;
+    }
+
+    listEl.innerHTML = demos.map(d => {
+      const c = demoCountdown(d.demo_date);   // ui.js
+      return '<div class="task-row">' +
+        '<div class="tinfo">' +
+          '<div class="ttitle">' +
+            '<span class="demochip ' + esc(String(d.demo_type).toLowerCase()) + '">' +
+              esc(demoLabel(d.demo_type)) + '</span> ' +
+            esc(d.title || d.project_name) +
+          '</div>' +
+          '<div class="tmeta">' +
+            '<span>' + esc(demoDay(d.demo_date)) + '</span>' +
+            (d.demo_time ? '<span>' + esc(String(d.demo_time).slice(0,5)) + '</span>' : '') +
+            (d.status === 'PLANNED'
+              ? '<span class="due ' + esc(c.cls) + '">' + esc(c.text) + '</span>'
+              : '') +
+            (d.notes ? '<span>' + esc(d.notes) + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="tactions">' + badge(d.status) +
+          '<button type="button" class="icon-btn" data-demo-edit="' + d.demo_id + '">Edit</button>' +
+          '<button type="button" class="icon-btn danger" data-demo-del="' + d.demo_id + '">Delete</button>' +
+        '</div></div>';
+    }).join('');
+
+    listEl.querySelectorAll('[data-demo-edit]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const d = demos.find(x => Number(x.demo_id) === Number(btn.dataset.demoEdit));
+        if (!d) return;
+        document.getElementById('demoId').value     = d.demo_id;
+        document.getElementById('demoType').value   = d.demo_type;
+        document.getElementById('demoStatus').value = d.status;
+        document.getElementById('demoDate').value   = d.demo_date;
+        document.getElementById('demoTime').value   = d.demo_time ? String(d.demo_time).slice(0,5) : '';
+        document.getElementById('demoTitle').value  = d.title || '';
+        document.getElementById('demoNotes').value  = d.notes || '';
+        document.getElementById('demoSubmitBtn').textContent = 'Save changes';
+        document.getElementById('newDemoForm').classList.add('open');
+      });
+    });
+
+    listEl.querySelectorAll('[data-demo-del]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const d = demos.find(x => Number(x.demo_id) === Number(btn.dataset.demoDel));
+        if (!await confirmDialog({
+          title: 'Delete this demo?',
+          body: (d ? demoLabel(d.demo_type) + ' on ' + demoDay(d.demo_date) + '. ' : '') +
+                'Everyone on the project stops seeing the date.',
+          confirmLabel: 'Delete demo',
+          danger: true
+        })) return;
+        btn.disabled = true;
+        try {
+          await api(PM_DEMOS_DELETE_URL, { method:'POST', body:{ demo_id: Number(btn.dataset.demoDel) } });
+          renderDemos(projectId);
+        } catch (err) {
+          toast('Could not delete: ' + err.message, 'err');
+          btn.disabled = false;
+        }
+      });
+    });
+  } catch (err) {
+    // Migration 011 may not be imported yet.
+    listEl.innerHTML = '<div class="empty">Could not load demos (' + esc(err.message) + ').</div>';
+  }
+}

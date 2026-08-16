@@ -175,6 +175,80 @@ function resolveBugAssignee(PDO $pdo, array $b): array {
     exit;
 }
 
+/* Who is "on" a project, for things everyone working on it should see —
+ * demo dates, and the leave clashes those cause.
+ *
+ * Deliberately wider than projectScope(): that one answers "what may this
+ * account administer", and a developer administers nothing, which is why
+ * it has no developer branch at all. This answers "whose project is this
+ * anyway", and a developer holding tasks on it is unarguably on it.
+ *
+ *   ADMIN     everything
+ *   EMPLOYEE  projects they hold tasks on
+ *   QA        projects assigned via qa_assignments
+ *   DESIGNER  projects assigned via design_assignments
+ *   other     projects they own
+ *
+ * The demo list and the leave clash warning must both use this, or a
+ * warning could name a demo the person cannot open.
+ */
+function projectInvolvementScope(array $user, string $col): array {
+    if (($user['role'] ?? '') === 'ADMIN') {
+        return ['1=1', []];
+    }
+    if (($user['user_type'] ?? '') === 'EMPLOYEE') {
+        return ["$col IN (SELECT project_id FROM tasks WHERE employee_id = ?)", [$user['id']]];
+    }
+    if ($user['role'] === 'QA') {
+        return ["$col IN (SELECT project_id FROM qa_assignments WHERE qa_id = ?)", [$user['id']]];
+    }
+    if ($user['role'] === 'DESIGNER') {
+        return ["$col IN (SELECT project_id FROM design_assignments WHERE designer_id = ?)", [$user['id']]];
+    }
+    return ["$col IN (SELECT project_id FROM projects WHERE manager_id = ?)", [$user['id']]];
+}
+
+/* Demos falling inside a date range, on projects a given person is on.
+ *
+ * Used to warn an approver that the leave in front of them lands on a
+ * demo. Takes the requester's identity rather than the caller's — the
+ * question is about them, not about who is reading the answer.
+ *
+ * Returns [] rather than failing if project_demos does not exist yet:
+ * migration 011 is imported by hand, and an approvals screen must not
+ * break because a feature has not been installed.
+ */
+function demoClashesFor(PDO $pdo, ?int $employeeId, ?int $managerId, string $from, string $to): array {
+    if (!$employeeId && !$managerId) return [];
+
+    if ($employeeId) {
+        $scope  = 'd.project_id IN (SELECT project_id FROM tasks WHERE employee_id = ?)';
+        $params = [$employeeId];
+    } else {
+        /* A staff requester could be on a project any of three ways, and
+           the point is to catch a clash, so all three are asked. */
+        $scope = 'd.project_id IN (SELECT project_id FROM projects WHERE manager_id = ?
+                                   UNION SELECT project_id FROM qa_assignments WHERE qa_id = ?
+                                   UNION SELECT project_id FROM design_assignments WHERE designer_id = ?)';
+        $params = [$managerId, $managerId, $managerId];
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT d.demo_id, d.project_id, d.demo_type, d.title, d.demo_date, d.demo_time,
+                    p.project_name
+             FROM project_demos d
+             JOIN projects p ON p.project_id = d.project_id
+             WHERE d.status = 'PLANNED' AND d.demo_date BETWEEN ? AND ? AND $scope
+             ORDER BY d.demo_date ASC"
+        );
+        $stmt->execute(array_merge([$from, $to], $params));
+        return $stmt->fetchAll();
+    } catch (PDOException $e) {
+        return [];   // table not there yet
+    }
+}
+
 /* ── Design estimates ─────────────────────────────────
  * A design task borrows a rate from the card and multiplies it by how
  * many screens / pages / apps it covers. The arithmetic is here rather

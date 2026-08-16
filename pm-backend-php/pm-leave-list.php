@@ -148,6 +148,34 @@ if (!empty($_GET['approvals']) && $rows) {
         $r['month']            = $month;
         $r['month_other']      = $mine;   // everything else they have that month
         $r['month_total_days'] = $days;   // including the request being reviewed
+
+        /* Does this leave land on a demo for a project they are working
+           on? The most expensive thing an approver can miss, and the one
+           they have no other way to know. */
+        $r['demo_clashes'] = demoClashesFor(
+            $pdo,
+            $r['employee_id'] ? (int)$r['employee_id'] : null,
+            $r['manager_id']  ? (int)$r['manager_id']  : null,
+            $r['start_date'],
+            $r['end_date']
+        );
+    }
+    unset($r);
+}
+
+/* The same warning on your own requests, so it is visible when asking and
+   not only when being approved — the person best placed to move a day off
+   is the one requesting it. */
+if (!empty($_GET['mine'])) {
+    foreach ($rows as &$r) {
+        if (!in_array($r['status'], ['PENDING', 'APPROVED'], true)) continue;
+        $r['demo_clashes'] = demoClashesFor(
+            $pdo,
+            $r['employee_id'] ? (int)$r['employee_id'] : null,
+            $r['manager_id']  ? (int)$r['manager_id']  : null,
+            $r['start_date'],
+            $r['end_date']
+        );
     }
     unset($r);
 }

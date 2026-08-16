@@ -199,6 +199,98 @@ function confirmDialog(opts){
 }
 
 /* ════════════════════════════════════════════════════
+   Demos
+   ────────────────────────────────────────────────────
+   A project can have several — an internal run-through,
+   the client one, sometimes a dry run. Everyone working
+   on the project sees them, which is the whole point:
+   the date only helps if the people building the thing
+   know about it.
+   ════════════════════════════════════════════════════ */
+const DEMO_LABELS = {
+  INTERNAL:'Internal demo', CLIENT:'Client demo',
+  STAKEHOLDER:'Stakeholder demo', DRY_RUN:'Dry run', OTHER:'Demo'
+};
+
+function demoLabel(t){ return DEMO_LABELS[t] || 'Demo'; }
+
+function demoDay(iso){
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  return isNaN(d.getTime()) ? String(iso)
+    : d.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' });
+}
+
+/* How near it is, which is what anyone reading a demo date wants first. */
+function demoCountdown(iso){
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d.getTime())) return { text:'', cls:'' };
+  const days = Math.round((d - new Date().setHours(0,0,0,0)) / 86400000);
+  if (days < 0)  return { text: Math.abs(days) + 'd ago', cls:'past' };
+  if (days === 0) return { text:'Today', cls:'now' };
+  if (days === 1) return { text:'Tomorrow', cls:'now' };
+  if (days <= 7)  return { text:'in ' + days + ' days', cls:'soon' };
+  return { text:'in ' + days + ' days', cls:'' };
+}
+
+/* opts: { url, token, panel, list, count, projectId } — element ids.
+   Used by the Overview and by every role page whose people work on
+   projects, so all of them say the same thing about the same date. */
+async function renderUpcomingDemos(opts){
+  const panel = document.getElementById(opts.panel);
+  const list  = document.getElementById(opts.list);
+  if (!panel || !list) return;
+
+  try {
+    const url = opts.url + '?upcoming=1' + (opts.projectId ? '&project_id=' + opts.projectId : '');
+    const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + opts.token } });
+    if (!res.ok) throw new Error('status ' + res.status);
+    const demos = await res.json();
+
+    // Nothing coming up is not worth a panel taking space on a dashboard.
+    if (!Array.isArray(demos) || !demos.length) { panel.style.display = 'none'; return; }
+
+    panel.style.display = '';
+    const countEl = opts.count && document.getElementById(opts.count);
+    if (countEl) countEl.textContent = String(demos.length);
+
+    list.innerHTML = demos.map(d => {
+      const c = demoCountdown(d.demo_date);
+      return '<div class="demo-row ' + c.cls + '">' +
+        '<div class="dwhen"><span class="ddate">' + uiEsc(demoDay(d.demo_date)) + '</span>' +
+          (d.demo_time ? '<span class="dtime">' + uiEsc(String(d.demo_time).slice(0,5)) + '</span>' : '') +
+          '<span class="dcount">' + uiEsc(c.text) + '</span></div>' +
+        '<div class="dinfo">' +
+          '<div class="dtitle"><span class="demochip ' + uiEsc(String(d.demo_type).toLowerCase()) + '">' +
+            uiEsc(demoLabel(d.demo_type)) + '</span> ' +
+            uiEsc(d.title || d.project_name) + '</div>' +
+          '<div class="dmeta">' + uiEsc(d.project_name) +
+            (d.client_name ? ' · ' + uiEsc(d.client_name) : '') +
+            (d.notes ? ' · ' + uiEsc(d.notes) : '') + '</div>' +
+        '</div></div>';
+    }).join('');
+  } catch (_) {
+    // Migration 011 may not be in yet — a dashboard should not shout
+    // about a feature nobody has installed.
+    panel.style.display = 'none';
+  }
+}
+
+/* The warning that matters: this leave lands on a demo for a project the
+   person is working on. Rendered next to a pending request for whoever is
+   approving it, and on the requester's own list so they see it first. */
+function demoClashNote(r){
+  const clashes = Array.isArray(r.demo_clashes) ? r.demo_clashes : [];
+  if (!clashes.length) return '';
+  return '<div class="clashnote">⚠ <b>Clashes with ' +
+    (clashes.length === 1 ? 'a demo' : clashes.length + ' demos') + '</b> · ' +
+    clashes.map(c =>
+      uiEsc(demoLabel(c.demo_type)) + ' on ' + uiEsc(demoDay(c.demo_date)) +
+      ' — ' + uiEsc(c.project_name)).join(' · ') +
+  '</div>';
+}
+
+/* ════════════════════════════════════════════════════
    Estimates
    ────────────────────────────────────────────────────
    Shared by the Design and Projects rate cards, which
