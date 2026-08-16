@@ -202,6 +202,7 @@ function showApp(){
   renderUserChip(whoEmail, session.email);
   roleBadge.textContent = isAdmin ? 'Admin' : 'Marketing';
   document.querySelectorAll('.nav-admin').forEach(a => { a.hidden = !isAdmin; });
+  wireLeavePanel(session.token, session.role);   // shared leave form — ui.js
   route();
 }
 signOutBtn.addEventListener('click', () => {
@@ -216,7 +217,7 @@ function route(){
   const hash  = location.hash || '#/campaigns';
   const parts = hash.replace(/^#\//, '').split('/');
   let page    = parts[0] || 'campaigns';
-  if (!['campaigns','projects','project','tasks'].includes(page)) page = 'campaigns';
+  if (!['campaigns','projects','project','tasks','leave'].includes(page)) page = 'campaigns';
 
   pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
   const navTarget = page === 'project' ? 'projects' : page;
@@ -226,6 +227,7 @@ function route(){
   if (page === 'projects')  renderProjects();
   if (page === 'project')   renderProjectDetail(Number(parts[1]));
   if (page === 'tasks')     renderTasks();
+  if (page === 'leave')     renderLeavePanel(session.token, session.role);   // ui.js
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);

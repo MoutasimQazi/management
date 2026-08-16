@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=40">
-  <link rel="stylesheet" href="projects.css?v=40">
+  <link rel="stylesheet" href="style.css?v=41">
+  <link rel="stylesheet" href="projects.css?v=41">
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=40"></script>
+  <script src="theme.js?v=41"></script>
 </head>
 
 <body>
@@ -105,6 +105,24 @@
           <p class="sub">Approval happens on the approver's own dashboard — this is a read-only view for HR. The monthly summary refreshes itself on the 1st of every month.</p>
         </div>
       </div>
+
+      <!-- HR's own time off. They track everyone else's here and could
+           not file their own anywhere — the one role in the workspace
+           with no way to ask for leave. -->
+      <div class="panel-head"><h2>My leave</h2></div>
+      <form id="newLeaveForm" class="inline-form open">
+        <div class="row">
+          <div class="field"><label>From</label><input id="leaveStart" type="date" required /></div>
+          <div class="field"><label>To <span class="opt">— leave as-is for a single day</span></label><input id="leaveEnd" type="date" required /></div>
+        </div>
+        <div class="field"><label>Send to</label><div id="leaveApprovers" class="check-group"></div></div>
+        <div class="field"><label>Reason <span class="opt">— optional</span></label><input id="leaveReason" placeholder="e.g. Family trip" /></div>
+        <div class="actions"><button type="submit">Request leave</button></div>
+      </form>
+      <div class="panel-head"><h2>My requests</h2><span class="count" id="myLeaveCount">0</span></div>
+      <div id="myLeaveList" style="margin-bottom:24px"></div>
+      <div id="teamLeaveList" hidden></div>
+      <span id="teamLeaveCount" hidden></span>
 
       <!-- WHAT IS IN FLIGHT — the requests still open, first. HR does not
            approve them, but "what is outstanding" is the question this
@@ -229,8 +247,8 @@
 
   </div>
 
-  <script src="ui.js?v=40"></script>
-  <script src="charts.js?v=40"></script>
-  <script src="hr.js?v=40"></script>
+  <script src="ui.js?v=41"></script>
+  <script src="charts.js?v=41"></script>
+  <script src="hr.js?v=41"></script>
 </body>
 </html>

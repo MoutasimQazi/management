@@ -11,13 +11,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=40">
-  <link rel="stylesheet" href="projects.css?v=40">
+  <link rel="stylesheet" href="style.css?v=41">
+  <link rel="stylesheet" href="projects.css?v=41">
 
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=40"></script>
+  <script src="theme.js?v=41"></script>
 </head>
 
 <body>
@@ -251,9 +251,9 @@
 
   </div>
 
-  <script src="fireflies.js?v=40"></script>
-  <script src="ui.js?v=40"></script>
-  <script src="charts.js?v=40"></script>
+  <script src="fireflies.js?v=41"></script>
+  <script src="ui.js?v=41"></script>
+  <script src="charts.js?v=41"></script>
   <script>
     /* ════════════════════════════════════════════════════
        1. Config
@@ -707,9 +707,23 @@
       }
     }
 
-    // The "Send to" approver checkboxes on the request form.
+    /* The "Send to" approver checkboxes on the request form.
+       An admin has nobody above them to approve their leave, so asking
+       them to nominate one is asking them to have a subordinate
+       authorise their own time off. They pick dates and it is booked —
+       see pm-leave-create.php, which decides this from the token rather
+       than trusting the page. */
     async function loadApprovers(){
       const box = document.getElementById('myLeaveApprovers');
+      const session = readSession();
+      if (session && String(session.role || '').toUpperCase() === 'ADMIN') {
+        const field = box.closest('.field');
+        if (field) field.hidden = true;
+        document.getElementById('myLeaveToggle').textContent = '+ Add leave';
+        const submit = document.querySelector('#myLeaveForm button[type="submit"]');
+        if (submit) submit.textContent = 'Add leave';
+        return;
+      }
       try {
         const rows = await leaveApi(PM_APPROVERS_LIST_URL);
         box.innerHTML = rows.map(m =>
@@ -771,7 +785,11 @@
       const approver_ids = [...document.querySelectorAll('#myLeaveApprovers [data-approver]:checked')]
         .map(cb => Number(cb.value));
       if (!start_date || !end_date) return;
-      if (!approver_ids.length) { toast('Pick at least one approver to send this to.', 'err'); return; }
+      const meAdmin = String((readSession() || {}).role || '').toUpperCase() === 'ADMIN';
+      if (!meAdmin && !approver_ids.length) {
+        toast('Pick at least one approver to send this to.', 'err');
+        return;
+      }
       try {
         await leaveApi(PM_LEAVE_CREATE_URL, { start_date, end_date, reason, approver_ids });
         e.target.reset();

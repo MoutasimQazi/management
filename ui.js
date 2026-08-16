@@ -358,6 +358,167 @@ function statTile(t){
 function statTiles(list){ return list.map(statTile).join(''); }
 
 /* ════════════════════════════════════════════════════
+   Leave
+   ────────────────────────────────────────────────────
+   Everybody takes time off, so every role page needs the
+   same three things: a request form, your own requests,
+   and who else is out.
+
+   It was written twice — once for developers, once for
+   designers — and QA and Marketing had no way to ask for
+   leave at all, while HR could see everyone's and not
+   file their own. Rather than a third and fourth copy,
+   it lives here once and every page mounts it.
+
+   The element ids are fixed rather than passed in
+   because all four pages already used the same ones; a
+   page supplies the markup, this supplies the behaviour.
+   ════════════════════════════════════════════════════ */
+const LEAVE_LIST_URL      = PM_UI_API_BASE + "pm-leave-list.php";
+const LEAVE_CREATE_URL    = PM_UI_API_BASE + "pm-leave-create.php";
+const LEAVE_APPROVERS_URL = PM_UI_API_BASE + "pm-approvers-list.php";
+
+async function leaveApi(url, token, body){
+  const res = await fetch(url, {
+    method: body ? 'POST' : 'GET',
+    headers: Object.assign({ 'Authorization': 'Bearer ' + token },
+      body ? { 'Content-Type': 'application/json' } : {}),
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) {
+    let msg = 'Request failed (' + res.status + ')';
+    try { const j = await res.json(); if (j && j.error) msg = j.error; } catch (_) {}
+    throw new Error(msg);
+  }
+  return res.json().catch(() => ([]));
+}
+
+function leavePanelRow(r){
+  return '<div class="leave-row">' +
+    '<div class="linfo"><div class="ltitle">' + uiEsc(r.employee_name) + '</div>' +
+      '<div class="lmeta">' +
+        '<span>' + uiEsc(demoDay(r.start_date)) + ' – ' + uiEsc(demoDay(r.end_date)) + '</span>' +
+        (r.reason ? '<span>' + uiEsc(r.reason) + '</span>' : '') +
+        (r.approver_names ? '<span>To ' + uiEsc(r.approver_names) + '</span>' : '') +
+        (r.reviewed_by_name ? '<span>Reviewed by ' + uiEsc(r.reviewed_by_name) + '</span>' : '') +
+      '</div>' +
+      // The demo warning the approver sees, shown to the requester too:
+      // they are better placed to move a day off than the person
+      // approving it, and they see this first.
+      demoClashNote(r) +
+    '</div>' +
+    '<div class="tactions"><span class="status-badge ' +
+      uiEsc(String(r.status).toLowerCase()) + '">' +
+      uiEsc(String(r.status).toLowerCase().replace(/\b\w/g, c => c.toUpperCase())) +
+    '</span></div>' +
+  '</div>';
+}
+
+/* An admin books rather than requests — see pm-leave-create.php. The
+   page reflects that: no approver picker, and a button that says what
+   it does. The server does not depend on this; it decides from the
+   token. */
+function leaveIsAdmin(role){ return String(role || '').toUpperCase() === 'ADMIN'; }
+
+async function renderLeavePanel(token, role){
+  const mineEl = document.getElementById('myLeaveList');
+  const teamEl = document.getElementById('teamLeaveList');
+  if (!mineEl || !teamEl) return;
+
+  mineEl.innerHTML = '<div class="empty">Loading…</div>';
+  teamEl.innerHTML = '<div class="empty">Loading…</div>';
+
+  // Approvers are fetched once — the list only changes when someone's
+  // role does, not while a form is open.
+  const box = document.getElementById('leaveApprovers');
+  if (box && leaveIsAdmin(role)) {
+    const field = box.closest('.field');
+    if (field) field.hidden = true;
+    box.dataset.loaded = '1';
+  } else if (box && !box.dataset.loaded) {
+    try {
+      const rows = await leaveApi(LEAVE_APPROVERS_URL, token);
+      box.innerHTML = rows.map(m =>
+        '<label class="check"><input type="checkbox" value="' + m.manager_id + '" data-approver />' +
+        '<span>' + uiEsc(m.full_name) + '</span></label>').join('') ||
+        '<span class="hint">No approvers found.</span>';
+      box.dataset.loaded = '1';
+    } catch (_) {
+      box.innerHTML = '<span class="hint">Could not load the approver list.</span>';
+    }
+  }
+
+  try {
+    const [mine, everyone] = await Promise.all([
+      leaveApi(LEAVE_LIST_URL + '?mine=1', token),
+      leaveApi(LEAVE_LIST_URL, token)
+    ]);
+    document.getElementById('myLeaveCount').textContent = String(mine.length);
+    mineEl.innerHTML = mine.length
+      ? mine.map(leavePanelRow).join('')
+      : '<div class="empty">No leave requests yet — use the form above.</div>';
+
+    const others = everyone.filter(r => r.status === 'APPROVED');
+    document.getElementById('teamLeaveCount').textContent = String(others.length);
+    teamEl.innerHTML = others.length
+      ? others.map(leavePanelRow).join('')
+      : '<div class="empty">No one is currently on approved leave.</div>';
+  } catch (err) {
+    mineEl.innerHTML = '<div class="empty">Could not load leave (' + uiEsc(err.message) + ').</div>';
+    teamEl.innerHTML = '';
+  }
+}
+
+/* Called once at boot. Wires the form; the lists are drawn by
+   renderLeavePanel whenever the page routes to them. */
+function wireLeavePanel(token, role){
+  const form = document.getElementById('newLeaveForm');
+  if (!form) return;
+
+  if (leaveIsAdmin(role)) {
+    const btn = form.querySelector('button[type="submit"]');
+    if (btn) btn.textContent = 'Add leave';
+    const head = document.querySelector('#page-leave .pagehead .sub');
+    if (head) head.textContent =
+      'Book your own time off — it goes straight on the calendar. You can also see who else is out.';
+  }
+
+  /* A single day is the common case, so picking the start fills the end
+     to match and stops it being set earlier. */
+  const start = document.getElementById('leaveStart');
+  const end   = document.getElementById('leaveEnd');
+  if (start && end) {
+    start.addEventListener('change', () => {
+      end.min = start.value;
+      if (!end.value || end.value < start.value) end.value = start.value;
+    });
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const start_date = start.value, end_date = end.value;
+    const reason = (document.getElementById('leaveReason') || {}).value || '';
+    const approver_ids = [...document.querySelectorAll('#leaveApprovers [data-approver]:checked')]
+      .map(cb => Number(cb.value));
+    if (!start_date || !end_date) return;
+    if (!leaveIsAdmin(role) && !approver_ids.length) {
+      toast('Pick at least one approver to send this to.', 'err');
+      return;
+    }
+    try {
+      const res = await leaveApi(LEAVE_CREATE_URL, token, {
+        start_date, end_date, reason: reason.trim(), approver_ids
+      });
+      form.reset();
+      toast(res && res.booked ? 'Leave booked.' : 'Leave requested.', 'ok');
+      renderLeavePanel(token, role);
+    } catch (err) {
+      toast('Could not submit leave request: ' + err.message, 'err');
+    }
+  });
+}
+
+/* ════════════════════════════════════════════════════
    Demos
    ────────────────────────────────────────────────────
    A project can have several — an internal run-through,

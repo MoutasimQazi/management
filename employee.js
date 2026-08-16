@@ -189,6 +189,7 @@ function showApp(){
   pmSignedOut.classList.remove('active');
   appView.classList.add('active');
   renderUserChip(whoEmail, session.email);
+  wireLeavePanel(session.token, session.role);   // shared leave form — ui.js
   /* Demos on the projects this developer holds tasks on. The renderer is
      in ui.js so the Overview and every role page say the same thing about
      the same date. */
@@ -216,7 +217,7 @@ function route(){
   if (page === 'tasks')     renderTasks();
   if (page === 'bugs')      renderBugs();
   if (page === 'questions') renderQuestions();
-  if (page === 'leave')     renderLeave();
+  if (page === 'leave')     renderLeavePanel(session.token, session.role);   // ui.js
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);
@@ -418,90 +419,9 @@ function questionCard(q){
   '</div>';
 }
 
-/* ════════════════════════════════════════════════════
-   Leave
-   ════════════════════════════════════════════════════ */
-async function loadApprovers(){
-  const box = document.getElementById('leaveApprovers');
-  if (box.dataset.loaded) return;
-  try {
-    const rows = await api(PM_APPROVERS_LIST_URL);
-    box.innerHTML = rows.map(m =>
-      '<label class="check"><input type="checkbox" value="' + m.manager_id + '" data-approver />' +
-      '<span>' + esc(m.full_name) + '</span></label>').join('') ||
-      '<span class="hint">No approvers found.</span>';
-    box.dataset.loaded = '1';
-  } catch (_) {
-    box.innerHTML = '<span class="hint">Could not load the approver list.</span>';
-  }
-}
-
-async function renderLeave(){
-  const mineEl = document.getElementById('myLeaveList');
-  const teamEl = document.getElementById('teamLeaveList');
-  mineEl.innerHTML = '<div class="empty">Loading…</div>';
-  teamEl.innerHTML = '<div class="empty">Loading…</div>';
-  loadApprovers();
-  try {
-    const [mine, everyone] = await Promise.all([
-      api(PM_LEAVE_LIST_URL + '?mine=1'),
-      api(PM_LEAVE_LIST_URL)
-    ]);
-    document.getElementById('myLeaveCount').textContent = String(mine.length);
-    mineEl.innerHTML = mine.length
-      ? mine.map(leaveRow).join('')
-      : '<div class="empty">No leave requests yet — use the form above.</div>';
-
-    const others = everyone.filter(r => r.status === 'APPROVED');
-    document.getElementById('teamLeaveCount').textContent = String(others.length);
-    teamEl.innerHTML = others.length
-      ? others.map(leaveRow).join('')
-      : '<div class="empty">No one is currently on approved leave.</div>';
-  } catch (err) {
-    mineEl.innerHTML = '<div class="empty">Could not load leave (' + esc(err.message) + ').</div>';
-    teamEl.innerHTML = '';
-  }
-}
-function leaveRow(r){
-  return '<div class="leave-row">' +
-    '<div class="linfo"><div class="ltitle">' + esc(r.employee_name) + '</div>' +
-      '<div class="lmeta">' +
-        '<span>' + esc(fmtDay(r.start_date)) + ' – ' + esc(fmtDay(r.end_date)) + '</span>' +
-        (r.reason ? '<span>' + esc(r.reason) + '</span>' : '') +
-        (r.approver_names ? '<span>To ' + esc(r.approver_names) + '</span>' : '') +
-        (r.reviewed_by_name ? '<span>Reviewed by ' + esc(r.reviewed_by_name) + '</span>' : '') +
-      '</div></div>' +
-    '<div class="tactions">' + badge(r.status) + '</div>' +
-  '</div>';
-}
-/* Single-day leave is the common case — picking the start date fills the
-   end date to match, so it takes one click instead of two calendars. */
-(function wireLeaveDates(){
-  const start = document.getElementById('leaveStart');
-  const end   = document.getElementById('leaveEnd');
-  start.addEventListener('change', () => {
-    end.min = start.value;
-    if (!end.value || end.value < start.value) end.value = start.value;
-  });
-})();
-
-document.getElementById('newLeaveForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const start_date = document.getElementById('leaveStart').value;
-  const end_date = document.getElementById('leaveEnd').value;
-  const reason = document.getElementById('leaveReason').value.trim();
-  const approver_ids = [...document.querySelectorAll('#leaveApprovers [data-approver]:checked')]
-    .map(cb => Number(cb.value));
-  if (!start_date || !end_date) return;
-  if (!approver_ids.length) { toast('Pick at least one approver to send this to.', 'err'); return; }
-  try {
-    await api(PM_LEAVE_CREATE_URL, { method: 'POST', body: { start_date, end_date, reason, approver_ids } });
-    e.target.reset();
-    renderLeave();
-  } catch (err) {
-    toast('Could not submit leave request: ' + err.message, 'err');
-  }
-});
+/* Leave lives in ui.js now — the request form, your own requests and
+   who else is out are identical on every role page, and this file had
+   one of the two copies that proved it. */
 
 /* ════════════════════════════════════════════════════
    Boot

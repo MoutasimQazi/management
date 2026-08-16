@@ -225,6 +225,7 @@ function showApp(){
     panel: 'demoPanel', list: 'demoList', count: 'demoCount'
   });
   loadProjects();
+  wireLeavePanel(session.token, session.role);   // shared leave form — ui.js
   route();
 }
 signOutBtn.addEventListener('click', () => {
@@ -236,7 +237,7 @@ signOutBtn.addEventListener('click', () => {
 function route(){
   if (!readSession()) { showSignedOut(); return; }
   let page = (location.hash || '#/bugs').replace(/^#\//, '') || 'bugs';
-  if (!['bugs','cases','projects'].includes(page)) page = 'bugs';
+  if (!['bugs','cases','projects','leave'].includes(page)) page = 'bugs';
 
   pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
   navLinks.forEach(a => a.classList.toggle('on', a.dataset.nav === page));
@@ -244,6 +245,7 @@ function route(){
   if (page === 'bugs')     renderBugs();
   if (page === 'cases')    renderCases();
   if (page === 'projects') renderQaProjects();
+  if (page === 'leave')    renderLeavePanel(session.token, session.role);   // ui.js
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);

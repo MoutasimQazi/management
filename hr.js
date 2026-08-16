@@ -220,6 +220,7 @@ function showApp(){
   renderUserChip(whoEmail, session.email);
   roleBadge.textContent = isAdmin ? 'Admin' : 'HR';
   document.getElementById('qaNavLink').hidden = !isAdmin;
+  wireLeavePanel(session.token, session.role);   // shared leave form — ui.js
   document.getElementById('designNavLink').hidden = !isAdmin;
   document.querySelectorAll('.nav-admin').forEach(a => { a.hidden = !isAdmin; });
   route();
@@ -419,6 +420,7 @@ function currentMonth(){
 // request and who it's waiting on / was decided by.
 async function renderLeave(){
   renderPatterns();   // the months-long view the per-request screens cannot show
+  renderLeavePanel(session.token, session.role);   // HR's own requests — ui.js
   const pendingEl = document.getElementById('pendingLeaveList');
   const allEl = document.getElementById('allLeaveList');
   const summaryEl = document.getElementById('monthSummary');
