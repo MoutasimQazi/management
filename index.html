@@ -11,13 +11,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=26">
-  <link rel="stylesheet" href="projects.css?v=26">
+  <link rel="stylesheet" href="style.css?v=27">
+  <link rel="stylesheet" href="projects.css?v=27">
 
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=26"></script>
+  <script src="theme.js?v=27"></script>
 </head>
 
 <body>
@@ -92,6 +92,19 @@
           <span class="hint" id="teamGaps"></span>
         </div>
         <div id="teamList"></div>
+      </div>
+
+      <!-- Every due date that moved, and the reason given. An admin sees
+           all of them; a BA sees their own projects. Hidden when nothing
+           has slipped, which is the state worth having. -->
+      <div id="extPanel" style="display:none; margin-bottom:24px">
+        <div class="panel-head">
+          <h2>Extended deadlines</h2>
+          <span class="count" id="extCount">0</span>
+          <span class="spacer"></span>
+          <span class="hint">Most recent first</span>
+        </div>
+        <div id="extList"></div>
       </div>
 
       <!-- Demos coming up on projects you're working on. Hidden when
@@ -190,8 +203,8 @@
 
   </div>
 
-  <script src="fireflies.js?v=26"></script>
-  <script src="ui.js?v=26"></script>
+  <script src="fireflies.js?v=27"></script>
+  <script src="ui.js?v=27"></script>
   <script>
     /* ════════════════════════════════════════════════════
        1. Config
@@ -284,6 +297,13 @@
       renderUpcomingDemos({
         url: PM_DEMOS_LIST_URL, token: session.token,
         panel: 'demoPanel', list: 'demoList', count: 'demoCount'
+      });
+      /* Deadlines that moved and why. Not admin-gated here — the endpoint
+         scopes a BA to their own projects and gives an admin everything,
+         which is the distinction that matters. */
+      renderDueExtensions({
+        url: PM_DUE_EXTENSIONS_URL, token: session.token,
+        panel: 'extPanel', list: 'extList', count: 'extCount', limit: 15
       });
       if (isAdmin) { loadTeamOverview(); loadHrMktSummary(); }
     }

@@ -342,6 +342,7 @@ function drawBugs(){
         '<td class="actions-cell">' +
           '<select class="status-select" data-bug-status="' + b.bug_id + '">' +
             '<option value="">Move to…</option>' + opts + '</select>' +
+          '<button type="button" class="icon-btn" data-bug-extend="' + b.bug_id + '">Extend</button>' +
           '<button type="button" class="icon-btn danger" data-bug-delete="' + b.bug_id + '">Delete</button>' +
         '</td></tr>';
     }).join('') +
@@ -383,6 +384,18 @@ function drawBugs(){
       }
     });
   });
+  /* A fix promised by Friday slips like anything else — same recorded
+     move, same reason, same admin list. extendDueDate is in ui.js. */
+  listEl.querySelectorAll('[data-bug-extend]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = Number(btn.dataset.bugExtend);
+      const b  = allBugs.find(x => Number(x.bug_id) === id);
+      if (await extendDueDate(
+        { type:'BUG', id, name: b && b.title, due: b && b.due_date }, session.token
+      )) renderBugs();
+    });
+  });
+
   listEl.querySelectorAll('[data-bug-delete]').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!await confirmDialog({

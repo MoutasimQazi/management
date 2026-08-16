@@ -531,6 +531,7 @@ function designRow(d){
       // Only a designer can be an assignee, so only a designer is offered
       // the one-click way to become one.
       (isAdmin ? '' : '<button type="button" class="icon-btn" data-design-take="' + d.design_id + '">Take</button>') +
+      '<button type="button" class="icon-btn" data-design-extend="' + d.design_id + '">Extend</button>' +
       '<button type="button" class="icon-btn danger" data-design-del="' + d.design_id + '">Delete</button>' +
     '</div>' +
   '</div>';
@@ -565,6 +566,18 @@ function wireDesignRows(root){
         toast('Could not take this on: ' + err.message, 'err');
         btn.disabled = false;
       }
+    });
+  });
+
+  /* Moving a due date needs a reason and is recorded — extendDueDate in
+     ui.js asks for both and writes them together. */
+  root.querySelectorAll('[data-design-extend]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = Number(btn.dataset.designExtend);
+      const d  = allDesigns.find(x => Number(x.design_id) === id);
+      if (await extendDueDate(
+        { type:'DESIGN', id, name: d && d.title, due: d && d.due_date }, session.token
+      )) renderDesigns();
     });
   });
 

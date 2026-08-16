@@ -707,3 +707,33 @@ a.evidence:hover{ color:var(--brand-dark); text-decoration:underline; }
   line-height:1.5;
 }
 .clashnote b{ font-weight:800; }
+
+/* ══════════════════════════════════════════════════════
+   Due-date extensions
+   ══════════════════════════════════════════════════════ */
+.ext-row{
+  display:flex;
+  align-items:flex-start;
+  gap:14px;
+  padding:12px 15px;
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  background:var(--surface);
+  margin-bottom:8px;
+}
+.ext-row .ewhen{ flex:0 0 92px; display:flex; flex-direction:column; gap:2px; }
+.ext-row .emoved{ font-size:14px; font-weight:800; color:var(--warn); }
+.ext-row .edate{ font-size:11px; color:var(--muted); }
+/* A fortnight in a single move is worth spotting from across the page. */
+.ext-row.heavy{ border-color:var(--err-line); background:var(--err-soft); }
+.ext-row.heavy .emoved{ color:var(--err); }
+.ext-row .einfo{ min-width:0; }
+.ext-row .etitle{ font-size:13px; font-weight:700; color:var(--ink); }
+/* The reason is the reason this panel exists, so it is not meta text. */
+.ext-row .ereason{
+  margin-top:4px;
+  font-size:12.5px;
+  line-height:1.5;
+  color:var(--ink-2);
+}
+.ext-row .emeta{ margin-top:4px; font-size:11px; color:var(--muted); }

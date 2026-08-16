@@ -731,6 +731,8 @@ function taskRow(t, opts){
     '<td>' + badge(t.status) + '</td>' +
     '<td class="actions-cell">' + selectHtml +
       '<button type="button" class="icon-btn" data-task-edit="' + t.task_id + '">Edit</button>' +
+      '<button type="button" class="icon-btn" data-task-extend="' + t.task_id +
+        '" data-task-due="' + esc(t.due_date || '') + '">Extend</button>' +
       '<button type="button" class="icon-btn danger" data-task-delete="' + t.task_id + '">Delete</button>' +
     '</td></tr>';
 }
@@ -805,6 +807,21 @@ function wireTaskRows(root, onChanged, opts){
       }
     });
   });
+  /* The BA moves a deadline, with a reason, and it goes on the record —
+     extendDueDate (ui.js) asks for both and writes them together. */
+  root.querySelectorAll('[data-task-extend]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = Number(btn.dataset.taskExtend);
+      const row  = btn.closest('[data-task-row]');
+      const name = row ? (row.querySelector('.ttitle') || {}).textContent : '';
+      // route() re-renders whichever page is showing — task rows appear
+      // both on #/tasks and inside a project's detail.
+      if (await extendDueDate(
+        { type:'TASK', id, name, due: btn.dataset.taskDue || '' }, session.token
+      )) route();
+    });
+  });
+
   root.querySelectorAll('[data-task-delete]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = Number(btn.dataset.taskDelete);

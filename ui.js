@@ -199,6 +199,135 @@ function confirmDialog(opts){
 }
 
 /* ════════════════════════════════════════════════════
+   Due-date extensions
+   ────────────────────────────────────────────────────
+   Work slips. Moving the date is fine; moving it
+   silently is not — so a push needs a new date and a
+   reason, and both are kept.
+
+   One flow for developer tasks, design tasks and bugs,
+   because they slip for the same reasons and the admin
+   wants one list. Shared here so all three boards ask
+   the same question in the same words.
+   ════════════════════════════════════════════════════ */
+/* ui.js loads before every page's own script, so PM_API_BASE does not
+   exist yet at this point — the base is written out here rather than
+   read from a constant that is not there. Same value, same backend. */
+const PM_UI_API_BASE        = "https://management.moveneticsdigital.com/pm-backend-php/";
+const PM_DUE_EXTEND_URL     = PM_UI_API_BASE + "pm-due-extend.php";
+const PM_DUE_EXTENSIONS_URL = PM_UI_API_BASE + "pm-due-extensions-list.php";
+
+/* Asks for the new date and the reason together, then writes both.
+   `item` is { type: 'TASK'|'DESIGN'|'BUG', id, name, due }.
+   Resolves true when the date moved, so the caller can re-render. */
+async function extendDueDate(item, token){
+  const current = item.due ? ' Currently ' + demoDay(item.due) + '.' : ' No date set yet.';
+
+  const newDue = await promptDialog({
+    title: 'Move the due date',
+    body: (item.name ? '“' + item.name + '”.' : '') + current +
+          ' Enter the new date as YYYY-MM-DD.',
+    label: 'New due date',
+    placeholder: 'YYYY-MM-DD',
+    value: item.due || '',
+    required: true,
+    confirmLabel: 'Next'
+  });
+  if (newDue === null) return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(newDue)) {
+    toast('That date needs to look like 2026-08-31.', 'err');
+    return false;
+  }
+
+  /* Asked second and separately, so it reads as the point of the
+     exercise rather than an optional box beside the date. */
+  const reason = await promptDialog({
+    title: 'Why is it moving?',
+    body: 'This goes on the record and the admin sees it. Say what actually held it up.',
+    label: 'Reason',
+    placeholder: 'e.g. Client changed the checkout flow after the design was signed off',
+    multiline: true,
+    required: true,
+    confirmLabel: 'Move the date'
+  });
+  if (reason === null) return false;
+  if (reason.length < 10) {
+    toast('Give a bit more than that — the admin reads these.', 'err');
+    return false;
+  }
+
+  try {
+    const res = await fetch(PM_DUE_EXTEND_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({
+        work_type: item.type, work_id: item.id, new_due: newDue, reason
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || ('Request failed (' + res.status + ')'));
+
+    const n = data.days_moved;
+    toast(n === null || n === undefined
+      ? 'Due date set.'
+      : (n > 0 ? 'Pushed out ' + n + ' day' + (n === 1 ? '' : 's') + '.'
+               : 'Pulled forward ' + Math.abs(n) + ' day' + (Math.abs(n) === 1 ? '' : 's') + '.'), 'ok');
+    return true;
+  } catch (err) {
+    toast('Could not move the date: ' + err.message, 'err');
+    return false;
+  }
+}
+
+/* opts: { url, token, panel, list, count, limit, projectId } — element
+   ids. The admin sees every project; everyone else sees their own, which
+   the endpoint decides, not this. */
+async function renderDueExtensions(opts){
+  const panel = document.getElementById(opts.panel);
+  const list  = document.getElementById(opts.list);
+  if (!panel || !list) return;
+
+  try {
+    const qs = ['limit=' + (opts.limit || 25)];
+    if (opts.projectId) qs.push('project_id=' + opts.projectId);
+    const res = await fetch(opts.url + '?' + qs.join('&'),
+      { headers: { 'Authorization': 'Bearer ' + opts.token } });
+    if (!res.ok) throw new Error('status ' + res.status);
+    const rows = await res.json();
+
+    if (!Array.isArray(rows) || !rows.length) { panel.style.display = 'none'; return; }
+    panel.style.display = '';
+
+    const countEl = opts.count && document.getElementById(opts.count);
+    if (countEl) countEl.textContent = String(rows.length);
+
+    const KIND = { TASK:'Task', DESIGN:'Design', BUG:'Bug' };
+    list.innerHTML = rows.map(r => {
+      const n = r.days_moved;
+      const moved = (n === null || n === undefined) ? 'date set'
+        : (n > 0 ? '+' + n + 'd' : n + 'd');
+      // A fortnight in one move is the size worth spotting from a distance.
+      const heavy = (n !== null && n !== undefined && n >= 14) ? ' heavy' : '';
+      return '<div class="ext-row' + heavy + '">' +
+        '<div class="ewhen"><span class="emoved">' + uiEsc(moved) + '</span>' +
+          '<span class="edate">' + uiEsc(demoDay(r.new_due)) + '</span></div>' +
+        '<div class="einfo">' +
+          '<div class="etitle"><span class="kindchip">' + uiEsc(KIND[r.work_type] || r.work_type) +
+            '</span> ' + uiEsc(r.work_name || ('#' + r.work_id)) + '</div>' +
+          '<div class="ereason">' + uiEsc(r.reason) + '</div>' +
+          '<div class="emeta">' +
+            (r.project_name ? uiEsc(r.project_name) + ' · ' : '') +
+            uiEsc(r.extended_by_name || 'Someone') +
+            (r.old_due ? ' · was ' + uiEsc(demoDay(r.old_due)) : '') +
+          '</div>' +
+        '</div></div>';
+    }).join('');
+  } catch (_) {
+    panel.style.display = 'none';   // migration 012 may not be in yet
+  }
+}
+
+/* ════════════════════════════════════════════════════
    Demos
    ────────────────────────────────────────────────────
    A project can have several — an internal run-through,
