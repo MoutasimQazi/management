@@ -138,6 +138,11 @@ function toast(msg, kind, sticky){
     host = document.createElement('div');
     host.id = 'toastHost';
     host.className = 'toast-host';
+    /* Announced to a screen reader. Without this a toast is the only
+       feedback for saving, deleting or failing, and it is silent —
+       polite so it waits for a pause rather than cutting across. */
+    host.setAttribute('role', 'status');
+    host.setAttribute('aria-live', 'polite');
     document.body.appendChild(host);
   }
   const el = document.createElement('div');
@@ -376,7 +381,9 @@ function meetingRow(m, href){
   const rec  = (m['Meet link'] && id)
     ? '<a class="rec" role="button" tabindex="0" data-recording="' + esc(id) + '">▶ Recording</a>'
     : '';
-  return '<tr class="clickable" data-href="' + esc(href) + '">' +
+  /* tabindex + role because a <tr> with a click handler is invisible to
+     the keyboard — there was no way to open a meeting without a mouse. */
+  return '<tr class="clickable" tabindex="0" role="link" data-href="' + esc(href) + '">' +
     '<td><div class="ttitle" data-tr>' + name + '</div></td>' +
     '<td class="nowrap">' + (date || '—') + '</td>' +
     '<td>' + (gist ? '<span class="tsub" data-tr>' + gist + '</span>' : '—') + '</td>' +
@@ -386,11 +393,17 @@ function meetingRow(m, href){
 
 function wireMeetingRowClicks(root){
   root.querySelectorAll('tr[data-href]').forEach(tr => {
-    tr.addEventListener('click', (e) => {
+    const open = (e) => {
       // The recording chip opens a tab of its own. This listener sits on an
       // ancestor, so it runs first — it has to step aside itself.
-      if (e.target.closest('[data-recording]')) return;
+      if (e.target.closest && e.target.closest('[data-recording]')) return;
       location.href = tr.dataset.href;
+    };
+    tr.addEventListener('click', open);
+    tr.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+      e.preventDefault();          // Space would scroll the page
+      open(e);
     });
   });
 }

@@ -11,13 +11,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=30">
-  <link rel="stylesheet" href="projects.css?v=30">
+  <link rel="stylesheet" href="style.css?v=31">
+  <link rel="stylesheet" href="projects.css?v=31">
 
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=30"></script>
+  <script src="theme.js?v=31"></script>
 </head>
 
 <body>
@@ -177,8 +177,12 @@
         <a class="more" href="meetings.html">Open Meetings →</a>
       </div>
       <div class="stats">
-        <div class="stat"><div class="num" id="statTotal">0</div><div class="lbl">🎙 Meetings recorded</div></div>
-        <div class="stat"><div class="num" id="statLast" style="font-size:19px; line-height:1.25;">—</div><div class="lbl">🕑 Last meeting</div></div>
+        <a class="stat linked" href="meetings.html#/meetings" title="Open your meetings">
+          <div class="num" id="statTotal">0</div><div class="lbl">🎙 Meetings recorded</div>
+          <span class="statgo" aria-hidden="true">→</span></a>
+        <a class="stat linked" href="meetings.html#/meetings" title="Open your meetings">
+          <div class="num" id="statLast" style="font-size:19px; line-height:1.25;">—</div><div class="lbl">🕑 Last meeting</div>
+          <span class="statgo" aria-hidden="true">→</span></a>
       </div>
 
       <!-- Shown only when a meeting was recorded in the last 24 hours -->
@@ -203,8 +207,8 @@
 
   </div>
 
-  <script src="fireflies.js?v=30"></script>
-  <script src="ui.js?v=30"></script>
+  <script src="fireflies.js?v=31"></script>
+  <script src="ui.js?v=31"></script>
   <script>
     /* ════════════════════════════════════════════════════
        1. Config
@@ -437,13 +441,16 @@
         const openQuestions = questions.filter(q => q.status === 'OPEN');
 
         const tiles = [
-          { num: projects.length, lbl: isAdmin ? 'All projects' : 'My projects' },
-          { num: openTasks.length, lbl: isAdmin ? 'Open tasks (all)' : 'My open tasks' },
-          { num: openQuestions.length, lbl: isAdmin ? 'Open questions' : 'My open questions' }
+          { num: projects.length, lbl: isAdmin ? 'All projects' : 'My projects',
+            href: 'projects.html#/projects', title: 'Open the projects list' },
+          { num: openTasks.length, lbl: isAdmin ? 'Open tasks (all)' : 'My open tasks',
+            href: 'projects.html#/tasks', title: 'Open the task list' },
+          { num: openQuestions.length, lbl: isAdmin ? 'Open questions' : 'My open questions',
+            href: 'projects.html#/questions', title: 'Open the questions list' }
         ];
 
-        pmStatsEl.innerHTML = tiles.map(t =>
-          '<div class="stat"><div class="num">' + t.num + '</div><div class="lbl">' + esc(t.lbl) + '</div></div>').join('');
+        // statTiles (ui.js) — every number here has a page that answers it.
+        pmStatsEl.innerHTML = statTiles(tiles);
 
         pmAttentionTitle.textContent = isAdmin ? 'Open tasks across all business analysts' : 'Your open tasks';
         const attention = openTasks.slice(0, 5).map(t => ({
@@ -702,17 +709,22 @@
         const campaigns   = val(campaignsR);
 
         panel.style.display = '';
-        hrStats.innerHTML = [
-          { num: openings.filter(o => o.status === 'OPEN').length, lbl: 'Open roles' },
-          { num: candidates.length, lbl: 'Candidates in pipeline' },
-          { num: pendingLeave.length, lbl: 'Pending leave' }
-        ].map(t => '<div class="stat"><div class="num">' + t.num + '</div><div class="lbl">' + esc(t.lbl) + '</div></div>').join('');
+        hrStats.innerHTML = statTiles([
+          { num: openings.filter(o => o.status === 'OPEN').length, lbl: 'Open roles',
+            href: 'hr.html#/openings' },
+          { num: candidates.length, lbl: 'Candidates in pipeline',
+            href: 'hr.html#/openings' },
+          { num: pendingLeave.length, lbl: 'Pending leave',
+            href: 'hr.html#/leave' }
+        ]);
 
-        mktStats.innerHTML = [
-          { num: campaigns.length, lbl: 'Total campaigns' },
-          { num: campaigns.filter(c => c.status === 'IN_PROGRESS').length, lbl: 'In progress' },
-          { num: campaigns.filter(c => c.status === 'PUBLISHED').length, lbl: 'Published' }
-        ].map(t => '<div class="stat"><div class="num">' + t.num + '</div><div class="lbl">' + esc(t.lbl) + '</div></div>').join('');
+        mktStats.innerHTML = statTiles([
+          { num: campaigns.length, lbl: 'Total campaigns', href: 'marketing.html' },
+          { num: campaigns.filter(c => c.status === 'IN_PROGRESS').length, lbl: 'In progress',
+            href: 'marketing.html' },
+          { num: campaigns.filter(c => c.status === 'PUBLISHED').length, lbl: 'Published',
+            href: 'marketing.html' }
+        ]);
       } catch (_) {
         panel.style.display = 'none';
       }

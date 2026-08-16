@@ -120,6 +120,11 @@ function toast(msg, kind, sticky){
     host = document.createElement('div');
     host.id = 'toastHost';
     host.className = 'toast-host';
+    /* Announced to a screen reader. Without this a toast is the only
+       feedback for saving, deleting or failing, and it is silent —
+       polite so it waits for a pause rather than cutting across. */
+    host.setAttribute('role', 'status');
+    host.setAttribute('aria-live', 'polite');
     document.body.appendChild(host);
   }
   const el = document.createElement('div');
@@ -345,14 +350,16 @@ async function renderDashboard(){
 
     const tiles = [
       { num: projects.length, lbl: isAdmin ? 'All projects' : 'My projects', icon: '📁' },
-      { num: openTasks.length, lbl: isAdmin ? 'Open tasks (all)' : 'My open tasks', icon: '✓' },
-      { num: openQuestions.length, lbl: isAdmin ? 'Open questions' : 'My open questions', icon: '?' }
+      { num: openTasks.length, lbl: isAdmin ? 'Open tasks (all)' : 'My open tasks', icon: '✓',
+        href: '#/tasks' },
+      { num: openQuestions.length, lbl: isAdmin ? 'Open questions' : 'My open questions', icon: '?',
+        href: '#/questions' }
     ];
 
+    // statTiles (ui.js) — each number links to the list that explains it.
     statsEl.innerHTML =
       (errors.length ? '<div class="empty" style="grid-column:1/-1">Some data failed to load — ' + esc(errors.join(' · ')) + '</div>' : '') +
-      tiles.map(t =>
-        '<div class="stat"><div class="stat-icon">' + t.icon + '</div><div class="num">' + t.num + '</div><div class="lbl">' + esc(t.lbl) + '</div></div>').join('');
+      statTiles(tiles);
 
     qPanel.innerHTML = openQuestions.length
       ? openQuestions.slice(0, 5).map(questionCard).join('')
@@ -422,7 +429,18 @@ function projectRow(p){
 }
 function wireProjectRowClicks(root){
   root.querySelectorAll('tr[data-project-row]').forEach(tr => {
-    tr.addEventListener('click', () => { location.hash = '#/project/' + tr.dataset.projectRow; });
+    /* Set here rather than in the markup so every caller gets it — a row
+       with a click handler and no tabindex cannot be reached at all
+       without a mouse, which is how these shipped. */
+    tr.setAttribute('tabindex', '0');
+    tr.setAttribute('role', 'link');
+    const open = () => { location.hash = '#/project/' + tr.dataset.projectRow; };
+    tr.addEventListener('click', open);
+    tr.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+      e.preventDefault();
+      open();
+    });
   });
 }
 

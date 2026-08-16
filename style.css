@@ -1804,3 +1804,52 @@ input[type="date"]::-webkit-datetime-edit-day-field:focus{
   color:var(--warn);
 }
 .monthctx.heavy b{ color:var(--warn); }
+
+/* ══════════════════════════════════════════════════════
+   Stat tiles that go somewhere
+   ──────────────────────────────────────────────────────
+   A number on a dashboard is a question — "48 open tasks"
+   means "which forty-eight?" Every one of these had its
+   answer on another page and no way to reach it.
+
+   Real <a> elements, so middle-click, ctrl-click, the
+   status-bar preview and keyboard focus all work. The
+   arrow only appears on hover or focus: a permanent one
+   on every tile is six arrows competing on a dashboard.
+   ══════════════════════════════════════════════════════ */
+a.stat{
+  display:block;
+  text-decoration:none;
+  color:inherit;
+  cursor:pointer;
+}
+a.stat:hover{
+  border-color:var(--brand-100);
+  box-shadow:var(--shadow-md);
+  transform:translateY(-2px);
+}
+a.stat:active{ transform:translateY(0); }
+a.stat:focus-visible{
+  outline:2px solid var(--brand);
+  outline-offset:2px;
+  border-radius:var(--radius-md);
+}
+a.stat .statgo{
+  position:absolute;
+  right:14px; top:14px;
+  font-size:13px;
+  color:var(--brand);
+  opacity:0;
+  transform:translateX(-4px);
+  transition:opacity .18s, transform .18s;
+}
+a.stat:hover .statgo,
+a.stat:focus-visible .statgo{ opacity:1; transform:none; }
+/* The label shifts to the brand on hover so the whole tile reads as one
+   target rather than an arrow bolted onto a box. */
+a.stat:hover .lbl{ color:var(--brand-dark); }
+
+@media (prefers-reduced-motion:reduce){
+  a.stat:hover{ transform:none; }
+  a.stat .statgo{ transition:none; }
+}

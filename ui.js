@@ -328,6 +328,36 @@ async function renderDueExtensions(opts){
 }
 
 /* ════════════════════════════════════════════════════
+   Stat tiles
+   ────────────────────────────────────────────────────
+   A number on a dashboard is a question — "48 open
+   tasks" means "which forty-eight?" — and every one of
+   these had the answer on another page with no way to
+   get there. They are links now wherever a destination
+   exists.
+
+   An <a> rather than a click handler on a <div>: it gets
+   middle-click, ctrl-click, the status bar preview and
+   keyboard focus for free, none of which a handler does.
+   Tiles with genuinely nowhere to go stay <div>s rather
+   than becoming links to nothing.
+   ════════════════════════════════════════════════════ */
+function statTile(t){
+  const inner =
+    (t.icon ? '<div class="stat-icon">' + uiEsc(t.icon) + '</div>' : '') +
+    '<div class="num"' + (t.small ? ' style="font-size:19px; line-height:1.25;"' : '') + '>' +
+      uiEsc(String(t.num)) + '</div>' +
+    '<div class="lbl">' + uiEsc(t.lbl) + '</div>';
+
+  if (!t.href) return '<div class="stat">' + inner + '</div>';
+  return '<a class="stat linked" href="' + uiEsc(t.href) + '"' +
+    (t.title ? ' title="' + uiEsc(t.title) + '"' : '') + '>' + inner +
+    '<span class="statgo" aria-hidden="true">→</span></a>';
+}
+
+function statTiles(list){ return list.map(statTile).join(''); }
+
+/* ════════════════════════════════════════════════════
    Demos
    ────────────────────────────────────────────────────
    A project can have several — an internal run-through,

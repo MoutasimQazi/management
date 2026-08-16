@@ -104,6 +104,11 @@ function toast(msg, kind, sticky){
     host = document.createElement('div');
     host.id = 'toastHost';
     host.className = 'toast-host';
+    /* Announced to a screen reader. Without this a toast is the only
+       feedback for saving, deleting or failing, and it is silent —
+       polite so it waits for a pause rather than cutting across. */
+    host.setAttribute('role', 'status');
+    host.setAttribute('aria-live', 'polite');
     document.body.appendChild(host);
   }
   const el = document.createElement('div');
@@ -867,13 +872,15 @@ async function renderProjects(){
     const done     = myProjects.reduce((n, p) => n + p.design_done, 0);
     const review   = myProjects.reduce((n, p) => n + p.design_in_review, 0);
     const changes  = myProjects.reduce((n, p) => n + p.design_changes, 0);
-    statsEl.innerHTML = [
+    /* statTiles (ui.js). The three work counts open the board already
+       filtered to what they are counting, so the number and the list you
+       land on always agree. */
+    statsEl.innerHTML = statTiles([
       { num: myProjects.length, lbl: '📁 Projects' },
-      { num: total - done,      lbl: '✏️ Open tasks' },
-      { num: review,            lbl: '👀 In review' },
-      { num: changes,           lbl: '↩️ Changes asked' }
-    ].map(t => '<div class="stat"><div class="num">' + t.num + '</div>' +
-               '<div class="lbl">' + esc(t.lbl) + '</div></div>').join('');
+      { num: total - done,      lbl: '✏️ Open tasks',    href: '#/work' },
+      { num: review,            lbl: '👀 In review',     href: '#/work' },
+      { num: changes,           lbl: '↩️ Changes asked', href: '#/work' }
+    ]);
 
     document.getElementById('projectCount').textContent = String(myProjects.length);
     listEl.innerHTML = myProjects.length

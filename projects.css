@@ -801,3 +801,14 @@ a.evidence:hover{ color:var(--brand-dark); text-decoration:underline; }
   color:var(--ink-2);
 }
 .ext-row .emeta{ margin-top:4px; font-size:11px; color:var(--muted); }
+
+/* A clickable row is a link, so it takes focus and shows it. Without the
+   outline a keyboard user tabbing through a table has no idea where
+   they are; without the tabindex (set in JS) they could not get here. */
+.data-table tr.clickable:focus-visible,
+.data-table tr[data-project-row]:focus-visible{
+  outline:2px solid var(--brand);
+  outline-offset:-2px;
+}
+.data-table tr.clickable:hover,
+.data-table tr[data-project-row]:hover{ background:var(--line-2); }

@@ -72,6 +72,11 @@ function toast(msg, kind, sticky){
     host = document.createElement('div');
     host.id = 'toastHost';
     host.className = 'toast-host';
+    /* Announced to a screen reader. Without this a toast is the only
+       feedback for saving, deleting or failing, and it is silent —
+       polite so it waits for a pause rather than cutting across. */
+    host.setAttribute('role', 'status');
+    host.setAttribute('aria-live', 'polite');
     document.body.appendChild(host);
   }
   const el = document.createElement('div');
