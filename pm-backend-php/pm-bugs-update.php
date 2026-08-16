@@ -62,6 +62,20 @@ if ($touchesAssignee) {
     $assignedManager  = $existing['assigned_manager_id'];
 }
 
+/* Reassigning has the same problem as assigning: moving a bug to a QA
+   account that is not on the project hides it from them. */
+$granted = false;
+if ($touchesAssignee && $assignedManager) {
+    $proj = $pdo->prepare("SELECT project_id FROM bugs WHERE bug_id = ?");
+    $proj->execute([$bugId]);
+    $row = $proj->fetch();
+    if ($row) {
+        $granted = grantProjectAccess(
+            $pdo, managerRole($pdo, $assignedManager), (int)$assignedManager, (int)$row['project_id']
+        );
+    }
+}
+
 $stmt = $pdo->prepare(
     "UPDATE bugs SET title = ?, steps = ?, link = ?, severity = ?, status = ?,
                      assigned_to = ?, assigned_manager_id = ?
@@ -80,4 +94,4 @@ $stmt->execute([
     $assignedManager,
     $bugId,
 ]);
-echo json_encode(['success' => true]);
+echo json_encode(['success' => true, 'granted_access' => $granted]);

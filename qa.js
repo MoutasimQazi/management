@@ -358,13 +358,19 @@ function drawBugs(){
     sel.addEventListener('change', async () => {
       sel.disabled = true;
       try {
-        await api(PM_BUGS_UPDATE_URL, { method: 'POST', body: Object.assign(
+        const res = await api(PM_BUGS_UPDATE_URL, { method: 'POST', body: Object.assign(
           { bug_id: Number(sel.dataset.bugAssign) },
           assigneeBody(sel.value)
         )});
-        const opt = sel.options[sel.selectedIndex];
-        toast(sel.value ? 'Assigned to ' + opt.textContent.split(' — ')[0] + '.'
-                        : 'Assignee cleared.', 'ok');
+        const opt  = sel.options[sel.selectedIndex];
+        const name = opt.textContent.split(' — ')[0];
+        /* A QA or designer assignee who was not on this project has just
+           been added to it — otherwise the bug would be invisible to
+           them. Say so rather than letting the access appear silently. */
+        toast(!sel.value ? 'Assignee cleared.'
+              : res && res.granted_access
+                ? 'Assigned to ' + name + ' — and they were added to this project.'
+                : 'Assigned to ' + name + '.', 'ok');
         renderBugs();
       } catch (err) {
         toast('Could not assign: ' + err.message, 'err');
@@ -434,7 +440,7 @@ document.getElementById('newBugForm').addEventListener('submit', async (e) => {
   const title = document.getElementById('bugTitle').value.trim();
   if (!project_id || !title) { toast('Pick a project and give the bug a title.', 'err'); return; }
   try {
-    await api(PM_BUGS_CREATE_URL, { method: 'POST', body: {
+    const res = await api(PM_BUGS_CREATE_URL, { method: 'POST', body: {
       project_id: Number(project_id), title,
       steps: document.getElementById('bugSteps').value.trim(),
       link: document.getElementById('bugLink').value.trim(),
@@ -443,7 +449,9 @@ document.getElementById('newBugForm').addEventListener('submit', async (e) => {
     }});
     e.target.reset();
     e.target.classList.remove('open');
-    toast('Bug reported.', 'ok');
+    toast(res && res.granted_access
+      ? 'Bug reported — and the assignee was added to this project.'
+      : 'Bug reported.', 'ok');
     renderBugs();
   } catch (err) {
     toast('Could not report bug: ' + err.message, 'err');

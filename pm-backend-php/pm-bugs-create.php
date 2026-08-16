@@ -25,6 +25,14 @@ $severity = in_array($b['severity'] ?? '', $severities, true) ? $b['severity'] :
 // A developer, or QA / design / a business analyst — see auth.php.
 [$assignedEmployee, $assignedManager] = resolveBugAssignee($pdo, $b);
 
+/* QA and designers see only their assigned projects, so a bug handed to
+   one who is not on this project would be invisible to them. Being given
+   the bug is being put on the project — same rule as design work. */
+$granted = false;
+if ($assignedManager) {
+    $granted = grantProjectAccess($pdo, managerRole($pdo, $assignedManager), $assignedManager, $projectId);
+}
+
 $stmt = $pdo->prepare(
     "INSERT INTO bugs (project_id, task_id, case_id, title, steps, link, severity,
                        reported_by, assigned_to, assigned_manager_id)
@@ -42,4 +50,10 @@ $stmt->execute([
     $assignedEmployee,
     $assignedManager,
 ]);
-echo json_encode(['success' => true, 'bug_id' => (int)$pdo->lastInsertId()]);
+echo json_encode([
+    'success'        => true,
+    'bug_id'         => (int)$pdo->lastInsertId(),
+    // So the page can say the assignee was added, rather than the access
+    // appearing from nowhere.
+    'granted_access' => $granted,
+]);

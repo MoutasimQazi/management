@@ -108,6 +108,17 @@ if (array_key_exists('due_date', $b)) {
     $due = $existing['due_date'];
 }
 
+/* Reassigning has the same problem as assigning: moving design work to
+   a designer who is not on the project hides it from them. Same helper
+   as the create path and as the QA one — see auth.php. */
+$granted = false;
+if (array_key_exists('assigned_to', $b) && $assignedTo) {
+    $proj = $pdo->prepare("SELECT project_id FROM design_tasks WHERE design_id = ?");
+    $proj->execute([$designId]);
+    $row = $proj->fetch();
+    if ($row) $granted = grantProjectAccess($pdo, 'DESIGNER', (int)$assignedTo, (int)$row['project_id']);
+}
+
 $stmt = $pdo->prepare(
     "UPDATE design_tasks
      SET title = ?, brief = ?, kind = ?, status = ?, link = ?, due_date = ?, assigned_to = ?,
@@ -120,4 +131,7 @@ $stmt->execute([
     $estimateId, $quantity, $hasFrd ? 1 : 0, $case, $hours, $start,
     $designId,
 ]);
-echo json_encode(['success' => true, 'estimated_hours' => $hours, 'due_date' => $due]);
+echo json_encode([
+    'success' => true, 'estimated_hours' => $hours, 'due_date' => $due,
+    'granted_access' => $granted,
+]);

@@ -634,9 +634,14 @@ document.getElementById('newDesignForm').addEventListener('submit', async (e) =>
   };
   if (!body.project_id || !body.title) return;
   try {
-    await api(PM_DESIGN_CREATE_URL, { method:'POST', body });
+    const res = await api(PM_DESIGN_CREATE_URL, { method:'POST', body });
     e.target.reset();
     e.target.classList.remove('open');
+    // The assignee may have just been put on the project — see
+    // grantProjectAccess in auth.php. Say so, do not let it be silent.
+    if (res && res.granted_access) {
+      toast('Design task added — and the designer was put on this project.', 'ok');
+    }
     renderDesigns();
   } catch (err) {
     toast('Could not create the design task: ' + err.message, 'err');

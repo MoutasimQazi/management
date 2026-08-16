@@ -175,6 +175,59 @@ function resolveBugAssignee(PDO $pdo, array $b): array {
     exit;
 }
 
+/* Put a QA or designer account on a project, if it is not already.
+ *
+ * ── Why this exists at all ──
+ * QA and designers see only the projects assigned to them. So handing
+ * one a piece of work on a project they are not on creates a row they
+ * cannot open: assigned work, invisible to the assignee. That has now
+ * turned up four times in this codebase — bugs to developers with no
+ * bugs page, designers made assignable with nowhere to see one, design
+ * work assigned off-project, and bugs assigned to off-project QA.
+ *
+ * Being given the work is being put on the project, so the grant follows
+ * the assignment rather than waiting for somebody to notice. One helper
+ * for both roles, so QA and Design cannot drift apart again.
+ *
+ * Only ever adds. Nothing here takes anyone off a project — that is the
+ * Team panel's job, and it should stay a deliberate act.
+ *
+ * Returns true when it actually granted, so the caller can say so
+ * instead of letting the access appear from nowhere.
+ */
+function grantProjectAccess(PDO $pdo, string $role, int $managerId, int $projectId): bool {
+    $map = [
+        'QA'       => ['qa_assignments',     'qa_id'],
+        'DESIGNER' => ['design_assignments', 'designer_id'],
+    ];
+    if (!isset($map[$role]) || !$managerId || !$projectId) return false;
+    [$table, $col] = $map[$role];
+
+    try {
+        $has = $pdo->prepare("SELECT 1 FROM $table WHERE $col = ? AND project_id = ?");
+        $has->execute([$managerId, $projectId]);
+        if ($has->fetch()) return false;
+
+        $pdo->prepare("INSERT INTO $table ($col, project_id) VALUES (?, ?)")
+            ->execute([$managerId, $projectId]);
+        return true;
+    } catch (PDOException $e) {
+        // The module's migration may not be imported yet. The work is
+        // still worth creating; it just cannot be granted for now.
+        return false;
+    }
+}
+
+/* The role of a managers-table account, or '' if it is not one. Used to
+ * decide which assignment table a grant belongs in. */
+function managerRole(PDO $pdo, ?int $managerId): string {
+    if (!$managerId) return '';
+    $q = $pdo->prepare("SELECT role FROM managers WHERE manager_id = ? AND is_active = 1");
+    $q->execute([$managerId]);
+    $row = $q->fetch();
+    return $row ? (string)$row['role'] : '';
+}
+
 /* Who is "on" a project, for things everyone working on it should see —
  * demo dates, and the leave clashes those cause.
  *

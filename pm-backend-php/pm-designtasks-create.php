@@ -36,25 +36,9 @@ if ($assignedTo !== null) {
         exit;
     }
 
-    /* A designer sees only the projects assigned to them, so handing work
-     * to one who is not on this project used to create a row they could
-     * not open — assigned work, invisible to the assignee. Being given
-     * the work IS being put on the project, so the grant follows the
-     * assignment rather than waiting for someone to notice.
-     *
-     * Only ever adds. Nothing here can take a designer off a project. */
-    try {
-        $on = $pdo->prepare("SELECT 1 FROM design_assignments WHERE designer_id = ? AND project_id = ?");
-        $on->execute([$assignedTo, $projectId]);
-        if (!$on->fetch()) {
-            $pdo->prepare("INSERT INTO design_assignments (designer_id, project_id) VALUES (?, ?)")
-                ->execute([$assignedTo, $projectId]);
-            $granted = true;
-        }
-    } catch (PDOException $e) {
-        // design_assignments missing (migration 006 not imported). The
-        // task is still worth creating; it just cannot be granted yet.
-    }
+    // Being given the work is being put on the project — grantProjectAccess
+    // in auth.php, shared with the QA path so the two cannot drift.
+    $granted = grantProjectAccess($pdo, 'DESIGNER', $assignedTo, $projectId);
 }
 
 /* The rate card decides how long this takes and, from that, when it is
