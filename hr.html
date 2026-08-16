@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=33">
-  <link rel="stylesheet" href="projects.css?v=33">
+  <link rel="stylesheet" href="style.css?v=34">
+  <link rel="stylesheet" href="projects.css?v=34">
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=33"></script>
+  <script src="theme.js?v=34"></script>
 </head>
 
 <body>
@@ -120,6 +120,14 @@
           <option value="12">Last 12 months</option>
         </select>
       </div>
+      <!-- Leave days a month, with the demos that month marked above.
+           A tall bar under a row of dots is the month worth asking about. -->
+      <div class="insight" style="margin-bottom:14px">
+        <h3>Absence against demos</h3>
+        <p class="isub">Leave days taken each month, with that month's demos marked above. Amber where both happened.</p>
+        <div id="chartAbsence"></div>
+      </div>
+
       <div id="patternList" style="margin-bottom:24px"></div>
 
       <div class="panel-head"><h2>Pending</h2><span class="count" id="pendingCount">0</span></div>
@@ -212,7 +220,8 @@
 
   </div>
 
-  <script src="ui.js?v=33"></script>
-  <script src="hr.js?v=33"></script>
+  <script src="ui.js?v=34"></script>
+  <script src="charts.js?v=34"></script>
+  <script src="hr.js?v=34"></script>
 </body>
 </html>

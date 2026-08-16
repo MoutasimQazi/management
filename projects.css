@@ -837,3 +837,90 @@ a.evidence:hover{ color:var(--brand-dark); text-decoration:underline; }
   background:var(--warn-soft); border-color:var(--warn-line); color:var(--warn);
   font-weight:800;
 }
+
+/* ══════════════════════════════════════════════════════
+   Charts
+   ──────────────────────────────────────────────────────
+   Recessive grid and axes; the marks carry the ink. Text
+   uses text tokens throughout — a series colour never
+   appears on a label, only on the mark beside it.
+   ══════════════════════════════════════════════════════ */
+.insights{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));
+  gap:14px;
+  margin-bottom:24px;
+}
+.insight{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  padding:16px 18px 14px;
+  box-shadow:var(--shadow-sm);
+  min-width:0;
+}
+.insight h3{
+  margin:0 0 2px;
+  font-family:"Archivo", sans-serif;
+  font-size:13.5px; font-weight:800;
+  letter-spacing:-.01em; color:var(--ink);
+}
+.insight .isub{ margin:0 0 12px; font-size:11.5px; line-height:1.5; color:var(--muted); }
+
+.chart svg{ width:100%; height:auto; display:block; color:var(--ink); }
+.chart .hotcol{ cursor:crosshair; }
+
+.legend{ display:flex; flex-wrap:wrap; gap:12px; margin-top:8px; }
+.legend .lgd{
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:11px; font-weight:600; color:var(--ink-2);
+}
+.legend .lgd i{ width:9px; height:9px; border-radius:3px; flex:none; }
+
+/* The table every chart carries: the relief for the one sub-3:1 slot,
+   the screen-reader answer, and what people use when they want the
+   number rather than the shape. */
+.charttable{ margin-top:10px; }
+.charttable summary{
+  cursor:pointer; font-size:11px; font-weight:700;
+  color:var(--muted); letter-spacing:.03em;
+}
+.charttable summary:hover{ color:var(--brand-dark); }
+.charttable[open] summary{ margin-bottom:8px; }
+
+/* ── Horizontal bars ── */
+.barlist{ display:grid; gap:7px; }
+.barrow{ display:grid; grid-template-columns:minmax(88px,140px) 1fr auto; gap:10px; align-items:center; }
+.bname{ font-size:12px; font-weight:600; color:var(--ink); min-width:0; }
+.bname .bsub{ display:block; font-size:10px; font-weight:500; color:var(--muted); }
+.btrack{ height:9px; border-radius:100px; background:var(--line-2); overflow:hidden; }
+/* Sequential: one hue, more is longer. */
+.bfill{ height:100%; border-radius:100px; background:var(--brand); }
+.bval{ font-size:11.5px; font-weight:700; color:var(--ink-2); white-space:nowrap; }
+
+/* ── Meters ── */
+.meterlist{ display:grid; gap:9px; }
+.meterrow{ display:grid; grid-template-columns:56px 1fr auto; gap:10px; align-items:center; }
+.mwhen{ font-size:11px; font-weight:700; color:var(--muted); }
+.mtrack{ height:11px; border-radius:100px; background:var(--line-2); overflow:hidden; }
+.mfill{ height:100%; border-radius:100px; background:var(--ok); transition:width .3s ease; }
+.mval{ font-size:12px; font-weight:800; color:var(--ink-2); white-space:nowrap; }
+/* A word as well as a colour — status is never colour alone. */
+.mval .mword{ display:block; font-size:9.5px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+.meterrow.tight .mfill{ background:var(--warn); }
+.meterrow.tight .mval{ color:var(--warn); }
+.meterrow.over  .mfill{ background:var(--err); }
+.meterrow.over  .mval{ color:var(--err); }
+
+/* ── Columns with demo markers ── */
+.collist{ display:flex; align-items:flex-end; gap:8px; min-height:150px; }
+.colrow{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; }
+.coldemos{ display:flex; flex-wrap:wrap; justify-content:center; gap:2px; min-height:14px; align-items:flex-end; }
+.coldemos i{ width:5px; height:5px; border-radius:50%; background:var(--brand); display:block; }
+.coldemos span{ font-size:8.5px; font-weight:700; color:var(--brand); }
+.colbarwrap{ width:100%; height:96px; display:flex; align-items:flex-end; }
+.colbar{ width:100%; border-radius:4px 4px 0 0; background:var(--line-3); }
+/* Leave and demos in the same month is the thing this chart is for. */
+.colrow.crunch .colbar{ background:var(--warn); }
+.colval{ font-size:11px; font-weight:800; color:var(--ink-2); }
+.collabel{ font-size:9.5px; font-weight:600; color:var(--muted); text-align:center; }

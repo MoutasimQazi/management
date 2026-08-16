@@ -11,13 +11,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=33">
-  <link rel="stylesheet" href="projects.css?v=33">
+  <link rel="stylesheet" href="style.css?v=34">
+  <link rel="stylesheet" href="projects.css?v=34">
 
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=33"></script>
+  <script src="theme.js?v=34"></script>
 </head>
 
 <body>
@@ -92,6 +92,38 @@
           <span class="hint" id="teamGaps"></span>
         </div>
         <div id="teamList"></div>
+      </div>
+
+      <!-- Admin only: four figures, each answering a question the panels
+           below can only answer one row at a time. -->
+      <div id="insightsPanel" style="display:none; margin-bottom:24px">
+        <div class="panel-head">
+          <h2>Insights</h2>
+          <span class="spacer"></span>
+          <span class="hint">Last 12 weeks</span>
+        </div>
+        <div class="insights">
+          <div class="insight">
+            <h3>Deadline slippage</h3>
+            <p class="isub">Days pushed out each week, by discipline. Only pushes count — an early finish should not hide a fortnight of slip.</p>
+            <div id="chartSlippage"></div>
+          </div>
+          <div class="insight">
+            <h3>Bugs opened vs resolved</h3>
+            <p class="isub">Two lines crossing is the whole story: above means the backlog is growing.</p>
+            <div id="chartBugs"></div>
+          </div>
+          <div class="insight">
+            <h3>Who is carrying what</h3>
+            <p class="isub">Unfinished committed hours per person, developers and designers together.</p>
+            <div id="chartWorkload"></div>
+          </div>
+          <div class="insight">
+            <h3>Committed vs capacity</h3>
+            <p class="isub">Estimated hours due each week against the roster, less approved leave. Read the direction, not any single week.</p>
+            <div id="chartCapacity"></div>
+          </div>
+        </div>
       </div>
 
       <!-- Every due date that moved, and the reason given. An admin sees
@@ -207,8 +239,9 @@
 
   </div>
 
-  <script src="fireflies.js?v=33"></script>
-  <script src="ui.js?v=33"></script>
+  <script src="fireflies.js?v=34"></script>
+  <script src="ui.js?v=34"></script>
+  <script src="charts.js?v=34"></script>
   <script>
     /* ════════════════════════════════════════════════════
        1. Config
@@ -235,6 +268,7 @@
     const PM_CAMPAIGNS_LIST_URL  = PM_API_BASE + "pm-campaigns-list.php";
     const PM_TEAM_OVERVIEW_URL   = PM_API_BASE + "pm-team-overview.php";
     const PM_DEMOS_LIST_URL      = PM_API_BASE + "pm-demos-list.php";
+    const PM_INSIGHTS_URL        = PM_API_BASE + "pm-insights.php";
 
     /* ════════════════════════════════════════════════════
        2. DOM references
@@ -309,7 +343,7 @@
         url: PM_DUE_EXTENSIONS_URL, token: session.token,
         panel: 'extPanel', list: 'extList', count: 'extCount', limit: 15
       });
-      if (isAdmin) { loadTeamOverview(); loadHrMktSummary(); }
+      if (isAdmin) { loadTeamOverview(); loadHrMktSummary(); loadInsights(); }
     }
 
     /* ════════════════════════════════════════════════════
@@ -478,6 +512,61 @@
        The rendering is in ui.js, because the Projects page shows the same
        panel and two copies would drift. pm-team-overview.php does the
        grouping, because counting belongs next to the tables. */
+    /* ── Insights (admin only) ──────────────────────────
+       Four figures in one request. Each is drawn only if its data came
+       back: a chart whose feature has not been migrated yet is left out
+       rather than shown as an empty box, and if none of them can be
+       drawn the whole panel stays hidden. Chart code is charts.js. */
+    async function loadInsights(){
+      const session = readSession();
+      if (!session) return;
+      const panel = document.getElementById('insightsPanel');
+      try {
+        const res = await fetch(PM_INSIGHTS_URL, {
+          headers: { 'Authorization': 'Bearer ' + session.token }
+        });
+        if (!res.ok) throw new Error('status ' + res.status);
+        const d = await res.json();
+        const has = k => (d.available || []).indexOf(k) >= 0;
+
+        if (!(d.available || []).length) { panel.style.display = 'none'; return; }
+        panel.style.display = '';
+
+        const hide = id => {
+          const box = document.getElementById(id);
+          if (box && box.parentElement) box.parentElement.style.display = 'none';
+        };
+
+        if (has('slippage')) {
+          lineChart('chartSlippage', {
+            weeks: d.slippage.weeks, series: d.slippage.series,
+            alt: 'Days of deadline slippage per week, split by development, design and QA'
+          });
+        } else hide('chartSlippage');
+
+        if (has('bugs')) {
+          lineChart('chartBugs', {
+            weeks: d.bugs.weeks, series: d.bugs.series,
+            alt: 'Bugs opened and resolved per week'
+          });
+        } else hide('chartBugs');
+
+        if (has('workload')) {
+          barChart('chartWorkload', d.workload.map(p => ({
+            name: p.name, sub: p.role,
+            value: p.hours,
+            label: (p.hours || 0) + 'h · ' + p.items + ' item' + (p.items === 1 ? '' : 's')
+          })), { nameHeader: 'Person', valueHeader: 'Open work',
+                  empty: 'Nobody is holding unfinished estimated work.' });
+        } else hide('chartWorkload');
+
+        if (has('capacity')) meterRows('chartCapacity', d.capacity);
+        else hide('chartCapacity');
+      } catch (_) {
+        panel.style.display = 'none';   // insights are never worth an error
+      }
+    }
+
     function loadTeamOverview(){
       const session = readSession();
       if (!session) return;

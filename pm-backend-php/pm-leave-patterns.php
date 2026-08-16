@@ -91,8 +91,54 @@ usort($out, function ($a, $b) {
     return $b['days'] <=> $a['days'];
 });
 
+/* ── Absence by month, against demos ──────────────────
+ * Leave days per month with the number of demos that month beside them.
+ * A tall month under a row of demo dots is a crunch week: people away
+ * while something was being shown.
+ *
+ * Demos are counted, not plotted on the same scale — days off and demos
+ * are different things and putting both on one y-axis would be a lie
+ * about their relationship. The chart marks them above the column.
+ */
+$series = [];
+for ($i = $months - 1; $i >= 0; $i--) {
+    $m     = (new DateTime('first day of this month'))->modify('-' . $i . ' months');
+    $mKey  = $m->format('Y-m');
+    $mFrom = $m->format('Y-m-d');
+    $mTo   = (clone $m)->modify('last day of this month')->format('Y-m-d');
+
+    // Only the days inside this month, so a request spanning a boundary
+    // is not counted twice.
+    $days = 0;
+    foreach ($rows as $r) {
+        $s = max(new DateTime($r['start_date']), new DateTime($mFrom));
+        $e = min(new DateTime($r['end_date']),   new DateTime($mTo));
+        if ($s <= $e) $days += $s->diff($e)->days + 1;
+    }
+
+    $demoCount = 0;
+    try {
+        $q = $pdo->prepare(
+            "SELECT COUNT(*) AS n FROM project_demos
+             WHERE demo_date BETWEEN ? AND ? AND status <> 'CANCELLED'"
+        );
+        $q->execute([$mFrom, $mTo]);
+        $demoCount = (int)$q->fetch()['n'];
+    } catch (PDOException $e) {
+        $demoCount = 0;   // migration 011 not imported
+    }
+
+    $series[] = [
+        'month' => $mKey,
+        'label' => $m->format('M'),
+        'days'  => $days,
+        'demos' => $demoCount,
+    ];
+}
+
 echo json_encode([
-    'since'  => $since,
-    'months' => $months,
-    'people' => $out,
+    'since'   => $since,
+    'months'  => $months,
+    'people'  => $out,
+    'by_month' => $series,
 ]);
