@@ -1,11 +1,28 @@
 <?php
 require 'config.php';
 require 'auth.php';
-// Any logged-in account (manager, HR, marketing, or employee) can see the
-// leave roster — leave status is company-wide visible by design. Approval
-// is done by the managers the request was addressed to, or an ADMIN
+// Approval is done by the managers a request was addressed to, or an ADMIN
 // (see pm-leave-review.php); HR just tracks.
 $user = requireUser($pdo, $USERS);
+
+/* ── Who may see everyone's leave ─────────────────────
+ * This used to be open to every signed-in account, so a developer's
+ * leave tab listed the whole company's requests — including ones that
+ * finished months ago. Someone else's time off is not their business.
+ *
+ * The roster stays with the roles that have a duty attached to it:
+ * ADMIN, HR (whose section is leave tracking), and MANAGER — a business
+ * analyst approves leave and plans around it. Everyone else may ask for
+ * their own (?mine=1) and for requests addressed to them (?approvals=1),
+ * both of which are scoped further down.
+ */
+$LEAVE_ROSTER_ROLES = ['ADMIN', 'HR', 'MANAGER'];
+if (empty($_GET['mine']) && empty($_GET['approvals']) &&
+    !in_array($user['role'], $LEAVE_ROSTER_ROLES, true)) {
+    http_response_code(403);
+    echo json_encode(['error' => "You can only see your own leave. Ask HR for anyone else's."]);
+    exit;
+}
 
 $sql = "SELECT l.leave_id, l.employee_id, l.manager_id,
                COALESCE(e.name, req.full_name) AS employee_name,

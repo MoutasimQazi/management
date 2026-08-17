@@ -425,16 +425,18 @@ function leavePanelRow(r){
    token. */
 function leaveIsAdmin(role){ return String(role || '').toUpperCase() === 'ADMIN'; }
 
+/* Your own leave, and nothing else.
+ *
+ * This used to also draw a "Team on leave" panel from the unscoped
+ * company list, which meant a developer's leave tab held every approved
+ * request in the workspace, history included. Who else is off is an
+ * admin/HR question — the roster lives on their pages, and
+ * pm-leave-list.php now refuses the unscoped list to anyone else. */
 async function renderLeavePanel(token, role){
   const mineEl = document.getElementById('myLeaveList');
-  const teamEl = document.getElementById('teamLeaveList');
-  /* "Who else is out" is optional. HR's page already lists every request
-     in full, so it mounts the form and its own requests and nothing else
-     — it should not need a hidden element to satisfy this function. */
   if (!mineEl) return;
 
   mineEl.innerHTML = '<div class="empty">Loading…</div>';
-  if (teamEl) teamEl.innerHTML = '<div class="empty">Loading…</div>';
 
   // Approvers are fetched once — the list only changes when someone's
   // role does, not while a form is open.
@@ -457,28 +459,14 @@ async function renderLeavePanel(token, role){
   }
 
   try {
-    // Only ask for the company list when there is somewhere to put it.
-    const [mine, everyone] = await Promise.all([
-      leaveFetch(LEAVE_LIST_URL + '?mine=1', token),
-      teamEl ? leaveFetch(LEAVE_LIST_URL, token) : Promise.resolve([])
-    ]);
+    const mine = await leaveFetch(LEAVE_LIST_URL + '?mine=1', token);
     const mineCount = document.getElementById('myLeaveCount');
     if (mineCount) mineCount.textContent = String(mine.length);
     mineEl.innerHTML = mine.length
       ? mine.map(leavePanelRow).join('')
       : '<div class="empty">No leave requests yet — use the form above.</div>';
-
-    if (teamEl) {
-      const others = everyone.filter(r => r.status === 'APPROVED');
-      const teamCount = document.getElementById('teamLeaveCount');
-      if (teamCount) teamCount.textContent = String(others.length);
-      teamEl.innerHTML = others.length
-        ? others.map(leavePanelRow).join('')
-        : '<div class="empty">No one is currently on approved leave.</div>';
-    }
   } catch (err) {
     mineEl.innerHTML = '<div class="empty">Could not load leave (' + uiEsc(err.message) + ').</div>';
-    if (teamEl) teamEl.innerHTML = '';
   }
 }
 
