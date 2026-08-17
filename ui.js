@@ -377,6 +377,7 @@ function statTiles(list){ return list.map(statTile).join(''); }
 const LEAVE_LIST_URL      = PM_UI_API_BASE + "pm-leave-list.php";
 const LEAVE_CREATE_URL    = PM_UI_API_BASE + "pm-leave-create.php";
 const LEAVE_APPROVERS_URL = PM_UI_API_BASE + "pm-approvers-list.php";
+const LEAVE_REVIEW_URL    = PM_UI_API_BASE + "pm-leave-review.php";
 
 /* Named leaveFetch, not leaveApi: index.html's inline script declares its
    own leaveApi(url, body) at top level, and being the later script it
@@ -467,6 +468,97 @@ async function renderLeavePanel(token, role){
       : '<div class="empty">No leave requests yet — use the form above.</div>';
   } catch (err) {
     mineEl.innerHTML = '<div class="empty">Could not load leave (' + uiEsc(err.message) + ').</div>';
+  }
+}
+
+/* ── Approving leave ──────────────────────────────────
+ * Approving one day off at a time is how somebody quietly ends up with
+ * three weeks in a month: each request is reasonable on its own. Every
+ * pending request therefore shows the rest of that person's leave in the
+ * same month, and the running total including this one. The backend
+ * works it out (pm-leave-list.php) so the count is the same wherever it
+ * is asked from. */
+function leaveMonthContext(r){
+  const total = Number(r.month_total_days || 0);
+  if (!total) return '';
+  const monthName = r.month
+    ? new Date(r.month + '-01T00:00:00').toLocaleDateString('en-IN', { month:'long' })
+    : 'this month';
+  const others = Array.isArray(r.month_other) ? r.month_other : [];
+
+  // Nothing else booked is worth saying too — it is the reassuring answer.
+  if (!others.length) {
+    return '<div class="monthctx">Only leave in ' + uiEsc(monthName) + ' — ' +
+      total + ' day' + (total === 1 ? '' : 's') + '.</div>';
+  }
+  const heavy = total >= 5 ? ' heavy' : '';
+  return '<div class="monthctx' + heavy + '">' +
+    '<b>' + total + ' day' + (total === 1 ? '' : 's') + ' in ' + uiEsc(monthName) + '</b> ' +
+    'including this one · also ' +
+    others.map(o =>
+      uiEsc(demoDay(o.start_date)) +
+      (o.start_date !== o.end_date ? '–' + uiEsc(demoDay(o.end_date)) : '') +
+      ' (' + uiEsc(String(o.status).toLowerCase()) + ')').join(' · ') +
+  '</div>';
+}
+
+/* The pending requests addressed to you — an admin sees every one.
+ *
+ * Being nominated as an approver and having nowhere to approve is the
+ * same defect that kept turning up with assigned work: the request
+ * arrives, the person it is waiting on never sees it, and it sits
+ * PENDING until somebody chases it in person. So this lives here rather
+ * than on one page, and any page with the markup mounts it.
+ *
+ * onReview runs after a decision so the page can refresh whatever else
+ * it shows about leave. Hidden when there is nothing pending — this sits
+ * at the top of a page and should only take that space when it earns it. */
+async function renderApprovalsPanel(token, onReview){
+  const panel = document.getElementById('approvalsPanel');
+  const list  = document.getElementById('approvalsList');
+  if (!panel || !list) return;
+
+  try {
+    const rows = await leaveFetch(LEAVE_LIST_URL + '?approvals=1', token);
+    panel.style.display = rows.length ? '' : 'none';
+    const count = document.getElementById('approvalsCount');
+    if (count) count.textContent = String(rows.length);
+
+    list.innerHTML = rows.map(r =>
+      '<div class="leave-row"><div class="linfo">' +
+        '<div class="ltitle">' + uiEsc(r.employee_name) + '</div>' +
+        '<div class="lmeta">' +
+          '<span>' + uiEsc(demoDay(r.start_date)) + ' – ' + uiEsc(demoDay(r.end_date)) + '</span>' +
+          (r.reason ? '<span>' + uiEsc(r.reason) + '</span>' : '') +
+        '</div>' +
+        demoClashNote(r) +        // a demo on a project they work on
+        leaveMonthContext(r) +
+      '</div>' +
+      '<div class="tactions">' +
+        '<button type="button" class="icon-btn" data-leave-approve="' + r.leave_id + '">Approve</button>' +
+        '<button type="button" class="icon-btn danger" data-leave-reject="' + r.leave_id + '">Reject</button>' +
+      '</div></div>').join('');
+
+    list.querySelectorAll('[data-leave-approve],[data-leave-reject]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const approve = btn.hasAttribute('data-leave-approve');
+        const leaveId = Number(approve ? btn.dataset.leaveApprove : btn.dataset.leaveReject);
+        btn.disabled = true;
+        try {
+          await leaveFetch(LEAVE_REVIEW_URL, token,
+            { leave_id: leaveId, status: approve ? 'APPROVED' : 'REJECTED' });
+          renderApprovalsPanel(token, onReview);
+          if (typeof onReview === 'function') onReview();
+        } catch (err) {
+          toast('Could not update the request: ' + err.message, 'err');
+          btn.disabled = false;
+        }
+      });
+    });
+  } catch (_) {
+    // A role that cannot approve gets a 403 here. That is not an error
+    // worth showing — it just means the panel is not theirs.
+    panel.style.display = 'none';
   }
 }
 

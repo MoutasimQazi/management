@@ -32,11 +32,17 @@ $staff = $pdo->query(
 foreach ($staff as &$s) { $s['kind'] = 'STAFF'; $s['id'] = (int)$s['id']; }
 unset($s);
 
+/* The same courtesy for developers. This used to hardcode `1 AS
+   is_active` and filter to ACTIVE, so a developer deactivated because
+   their tasks or leave still referenced them disappeared from the
+   directory altogether — "Show deactivated" could not bring them back,
+   which is the one case it exists for. */
 $employees = $pdo->query(
-    "SELECT employee_id AS id, name, email, 'EMPLOYEE' AS role, 1 AS is_active,
+    "SELECT employee_id AS id, name, email, 'EMPLOYEE' AS role,
+            (status = 'ACTIVE') AS is_active,
             (token IS NOT NULL) AS has_login, temp_password, department,
             designation, manager_id
-     FROM employees WHERE status = 'ACTIVE'"
+     FROM employees" . ($includeInactive ? "" : " WHERE status = 'ACTIVE'")
 )->fetchAll();
 foreach ($employees as &$e) { $e['kind'] = 'EMPLOYEE'; $e['id'] = (int)$e['id']; }
 unset($e);

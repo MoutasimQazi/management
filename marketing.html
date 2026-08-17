@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=44">
-  <link rel="stylesheet" href="projects.css?v=44">
+  <link rel="stylesheet" href="style.css?v=45">
+  <link rel="stylesheet" href="projects.css?v=45">
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=44"></script>
+  <script src="theme.js?v=45"></script>
 </head>
 
 <body>
@@ -174,6 +174,17 @@
         <div class="actions"><button type="submit">Request leave</button></div>
       </form>
 
+      <!-- Requests sent to you. A marketing lead can be named an approver,
+           and without this the request would sit PENDING with nobody able
+           to see it. Hidden when there is nothing waiting. -->
+      <div id="approvalsPanel" style="display:none; margin-bottom:24px">
+        <div class="panel-head">
+          <h2>Leave approvals</h2>
+          <span class="count" id="approvalsCount">0</span>
+        </div>
+        <div id="approvalsList"></div>
+      </div>
+
       <!-- No company-wide roster here on purpose — see employee.html. -->
       <div class="panel-head"><h2>My requests</h2><span class="count" id="myLeaveCount">0</span></div>
       <div id="myLeaveList"></div>
@@ -181,7 +192,7 @@
 
   </div>
 
-  <script src="ui.js?v=44"></script>
-  <script src="marketing.js?v=44"></script>
+  <script src="ui.js?v=45"></script>
+  <script src="marketing.js?v=45"></script>
 </body>
 </html>

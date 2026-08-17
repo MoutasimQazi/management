@@ -227,7 +227,13 @@ function route(){
   if (page === 'projects')  renderProjects();
   if (page === 'project')   renderProjectDetail(Number(parts[1]));
   if (page === 'tasks')     renderTasks();
-  if (page === 'leave')     renderLeavePanel(session.token, session.role);   // ui.js
+  if (page === 'leave') {
+    renderLeavePanel(session.token, session.role);   // ui.js
+    // Requests addressed to this account. Refreshes "My requests" after a
+    // decision, since a marketing lead can be both approver and requester.
+    renderApprovalsPanel(session.token,
+      () => renderLeavePanel(session.token, session.role));   // ui.js
+  }
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);

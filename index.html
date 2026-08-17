@@ -11,13 +11,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=44">
-  <link rel="stylesheet" href="projects.css?v=44">
+  <link rel="stylesheet" href="style.css?v=45">
+  <link rel="stylesheet" href="projects.css?v=45">
 
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=44"></script>
+  <script src="theme.js?v=45"></script>
 </head>
 
 <body>
@@ -251,9 +251,9 @@
 
   </div>
 
-  <script src="fireflies.js?v=44"></script>
-  <script src="ui.js?v=44"></script>
-  <script src="charts.js?v=44"></script>
+  <script src="fireflies.js?v=45"></script>
+  <script src="ui.js?v=45"></script>
+  <script src="charts.js?v=45"></script>
   <script>
     /* ════════════════════════════════════════════════════
        1. Config
@@ -273,7 +273,6 @@
     const PM_QUESTIONS_LIST_URL  = PM_API_BASE + "pm-questions-list.php";
     const PM_LEAVE_LIST_URL      = PM_API_BASE + "pm-leave-list.php";
     const PM_LEAVE_CREATE_URL    = PM_API_BASE + "pm-leave-create.php";
-    const PM_LEAVE_REVIEW_URL    = PM_API_BASE + "pm-leave-review.php";
     const PM_APPROVERS_LIST_URL  = PM_API_BASE + "pm-approvers-list.php";
     const PM_OPENINGS_LIST_URL   = PM_API_BASE + "pm-openings-list.php";
     const PM_CANDIDATES_LIST_URL = PM_API_BASE + "pm-candidates-list.php";
@@ -302,8 +301,6 @@
     const leaveCount   = document.getElementById('leaveCount');
     const leaveList    = document.getElementById('leaveList');
     const myLeaveList  = document.getElementById('myLeaveList');
-    const approvalsPanel = document.getElementById('approvalsPanel');
-    const approvalsList  = document.getElementById('approvalsList');
     let allMeetings = [];      // sheet rows, sorted newest first
     let todayItemsCache = [];  // action items from the last 24 hours
     let todayExpanded = false; // "Show all" toggle state
@@ -638,73 +635,15 @@
     // Pending requests addressed to me — approve/reject inline. The
     // backend scopes this: managers see requests naming them as an
     // approver, ADMIN sees every pending request.
-    /* Approving one day off at a time is how somebody quietly ends up with
-       three weeks in a month: each request is reasonable on its own. Every
-       pending request therefore shows the rest of that person's leave in
-       the same month, and the running total including this one. The
-       backend works it out (pm-leave-list.php) so the count is the same
-       wherever it is asked from. */
-    function monthContext(r){
-      const total = Number(r.month_total_days || 0);
-      if (!total) return '';
-      const monthName = r.month
-        ? new Date(r.month + '-01T00:00:00').toLocaleDateString('en-IN', { month:'long' })
-        : 'this month';
-      const others = Array.isArray(r.month_other) ? r.month_other : [];
-
-      // Nothing else booked is worth saying too — it is the reassuring answer.
-      if (!others.length) {
-        return '<div class="monthctx">Only leave in ' + esc(monthName) + ' — ' +
-          total + ' day' + (total === 1 ? '' : 's') + '.</div>';
-      }
-      const heavy = total >= 5 ? ' heavy' : '';
-      return '<div class="monthctx' + heavy + '">' +
-        '<b>' + total + ' day' + (total === 1 ? '' : 's') + ' in ' + esc(monthName) + '</b> ' +
-        'including this one · also ' +
-        others.map(o =>
-          esc(fmtDay(o.start_date)) +
-          (o.start_date !== o.end_date ? '–' + esc(fmtDay(o.end_date)) : '') +
-          ' (' + esc(String(o.status).toLowerCase()) + ')').join(' · ') +
-      '</div>';
-    }
-
-    async function loadApprovals(){
-      if (!readSession()) return;
-      try {
-        const rows = await leaveApi(PM_LEAVE_LIST_URL + '?approvals=1');
-        approvalsPanel.style.display = rows.length ? '' : 'none';
-        document.getElementById('approvalsCount').textContent = String(rows.length);
-        approvalsList.innerHTML = rows.map(r =>
-          '<div class="leave-row"><div class="linfo"><div class="ltitle">' + esc(r.employee_name) + '</div>' +
-            '<div class="lmeta">' +
-              '<span>' + esc(fmtDay(r.start_date)) + ' – ' + esc(fmtDay(r.end_date)) + '</span>' +
-              (r.reason ? '<span>' + esc(r.reason) + '</span>' : '') +
-            '</div>' +
-            demoClashNote(r) +      // ui.js — a demo on a project they work on
-            monthContext(r) +
-            '</div>' +
-          '<div class="tactions">' +
-            '<button type="button" class="icon-btn" data-leave-approve="' + r.leave_id + '">Approve</button>' +
-            '<button type="button" class="icon-btn danger" data-leave-reject="' + r.leave_id + '">Reject</button>' +
-          '</div></div>').join('');
-        approvalsList.querySelectorAll('[data-leave-approve],[data-leave-reject]').forEach(btn => {
-          btn.addEventListener('click', async () => {
-            const approve = btn.hasAttribute('data-leave-approve');
-            const leaveId = Number(approve ? btn.dataset.leaveApprove : btn.dataset.leaveReject);
-            btn.disabled = true;
-            try {
-              await leaveApi(PM_LEAVE_REVIEW_URL, { leave_id: leaveId, status: approve ? 'APPROVED' : 'REJECTED' });
-              loadApprovals();
-              loadLeavePanel();
-            } catch (err) {
-              toast('Could not update the request: ' + err.message, 'err');
-              btn.disabled = false;
-            }
-          });
-        });
-      } catch (_) {
-        approvalsPanel.style.display = 'none';
-      }
+    /* The panel itself lives in ui.js (renderApprovalsPanel), the same one
+       the QA and marketing leave tabs mount. It used to be written out
+       here, which was fine while this was the only page that could
+       approve anything — it is not any more, and three copies of an
+       approve button is how they drift apart. */
+    function loadApprovals(){
+      const session = readSession();
+      if (!session) return;
+      renderApprovalsPanel(session.token, loadLeavePanel);
     }
 
     /* The "Send to" approver checkboxes on the request form.

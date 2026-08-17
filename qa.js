@@ -245,7 +245,13 @@ function route(){
   if (page === 'bugs')     renderBugs();
   if (page === 'cases')    renderCases();
   if (page === 'projects') renderQaProjects();
-  if (page === 'leave')    renderLeavePanel(session.token, session.role);   // ui.js
+  if (page === 'leave') {
+    renderLeavePanel(session.token, session.role);   // ui.js
+    // Requests addressed to this account. Refreshes "My requests" after a
+    // decision, since a QA lead can be both approver and requester.
+    renderApprovalsPanel(session.token,
+      () => renderLeavePanel(session.token, session.role));   // ui.js
+  }
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);

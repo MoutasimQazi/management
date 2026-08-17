@@ -38,26 +38,66 @@ if (!$id || !in_array($kind, ['EMPLOYEE', 'STAFF'], true)) {
     exit;
 }
 
-/* ── A developer ── */
+/* ── A developer ──
+ *
+ * This branch used to check `tasks` and nothing else, which was only
+ * ever half the story: `questions.employee_id` and
+ * `leave_requests.employee_id` are foreign keys into employees too, and
+ * neither cascades. So a developer who had once asked for a day off
+ * could not be removed — the DELETE hit a raw constraint error and the
+ * screen showed a 500 with nothing to act on.
+ *
+ * A developer now gets exactly what a staff account gets: count what
+ * holds the row, delete outright when nothing does, and otherwise
+ * deactivate — the login stops working immediately, which is the part
+ * that matters — and say precisely what is holding it. */
 if ($kind === 'EMPLOYEE') {
-    $check = $pdo->prepare("SELECT name FROM employees WHERE employee_id = ?");
+    $check = $pdo->prepare("SELECT name, status FROM employees WHERE employee_id = ?");
     $check->execute([$id]);
     $person = $check->fetch();
     if (!$person) denyNotYours();
 
-    // employees has no cascade from tasks, so guard it ourselves and give
-    // a clear message rather than a raw constraint error.
-    $n = $pdo->prepare("SELECT COUNT(*) AS c FROM tasks WHERE employee_id = ?");
-    $n->execute([$id]);
-    if ((int)$n->fetch()['c'] > 0) {
-        http_response_code(409);
-        echo json_encode(['error' =>
-            'This developer has tasks assigned. Reassign or delete those tasks first, then remove them.']);
+    $holds = [];
+    $checks = [
+        ['tasks',          'employee_id', 'task assigned to them'],
+        ['questions',      'employee_id', 'question they asked'],
+        ['leave_requests', 'employee_id', 'leave request'],
+    ];
+    foreach ($checks as [$table, $col, $label]) {
+        try {
+            $q = $pdo->prepare("SELECT COUNT(*) AS c FROM $table WHERE $col = ?");
+            $q->execute([$id]);
+            $c = (int)$q->fetch()['c'];
+            if ($c > 0) $holds[] = $c . ' ' . $label . ($c === 1 ? '' : 's');
+        } catch (PDOException $e) {
+            // table not in this database yet — nothing to hold the row
+        }
+    }
+
+    if (!$holds) {
+        // bugs.assigned_to is ON DELETE SET NULL, so it never blocks and is
+        // not counted — the bug survives, just unassigned.
+        $pdo->prepare("DELETE FROM employees WHERE employee_id = ?")->execute([$id]);
+        echo json_encode(['success' => true, 'removed' => true, 'name' => $person['name']]);
         exit;
     }
 
-    $pdo->prepare("DELETE FROM employees WHERE employee_id = ?")->execute([$id]);
-    echo json_encode(['success' => true, 'removed' => true, 'name' => $person['name']]);
+    // Referenced: the login goes, the history stays. 'INACTIVE' is the
+    // same status pm-people-role.php sets when moving someone off the
+    // roster, so the two paths leave the row in one shape, not two.
+    $pdo->prepare(
+        "UPDATE employees SET status = 'INACTIVE', token = NULL, temp_password = NULL
+          WHERE employee_id = ?"
+    )->execute([$id]);
+    echo json_encode([
+        'success' => true,
+        'removed' => false,
+        'name'    => $person['name'],
+        'holds'   => $holds,
+        'message' => $person['name'] . ' can no longer sign in, but the account was kept because ' .
+                     'their work is still referenced: ' . implode(', ', $holds) .
+                     '. Delete or reassign those and remove them again to clear the record entirely.',
+    ]);
     exit;
 }
 

@@ -80,7 +80,7 @@ if (!$approverIds) {
  * an approval. The form only offers admins to a BA, but the form is not
  * the enforcement — this is. */
 $isBa = ($user['user_type'] ?? '') === 'STAFF' && ($user['role'] ?? '') === 'MANAGER';
-$allowed = $isBa ? ['ADMIN'] : ['ADMIN', 'MANAGER', 'MARKETING'];
+$allowed = $isBa ? ['ADMIN'] : ['ADMIN', 'MANAGER', 'MARKETING', 'QA'];
 
 $placeholders = implode(',', array_fill(0, count($approverIds), '?'));
 $rolePlaceholders = implode(',', array_fill(0, count($allowed), '?'));
