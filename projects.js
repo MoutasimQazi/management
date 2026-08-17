@@ -267,10 +267,9 @@ function route(){
   if (page === 'rates' && !isAdmin) page = 'dashboard';
 
   pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
-  // "Dashboard" in the nav now always means the Fireflies+Projects combined
-  // view on index.html; this app's own #/dashboard landing route highlights
-  // the "Projects" tab instead, since there's no longer a separate nav item for it.
-  const navTarget = (page === 'project' || page === 'dashboard') ? 'projects' : page;
+  /* A single project's detail belongs under Projects; the overview is
+     its own tab now and keeps its own highlight. */
+  const navTarget = page === 'project' ? 'projects' : page;
   navLinks.forEach(a => a.classList.toggle('on', a.dataset.nav === navTarget));
 
   if (page === 'dashboard') renderDashboard();

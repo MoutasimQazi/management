@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=42">
-  <link rel="stylesheet" href="projects.css?v=42">
+  <link rel="stylesheet" href="style.css?v=43">
+  <link rel="stylesheet" href="projects.css?v=43">
 
   <!-- Sets data-theme before the first paint — must stay in <head>
        and must not be deferred, or dark mode flashes white. -->
-  <script src="theme.js?v=42"></script>
+  <script src="theme.js?v=43"></script>
 </head>
 
 <body>
@@ -44,7 +44,7 @@
       <nav class="sections">
         <a href="index.html#/dashboard">Overview</a>
         <a href="meetings.html">Meetings</a>
-        <a href="#/projects" class="on">Projects</a>
+        <a href="#/dashboard" class="on">Projects</a>
         <a href="hr.html" class="nav-admin" hidden>HR</a>
         <a href="marketing.html" class="nav-admin" hidden>Marketing</a>
         <a href="qa.html" class="nav-admin" hidden>QA</a>
@@ -59,6 +59,11 @@
 
     <!-- Tier 2: pages within this section. -->
     <nav class="subnav">
+      <!-- The section lands here, so it needs a tab of its own. Without
+           one the sub-nav highlighted "Projects" while the overview was
+           showing, and clicking the tab that already looked active was
+           what finally produced the project list. -->
+      <a href="#/dashboard" data-nav="dashboard">Overview</a>
       <a href="#/projects"  data-nav="projects">Projects</a>
       <a href="#/tasks"     data-nav="tasks">Tasks</a>
       <a href="#/questions" data-nav="questions">Questions</a>
@@ -70,7 +75,7 @@
       <div class="dash-hero">
         <div>
           <div class="dash-greeting" id="dashGreeting">Welcome back</div>
-          <h1>Project <em>dashboard</em></h1>
+          <h1>Project <em>overview</em></h1>
           <p class="sub">Where things stand across your projects, tasks, and questions.</p>
         </div>
         <div class="dash-hero-actions">
@@ -254,7 +259,7 @@
 
   </div>
 
-  <script src="ui.js?v=42"></script>
-  <script src="projects.js?v=42"></script>
+  <script src="ui.js?v=43"></script>
+  <script src="projects.js?v=43"></script>
 </body>
 </html>
