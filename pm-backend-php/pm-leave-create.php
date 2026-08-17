@@ -94,7 +94,7 @@ $validIds = array_column($check->fetchAll(), 'manager_id');
 if (!$validIds) {
     http_response_code(400);
     echo json_encode(['error' => $isBa
-        ? 'A business analyst's leave has to go to an admin.'
+        ? "A business analyst's leave has to go to an admin."
         : 'None of the selected approvers can approve leave.']);
     exit;
 }
