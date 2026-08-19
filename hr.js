@@ -10,9 +10,10 @@ const PM_API_BASE = "https://management.moveneticsdigital.com/pm-backend-php/";
 const PM_EMPLOYEES_LIST_URL   = PM_API_BASE + "pm-employees-list.php";
 const PM_EMPLOYEES_CREATE_URL = PM_API_BASE + "pm-employees-create.php";
 const PM_EMPLOYEES_UPDATE_URL = PM_API_BASE + "pm-employees-update.php";
-/* pm-employees-delete.php is superseded by pm-people-delete.php, which
-   handles both kinds. The old endpoint stays on disk — it is still a
-   valid way to remove a developer — but nothing here calls it. */
+/* Removing anyone goes through pm-people-delete.php, which handles both
+   a developer and a staff login. The old pm-employees-delete.php is gone:
+   it only ever checked `tasks`, so it 500'd on a developer who had leave
+   or questions — the same defect pm-people-delete.php was fixed for. */
 const PM_EMPLOYEES_RESET_PW_URL = PM_API_BASE + "pm-employees-reset-password.php";
 const PM_MANAGERS_RESET_PW_URL  = PM_API_BASE + "pm-managers-reset-password.php";
 const PM_OPENINGS_LIST_URL    = PM_API_BASE + "pm-openings-list.php";

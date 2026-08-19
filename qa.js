@@ -18,6 +18,7 @@ const PM_BUGS_DELETE_URL    = PM_API_BASE + "pm-bugs-delete.php";
 const PM_CASES_LIST_URL     = PM_API_BASE + "pm-testcases-list.php";
 const PM_CASES_CREATE_URL   = PM_API_BASE + "pm-testcases-create.php";
 const PM_CASES_DELETE_URL   = PM_API_BASE + "pm-testcases-delete.php";
+const PM_CASES_UPDATE_URL   = PM_API_BASE + "pm-testcases-update.php";
 const PM_RUNS_CREATE_URL    = PM_API_BASE + "pm-testruns-create.php";
 const PM_BUG_ASSIGNEES_URL  = PM_API_BASE + "pm-bug-assignees-list.php";
 const PM_DEMOS_LIST_URL       = PM_API_BASE + "pm-demos-list.php";
@@ -521,6 +522,7 @@ function drawCases(){
           '</select>' +
         '</td>' +
         '<td class="actions-cell">' +
+          '<button type="button" class="icon-btn" data-case-edit="' + c.case_id + '">Edit</button> ' +
           '<button type="button" class="icon-btn danger" data-case-delete="' + c.case_id + '">Delete</button>' +
         '</td></tr>').join('') +
     '</tbody></table></div>';
@@ -560,6 +562,17 @@ function drawCases(){
       }
     });
   });
+  /* Editing reuses the New test case form rather than adding a second
+     one. Without this a typo could only be fixed by deleting the case,
+     which takes every result recorded against it — see the delete
+     dialog below, which says exactly that. */
+  listEl.querySelectorAll('[data-case-edit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const c = rows.find(r => String(r.case_id) === btn.dataset.caseEdit);
+      if (!c) return;
+      openCaseForEdit(c);
+    });
+  });
   listEl.querySelectorAll('[data-case-delete]').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!await confirmDialog({
@@ -580,30 +593,76 @@ function drawCases(){
   });
 }
 document.getElementById('caseSearch').addEventListener('input', drawCases);
+/* null = the form is creating, a number = it is editing that case. One
+   form does both; the submit handler reads this to decide where to post. */
+let editingCaseId = null;
+
+function caseFormMode(editing){
+  editingCaseId = editing ? editing.case_id : null;
+  const form   = document.getElementById('newCaseForm');
+  const submit = form.querySelector('button[type="submit"]');
+  const head   = document.querySelector('#page-cases .pagehead h1');
+  if (submit) submit.textContent = editing ? 'Save changes' : 'Create test case';
+  // The project a case belongs to is not editable: its recorded results
+  // and any bugs raised from it are scoped to that project.
+  document.getElementById('caseProject').disabled = !!editing;
+  form.classList.add('open');
+  if (head) head.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function openCaseForEdit(c){
+  document.getElementById('caseProject').value  = c.project_id || '';
+  document.getElementById('caseTitle').value    = c.title || '';
+  document.getElementById('caseSteps').value    = c.steps || '';
+  document.getElementById('caseExpected').value = c.expected || '';
+  document.getElementById('caseLink').value     = c.link || '';
+  caseFormMode(c);
+  document.getElementById('caseTitle').focus();
+}
+
+function resetCaseForm(){
+  const form = document.getElementById('newCaseForm');
+  form.reset();
+  caseFormMode(null);
+  form.classList.remove('open');
+}
+
 document.getElementById('newCaseToggle').addEventListener('click', () => {
-  document.getElementById('newCaseForm').classList.toggle('open');
+  const form = document.getElementById('newCaseForm');
+  // Opening "+ New test case" while an edit is half-done would otherwise
+  // save over that case with whatever is in the fields.
+  if (form.classList.contains('open')) { resetCaseForm(); return; }
+  form.reset();
+  caseFormMode(null);
 });
-document.getElementById('caseCancelBtn').addEventListener('click', () => {
-  document.getElementById('newCaseForm').classList.remove('open');
-});
+document.getElementById('caseCancelBtn').addEventListener('click', resetCaseForm);
+
 document.getElementById('newCaseForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const project_id = document.getElementById('caseProject').value;
   const title = document.getElementById('caseTitle').value.trim();
   if (!project_id || !title) { toast('Pick a project and give the case a title.', 'err'); return; }
+
+  const fields = {
+    title,
+    steps:    document.getElementById('caseSteps').value.trim(),
+    expected: document.getElementById('caseExpected').value.trim(),
+    link:     document.getElementById('caseLink').value.trim()
+  };
+  const editing = editingCaseId;
   try {
-    await api(PM_CASES_CREATE_URL, { method: 'POST', body: {
-      project_id: Number(project_id), title,
-      steps: document.getElementById('caseSteps').value.trim(),
-      expected: document.getElementById('caseExpected').value.trim(),
-      link: document.getElementById('caseLink').value.trim()
-    }});
-    e.target.reset();
-    e.target.classList.remove('open');
-    toast('Test case created.', 'ok');
+    if (editing) {
+      await api(PM_CASES_UPDATE_URL, { method: 'POST',
+        body: Object.assign({ case_id: editing }, fields) });
+    } else {
+      await api(PM_CASES_CREATE_URL, { method: 'POST',
+        body: Object.assign({ project_id: Number(project_id) }, fields) });
+    }
+    resetCaseForm();
+    toast(editing ? 'Test case updated.' : 'Test case created.', 'ok');
     renderCases();
   } catch (err) {
-    toast('Could not create test case: ' + err.message, 'err');
+    toast((editing ? 'Could not update test case: ' : 'Could not create test case: ') + err.message, 'err');
   }
 });
 
